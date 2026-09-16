@@ -103,7 +103,15 @@ else
   check_pdf paper "$PAPER" "${ANCHORS[@]}"
   check_pdf minimal "$MINIMAL" 'Minimal Example'
   if ! git -C "$ROOT" diff --quiet -- examples/exports/paper.pdf; then
-    echo "note  examples/exports/paper.pdf changed; commit it if the change is intended"
+    committed=$(mktemp)
+    git -C "$ROOT" show HEAD:examples/exports/paper.pdf >"$committed"
+    if diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$PAPER" - 2>/dev/null) >/dev/null; then
+      echo "note  examples/exports/paper.pdf differs in bytes only, the text is unchanged (usually a different font file version)"
+    else
+      echo "note  examples/exports/paper.pdf text changed; commit it if the change is intended:"
+      diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$PAPER" - 2>/dev/null) | head -20
+    fi
+    rm -f "$committed"
   fi
 fi
 
