@@ -5,6 +5,8 @@
 
 // MyST's content sets figure breakability from this binding; short tables must not split across pages
 #let breakableDefault = false
+// Theorem-like blocks in flow, replacing the floating boxes defined in the imports above
+#let proof = arkProof
 
 #let tableStyle = (
   map-cells: cell => {

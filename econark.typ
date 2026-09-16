@@ -78,6 +78,28 @@
   )
 }
 
+// Theorem-like blocks from MyST prf: directives, set in flow the way economics papers set them.
+// Replaces MyST's own proof(), which floats each block to the top of the page inside a tinted box.
+#let italicKinds = ("theorem", "lemma", "proposition", "corollary", "conjecture", "claim")
+#let arkProof(body, heading: [], kind: "proof", supplement: "Proof", labelName: none, color: none, float: false) = {
+  let note = if heading != [] { [ (#heading)] }
+  if kind == "proof" {
+    block(above: 1em, below: 1.2em, width: 100%, {
+      set par(first-line-indent: 0pt)
+      // The fixed gap keeps the square off the last word when the line is full
+      [#emph(supplement)#note. #body#h(0.8em)#h(1fr)$square$]
+    })
+    return
+  }
+  let statement = if kind in italicKinds { emph(body) } else { body }
+  [#show figure.where(kind: kind): it => block(above: 1.2em, below: 1.2em, width: 100%, {
+      set align(left)
+      set par(first-line-indent: 0pt)
+      [#text(font: sansFont, weight: "semibold", fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]#note. #it.body]
+    })
+    #figure(kind: kind, supplement: supplement, numbering: "1", outlined: false, statement)#if labelName != none { label(labelName) }]
+}
+
 #let template(
   frontmatter: (),
   heading-numbering: "1.1.1",

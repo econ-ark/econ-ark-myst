@@ -56,6 +56,17 @@ Authors marked `corresponding: true` (or the first author with an email) appear 
 | `ai_declaration` | Unnumbered declaration of generative AI use, immediately before the references. Same part name as [elsarticle-myst](https://github.com/alanlujan91/elsarticle-myst) |
 | `title_note` | Starred footnote on the title, placed before any author notes |
 
+## Theorems and proofs
+
+MyST `prf:` directives (`prf:theorem`, `prf:proposition`, `prf:lemma`, `prf:definition`, `prf:assumption`, `prf:proof` and the rest) are set in the flow of the text: a bold label and number, the optional title in parentheses, then the statement. Theorems, propositions, lemmas, corollaries, conjectures and claims are italic; definitions, assumptions and remarks are upright. A proof ends with a square. Each kind is numbered separately, and `@label` gives "Proposition 1".
+
+## Known limitations
+
+| Symptom | Cause | Workaround |
+|---------|-------|------------|
+| `[Section %s](#label)` prints "Section ??" | MyST resolves `%s` to nothing for headings in a single-article export, even with `numbering: headings: true` ([mystmd#3035](https://github.com/jupyter-book/mystmd/pull/3035)) | Refer to sections by name with `@label` or `[](#label)`, which print the section title |
+| A table or figure taller than the page runs off the bottom | Figures are kept whole so short tables never split across a page break | Split a long table into two |
+
 ## Example
 
 `examples/paper.md` exercises every field above, and `examples/minimal.md` uses as few as possible. The rendered `examples/exports/paper.pdf` is tracked. The PDF carries no creation timestamp, so rebuilding an unchanged example leaves it byte-identical.

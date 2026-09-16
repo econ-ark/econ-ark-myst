@@ -80,7 +80,16 @@ The Euler equation implied by @eq-bellman is $u'(c_t) = \beta R \, \mathbb{E}_t[
 
 # Results
 
-@tbl-calibration lists the parameters used in the solution. The consumption function is concave. Its slope falls toward the perfect foresight marginal propensity to consume as wealth grows.
+@tbl-calibration lists the parameters used in the solution. @prop-concave describes the shape of the solution.
+
+:::{prf:proposition} Concavity
+:label: prop-concave
+If income risk is present, the consumption function is strictly concave. Its slope falls toward the perfect foresight marginal propensity to consume as wealth grows.
+:::
+
+:::{prf:proof}
+See @Carroll1997 for the argument under constant relative risk aversion.
+:::
 
 ```python
 from HARK.ConsumptionSaving.ConsIndShockModel import IndShockConsumerType
