@@ -21,9 +21,16 @@
   it.body
 }
 
-#let fullwidth(it) = {
-  place(top, dx: -30%, float: true, scope: "parent",
-  box(width: 135%, it))
+// Wide figure spanning the margin rail and text column, floated to the top or bottom of the page.
+// Page one floats to the bottom at column width: a top float lands above the title. Both branches
+// float, so the choice never moves the anchor and the layout converges.
+#let fullwidth(it) = context {
+  if here().page() == 1 {
+    place(bottom, float: true, it)
+  } else {
+    // A float wider than the column is centered on it, so shifting by half the 33% overhang aligns it with the rail
+    place(auto, dx: -16.5%, float: true, box(width: 133%, it))
+  }
 }
 
 #let smallTableStyle = (
@@ -290,6 +297,20 @@
   // MyST emits the string kind; a native table() in a raw typst block gets the function kind
   show figure.where(kind: "table"): set figure.caption(position: top)
   show figure.where(kind: table): set figure.caption(position: top)
+  // Justified text stretches a short cell and hyphenation splits its words
+  show figure.where(kind: "table"): set par(justify: false)
+  show figure.where(kind: table): set par(justify: false)
+  show figure.where(kind: "table"): set text(hyphenate: false)
+  show figure.where(kind: table): set text(hyphenate: false)
+  // Articles in a multi-article export are #include'd files that see MyST's empty tableStyle,
+  // so tablex draws a full grid there. Drop its vertical rules and lighten the rest; lines
+  // drawn with an explicit stroke, as the template's tableStyle does, keep that stroke.
+  show figure.where(kind: "table"): it => {
+    show line: l => if l.start.at(0) == l.end.at(0) { none } else { l }
+    set line(stroke: 0.5pt + arkGrey)
+    set text(size: 9pt)
+    it
+  }
   // Figures and tables move whole to the next page rather than splitting a table across the break
   show figure: set block(above: 1.4em, below: 1.4em, breakable: false)
   set figure(placement: none)

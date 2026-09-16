@@ -16,6 +16,8 @@ exports:
 
 Then run `myst build --typst`.
 
+While the repository is private, MyST cannot download it and the URL above fails with a 404. Clone the repository and give `template:` the path to the clone instead.
+
 ## Requirements
 
 - Typst 0.13 or newer (tested with 0.13.1 and 0.15.1). Typst 0.12 fails inside the `pubmatter` package.
@@ -59,6 +61,38 @@ Authors marked `corresponding: true` (or the first author with an email) appear 
 ## Theorems and proofs
 
 MyST `prf:` directives (`prf:theorem`, `prf:proposition`, `prf:lemma`, `prf:definition`, `prf:assumption`, `prf:proof` and the rest) are set in the flow of the text: a bold label and number, the optional title in parentheses, then the statement. Theorems, propositions, lemmas, corollaries, conjectures and claims are italic. Definitions, assumptions and remarks are upright. A proof ends with a square. Each kind is numbered separately, and `@label` gives "Proposition 1".
+
+## Tables
+
+Tables take captions above them and set their cells unjustified, unhyphenated and at 9pt. A table MyST parses from markdown or from a raw LaTeX `tabular` gets one automatic width per column, which crowds a table with many columns into the text column. For such a table, write a native Typst table in a `:::{raw:typst}` block, where you can set column widths, and pass the figure to `fullwidth`:
+
+```text
+:::{raw:typst}
+#fullwidth[#figure(
+  table(
+    columns: (8em, ..range(10).map(_ => 1fr)),
+    stroke: none,
+    [Case], ..range(10).map(i => [#i]),
+  ),
+  caption: [Results for all ten cases.],
+) <tbl-wide>]
+:::
+```
+
+MyST does not know labels defined inside raw Typst, and `@tbl-wide` in the text fails the build with "the document does not contain a bibliography". Refer to the table with the inline role {raw:typst}`@tbl-wide` instead.
+
+`fullwidth` spans the margin rail and the text column and floats the figure to the top or bottom of the page. On page one the margin holds the logo and notes, so a figure anchored there floats to the bottom of the page at column width.
+
+## Several articles in one PDF
+
+An export with `articles:` renders each article as a separate Typst file, which cannot see the names the template defines. In every article of such an export, MyST tables fall back to its default style (the template still removes their vertical rules and sets their size), `prf:` blocks float to the top of the page in tinted boxes, and `fullwidth` is undefined. To keep the template's styling, write one article that pulls the others in with the `include` directive:
+
+````text
+```{include} supplement.md
+```
+````
+
+If you keep `articles:`, MyST restarts figure and table numbers in each article while the PDF numbers them continuously, so references and captions disagree. Set `numbering: {figure: {continue: true}, table: {continue: true}}` in the frontmatter of every article after the first.
 
 ## Known limitations
 
