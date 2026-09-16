@@ -1,0 +1,47 @@
+name: Check examples
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Versions match the local builds that produced the tracked example PDF
+      - name: Install mystmd and Typst
+        run: |
+          npm install -g mystmd@1.10.1
+          curl -sL https://github.com/typst/typst/releases/download/v0.15.1/typst-x86_64-unknown-linux-musl.tar.xz \
+            | sudo tar -xJ --strip-components=1 -C /usr/local/bin typst-x86_64-unknown-linux-musl/typst
+          typst --version
+
+      # Without these fonts the template falls back to bundled ones, which changes line breaks
+      - name: Install fonts and poppler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils unzip
+          mkdir -p ~/.local/share/fonts
+          curl -sL -o roboto.zip https://github.com/googlefonts/roboto-3-classic/releases/download/v3.012/Roboto_v3.012.zip
+          unzip -q -j roboto.zip 'unhinted/static/Roboto-*.ttf' -d ~/.local/share/fonts
+          curl -sL -o libertinus.zip https://github.com/alerque/libertinus/releases/download/v7.051/Libertinus-7.051.zip
+          unzip -q -j libertinus.zip '*/LibertinusMath-Regular.otf' -d ~/.local/share/fonts
+          fc-cache -f
+          typst fonts | grep -E '^(Roboto|Libertinus Math)$'
+
+      - name: Self-test the checks
+        run: |
+          (cd examples && myst build --typst)
+          scripts/check-examples.sh --self-test
+
+      - name: Build and check the examples
+        run: scripts/check-examples.sh
