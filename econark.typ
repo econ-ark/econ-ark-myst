@@ -287,7 +287,9 @@
     block(sticky: true, fill: arkBlue.lighten(95%), width: 100%, inset: 9pt, radius: 2pt, it)
   }
   show figure.caption: leftCaption
+  // MyST emits the string kind; a native table() in a raw typst block gets the function kind
   show figure.where(kind: "table"): set figure.caption(position: top)
+  show figure.where(kind: table): set figure.caption(position: top)
   // Figures and tables move whole to the next page rather than splitting a table across the break
   show figure: set block(above: 1.4em, below: 1.4em, breakable: false)
   set figure(placement: none)
