@@ -32,22 +32,34 @@ doc:
   - id: venue
   - id: open_access
   - id: keywords
+  - id: tags
+    description: JEL classification codes, shown under the keywords (same field as the Econometric Society template)
   - id: doi
   - id: github
+  - id: binder
   - id: first_page
 options:
   - id: kind
     type: string
-    description: Label shown above the dates in the margin, for example "Working Paper" or "REMARK"
-  - id: jel
-    type: string
-    description: JEL classification codes shown under the keywords, for example "C63, D14, E21"
+    description: Label shown above the date in the margin, for example "Working paper" or "REMARK"
+  - id: linenumbers
+    type: boolean
+    description: Number the lines of the main text, for review drafts
+    default: false
 parts:
   - id: abstract
     description: >
       An abstract is a short summary of your research paper or report.
     max_words: 500
-  - id: acknowledgements
-    description: Acknowledgements, shown unnumbered after the main text.
+  - id: acknowledgments
+    description: Acknowledgments, shown unnumbered after the main text.
+  - id: data_availability
+    description: Data availability statement, shown unnumbered after the acknowledgments.
   - id: declaration
-    description: Declaration of competing interest, shown unnumbered after the acknowledgements.
+    description: Declaration of competing interest, shown unnumbered after the data availability statement.
+  - id: ai_declaration
+    description: >
+      Declaration of generative AI use, shown unnumbered immediately before the references.
+      Same part name as the elsarticle-myst template; supply only the statement text.
+  - id: title_note
+    description: Footnote attached to the title, such as a funding or presentation note; author notes follow it.

@@ -2,17 +2,20 @@
 
 [-IMPORTS-]
 
+// MyST's content sets figure breakability from this binding; short tables must not split across pages
+#let breakableDefault = false
+
 #let tableStyle = (
   map-cells: cell => {
     if (cell.y == 0) {
-      return (..cell, content: strong(text(cell.content, 8pt)))
+      return (..cell, content: strong(text(cell.content, 9pt)))
     }
-    (..cell, content: text(cell.content, 8pt))
+    (..cell, content: text(cell.content, 9pt))
   },
   auto-vlines: false,
   map-hlines: line => {
     if (line.y == 0 or line.y == 1) {
-      line.stroke = gray + 1pt;
+      line.stroke = arkGrey + 0.75pt;
     } else {
       line.stroke = 0pt;
     }
@@ -68,6 +71,9 @@
   [# if author.email #]
         email: "[-author.email-]",
   [# endif #]
+  [# if author.note #]
+        note: "[-author.note-]",
+  [# endif #]
   [# if author.corresponding #]
         corresponding: [-author.corresponding.value-],
   [# endif #]
@@ -98,28 +104,49 @@
   [# if options.kind #]
   kind: "[-options.kind-]",
   [# endif #]
-  [# if options.jel #]
-  jel: "[-options.jel-]",
+  [# if doc.tags #]
+  jel: ([#- for code in doc.tags -#]"[-code-]",[#- endfor -#]),
+  [# endif #]
+  [# if options.linenumbers #]
+  linenumbers: true,
+  [# endif #]
+  [# if doc.binder #]
+  binder: "[-doc.binder-]",
+  [# endif #]
+  [# if parts.title_note #]
+  title-note: [
+    [-parts.title_note-]
+  ],
   [# endif #]
   [# if doc.first_page #]
   page-start: [-doc.first_page-],
   [# endif #]
 )
 
-#set figure(placement: none)
-
 [-CONTENT-]
 
-[# if parts.acknowledgements #]
-= Acknowledgements
+[# if parts.acknowledgments #]
+#heading(numbering: none)[Acknowledgments]
 
-[-parts.acknowledgements-]
+[-parts.acknowledgments-]
+[# endif #]
+
+[# if parts.data_availability #]
+#heading(numbering: none)[Data availability]
+
+[-parts.data_availability-]
 [# endif #]
 
 [# if parts.declaration #]
-= Declaration of Competing Interest
+#heading(numbering: none)[Declaration of competing interest]
 
 [-parts.declaration-]
+[# endif #]
+
+[# if parts.ai_declaration #]
+#heading(numbering: none)[Declaration of generative AI use]
+
+[-parts.ai_declaration-]
 [# endif #]
 
 [# if doc.bibtex #]

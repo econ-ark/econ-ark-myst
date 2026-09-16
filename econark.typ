@@ -4,23 +4,20 @@
 #let venueLogo = image("logo.png");
 // Econ-ARK brand palette, from econ-ark.org assets/sass/_variables.scss
 #let arkBlue = rgb("#1f476b");
-#let arkLightBlue = rgb("#00aeef");
-#let arkPink = rgb("#ed217c");
-#let arkGreen = rgb("#39b54a");
-#let arkYellow = rgb("#fcb040");
 #let arkGrey = rgb("#676470");
-// Fonts fall back to ones bundled with Typst when Roboto is not installed
+// The four logo curves, top to bottom; used only in the logo's own contexts, never for text
+#let arkCurves = (rgb("#fcb040"), rgb("#ed217c"), rgb("#00aeef"), rgb("#39b54a"));
+// Preferred fonts first, then fonts bundled with Typst so the template always compiles
 #let sansFont = ("Roboto", "Libertinus Serif");
 #let serifFont = ("Libertinus Serif", "New Computer Modern");
+#let mathFont = ("Libertinus Math", "New Computer Modern Math");
 
 #let leftCaption(it) = context {
-  set text(size: 8pt)
+  set text(font: sansFont, size: 8.5pt)
   set align(left)
-  set par(justify: true)
-  text(weight: "bold")[#it.supplement #it.counter.display(it.numbering)]
-  "."
-  h(4pt)
-  set text(fill: black.lighten(20%), style: "italic")
+  set par(justify: false, first-line-indent: 0pt)
+  text(weight: "semibold", fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]
+  h(6pt)
   it.body
 }
 
@@ -32,14 +29,14 @@
 #let smallTableStyle = (
   map-cells: cell => {
     if (cell.y == 0) {
-      return (..cell, content: strong(text(cell.content, 5pt)))
+      return (..cell, content: strong(text(cell.content, 7pt)))
     }
-    (..cell, content: text(cell.content, 5pt))
+    (..cell, content: text(cell.content, 7pt))
   },
   auto-vlines: false,
   map-hlines: line => {
     if (line.y == 0 or line.y == 1) {
-      line.stroke = gray + 1pt;
+      line.stroke = arkGrey + 0.75pt;
     } else {
       line.stroke = 0pt;
     }
@@ -47,11 +44,48 @@
   },
 )
 
+// A small labelled block in the margin rail
+#let railItem(title, content) = {
+  text(size: 7.5pt, fill: arkBlue, weight: "semibold", title)
+  linebreak()
+  text(size: 7.5pt, content)
+}
+
+// Reproducibility strip under the abstract: the logo's four curves as its edge, items in one row
+#let reproduceBlock(items) = {
+  set text(font: sansFont)
+  set par(first-line-indent: 0pt, justify: false, leading: 0.45em, spacing: 0.45em)
+  // Cell fills stretch to the row height, which a rect cannot do
+  grid(
+    columns: (1.2pt, 1.2pt, 1.2pt, 1.2pt, 1fr),
+    column-gutter: (0.9pt, 0.9pt, 0.9pt, 8pt),
+    inset: 0pt,
+    fill: (x, y) => if x < arkCurves.len() { arkCurves.at(x) },
+    [], [], [], [],
+    block(inset: (y: 2pt), {
+      text(size: 8.5pt, fill: arkBlue, weight: "semibold", "Reproduce this paper")
+      v(5pt, weak: true)
+      grid(
+        columns: items.len(),
+        column-gutter: 1.6em,
+        ..items.map(((label, value)) => {
+          text(size: 7pt, fill: arkGrey, label)
+          linebreak()
+          text(size: 8pt, value)
+        }),
+      )
+    }),
+  )
+}
+
 #let template(
   frontmatter: (),
   heading-numbering: "1.1.1",
   kind: none,
-  jel: none,
+  jel: (),
+  linenumbers: false,
+  binder: none,
+  title-note: none,
   paper-size: "us-letter",
   page-start: none,
   max-page: none,
@@ -62,213 +96,185 @@
   // pubmatter.load drops a document-level github and defaults a missing date to today
   let github = frontmatter.at("github", default: none)
   let has-date = "date" in frontmatter
-  let dates = none
-  if (has-date and type(fm.date) == datetime) {
-    dates = ((title: "Published", date: fm.date),)
-  }
 
-  // Set document metadata.
-  set document(title: fm.title, author: fm.authors.map(author => author.name))
+  // Set document metadata; no creation timestamp, so rebuilding an unchanged paper gives identical bytes
+  set document(title: fm.title, author: fm.authors.map(author => author.name), date: none)
   let theme = (color: arkBlue, font: sansFont)
   if (page-start != none) {counter(page).update(page-start)}
   state("THEME").update(theme)
   set page(
     paper: paper-size,
-    margin: (left: 25%),
-    header: pubmatter.show-page-header(fm),
+    margin: (left: 25%, right: 1.35in, top: 1in, bottom: 1in),
+    header: {
+      set text(font: sansFont, size: 8pt, fill: arkGrey)
+      pubmatter.show-page-header(fm)
+    },
     footer: block(
       width: 100%,
-      stroke: (top: 1pt + gray),
+      stroke: (top: 0.5pt + arkGrey.lighten(40%)),
       inset: (top: 8pt, right: 2pt),
       context [
-        #set text(font: theme.font, size: 9pt, fill: gray.darken(50%))
-        #pubmatter.show-spaced-content((
-          if("venue" in fm) {emph(fm.venue)},
-          if(has-date and fm.date != none) {fm.date.display("[month repr:long] [day], [year]")}
-        ))
+        #set text(font: sansFont, size: 8pt, fill: arkGrey)
+        #if "venue" in fm { fm.venue }
         #h(1fr)
         #counter(page).display()
       ]
     ),
   )
-  let logo = [
-    #venueLogo
-    #align(center)[
-      #text(size: 8pt, weight: "light", font: theme.font)[#link(venueUrl, venueUrl)]
-    ]
-    #v(13pt)
-  ]
 
-  show link: it => [#text(fill: theme.color)[#it]]
-  show ref: it => {
-    if (it.element == none)  {
-      // This is a citation showing 2024a or [1]
-      show regex("([\d]{1,4}[a-z]?)"): it => text(fill: theme.color, it)
-      it
-      return
-    }
-    // The rest of the references, like `Figure 1`
-    set text(fill: theme.color)
-    it
-  }
+  // Citations and URLs leave the document, so they are blue; internal references stay black
+  show link: it => if type(it.dest) == str { text(fill: arkBlue, it) } else { it }
+  show cite: set text(fill: arkBlue)
 
-  // Set the body font.
-  set text(font: serifFont, size: 10pt)
-  // Configure equation numbering and spacing.
+  // Body text: serif at 11pt keeps the measure under 80 characters
+  set text(font: serifFont, size: 11pt, number-type: "lining")
+  set par(justify: true, leading: 0.72em, spacing: 0.72em, first-line-indent: 1.2em)
+  show math.equation: set text(font: mathFont)
   set math.equation(numbering: "(1)")
-  show math.equation: set block(spacing: 1em)
+  show math.equation.where(block: true): set block(spacing: 1.1em)
+  set footnote.entry(separator: line(length: 25%, stroke: 0.5pt + arkGrey))
+  show footnote.entry: set text(size: 8.5pt)
 
   // Configure lists.
-  set enum(indent: 10pt, body-indent: 9pt)
-  set list(indent: 10pt, body-indent: 9pt)
+  set enum(indent: 1.2em, body-indent: 0.6em)
+  set list(indent: 1.2em, body-indent: 0.6em)
 
-  // Configure headings.
+  // Headings: sans, sentence case as written, numbers in grey
   set heading(numbering: heading-numbering)
-  show heading: it => context {
-    let loc = here()
-    // Find out the final number of the heading counter.
-    let levels = counter(heading).at(loc)
-    set text(10pt, weight: 400, font: theme.font)
-    if it.level == 1 [
-      // We don't want to number the acknowledgment section.
-      #let is-ack = it.body in ([Acknowledgment], [Acknowledgement], [Acknowledgments], [Acknowledgements], [Declaration of Competing Interest])
-      #set text(if is-ack { 10pt } else { 12pt }, fill: theme.color, weight: "semibold")
-      #show: block.with(above: 20pt, below: 13.75pt, sticky: true)
-      #if it.numbering != none and not is-ack {
-        numbering(heading-numbering, ..levels)
-        [.]
-        h(7pt, weak: true)
-      }
-      #it.body
-    ] else if it.level == 2 [
-      #set par(first-line-indent: 0pt)
-      #set text(style: "italic")
-      #show: block.with(above: 15pt, below: 13.75pt, sticky: true)
-      #if it.numbering != none {
-        numbering(heading-numbering, ..levels)
-        [.]
-        h(7pt, weak: true)
-      }
-      #it.body
-    ] else [
-      #show: block.with(above: 15pt, below: 13.75pt, sticky: true)
-      #if it.level == 3 {
-        numbering(heading-numbering, ..levels)
-        [. ]
-      }
-      _#(it.body)_
-    ]
+  show heading: it => {
+    let number = if it.numbering != none {
+      text(fill: arkGrey, weight: "regular", counter(heading).display(it.numbering))
+      h(0.6em)
+    }
+    set par(first-line-indent: 0pt, justify: false)
+    if it.level == 1 {
+      set text(font: sansFont, size: 13pt, weight: "semibold", fill: arkBlue)
+      block(above: 1.8em, below: 0.9em, sticky: true, number + it.body)
+    } else if it.level == 2 {
+      set text(font: sansFont, size: 11pt, weight: "semibold")
+      block(above: 1.4em, below: 0.7em, sticky: true, number + it.body)
+    } else {
+      set text(style: "italic")
+      block(above: 1.2em, below: 0.6em, sticky: true, number + it.body)
+    }
   }
+
+  // Margin rail, top: the logo links to econ-ark.org
   place(
     top,
     dx: -33%,
     float: false,
-    box(width: 27%, logo),
+    box(width: 27%, link(venueUrl, venueLogo)),
   )
 
-  // Title and subtitle
-  pubmatter.show-title-block(fm)
+  // Title block, with the title note and author notes as a starred footnote on the title
+  {
+    set par(first-line-indent: 0pt, justify: false)
+    let notes = (if title-note != none { (title-note,) } else { () }) + frontmatter.authors.filter(a => "note" in a).map(a => [#a.name: #a.note])
+    if notes.len() > 0 {
+      let fm-title = fm
+      fm-title.title = [#fm.title#footnote(numbering: "*", notes.join(" "))]
+      pubmatter.show-title-block(fm-title)
+    } else {
+      pubmatter.show-title-block(fm)
+    }
+  }
+  counter(footnote).update(0)
 
   let corresponding = pubmatter.get-corresponding-author(fm)
-  let margin = (
+  let reproduce = (
+    if github != none { ("Code", link(github, github.replace(regex("^https?://(www\.)?"), ""))) },
+    if binder != none { ("Run online", link(binder, "Launch on Binder")) },  ).filter(x => x != none)
+
+  let rail = (
     if corresponding != none and "email" in corresponding {
-      (
-        title: "Correspondence to",
-        content: [
-          #corresponding.name\
-          #link("mailto:" + corresponding.email)[#corresponding.email]
-        ],
-      )
+      railItem("Correspondence", [#corresponding.name\ #link("mailto:" + corresponding.email, corresponding.email)])
     },
     if "license" in fm and fm.license != none {
-      (
-        title: [License #h(1fr) #pubmatter.show-license-badge(fm)],
-        content: [
-          #set par(justify: true)
-          #set text(size: 7pt)
-          #pubmatter.show-copyright(fm)
-        ]
-      )
+      railItem([License #h(1fr) #pubmatter.show-license-badge(color: arkGrey, fm)], {
+        set par(justify: false)
+        set text(size: 6.5pt, fill: arkGrey)
+        pubmatter.show-copyright(fm)
+      })
     },
-    if github != none {
-      (
-        title: "Code Availability",
-        content: [
-          Source code available:\
-          #link(github, github)
-        ],
-      )
-    },
-  ).filter((m) => m != none)
+  ).filter(x => x != none)
 
+  // Margin rail, bottom: what kind of paper this is, then the information a reader acts on
   place(
     left + bottom,
     dx: -33%,
     dy: -10pt,
     box(width: 27%, {
-      set text(font: theme.font)
+      // Rail size set here so line spacing scales with the small type
+      set text(font: sansFont, size: 7.5pt)
+      set par(first-line-indent: 0pt, justify: false, leading: 0.5em, spacing: 0.6em)
       if (kind != none) {
-        show par: set par(spacing: 0em)
-        text(11pt, fill: theme.color, weight: "semibold", smallcaps(kind))
+        text(11pt, fill: arkBlue, weight: "semibold", kind)
         parbreak()
       }
-      if (dates != none) {
-        grid(columns: (40%, 60%), gutter: 7pt,
-          ..dates.enumerate().map(((i, d)) => {
-            let weight = if (i == 0) { "bold" } else { "light" }
-            (
-              text(size: 7pt, fill: theme.color, weight: weight, d.title),
-              text(size: 7pt, d.date.display("[month repr:short] [day], [year]"))
-            )
-          }).flatten()
-        )
+      if (has-date and type(fm.date) == datetime) {
+        text(size: 7.5pt, fill: arkGrey, fm.date.display("[month repr:long] [day], [year]"))
       }
-      v(2em)
-      grid(columns: 1, gutter: 2em, ..margin.map(side => {
-        text(size: 7pt, {
-          if ("title" in side) {
-            text(fill: theme.color, weight: "bold", side.title)
-            [\ ]
-          }
-          set enum(indent: 0.1em, body-indent: 0.25em)
-          set list(indent: 0.1em, body-indent: 0.25em)
-          side.content
-        })
-      }))
+      v(1.6em)
+      grid(columns: 1, row-gutter: 1.6em, ..rail)
     }),
   )
 
-  if ("abstracts" in fm or "keywords" in fm or jel != none) {
-    if ("abstracts" in fm) {
-      box(inset: (top: 16pt, bottom: 16pt), stroke: (top: 0.5pt + gray.lighten(30%), bottom: 0.5pt + gray.lighten(30%)), pubmatter.show-abstracts(fm))
-    }
-    pubmatter.show-keywords(fm)
-    if (jel != none) {
-      parbreak()
-      text(size: 9pt, font: theme.font, {
-        text(fill: theme.color, weight: "semibold", "JEL Codes")
-        h(8pt)
-        jel
-      })
-    }
-    v(10pt)
+  // Abstract, keywords and JEL codes, set as a run-in paragraph in the economics convention,
+  // then the reproducibility strip, so it is read before the paper begins
+  if ("abstracts" in fm or "keywords" in fm or jel.len() > 0 or reproduce.len() > 0) {
+    block(above: 1.4em, below: 2em, inset: (x: 1.5em), {
+      set par(first-line-indent: 0pt)
+      set text(size: 10pt)
+      if ("abstracts" in fm) {
+        for abs in fm.abstracts {
+          text(font: sansFont, weight: "semibold", fill: arkBlue, size: 9.5pt, abs.title)
+          h(0.7em)
+          abs.content
+          parbreak()
+        }
+      }
+      set text(size: 9pt)
+      set par(justify: false, spacing: 0.65em)
+      if ("keywords" in fm and fm.keywords.len() > 0) {
+        v(0.5em)
+        text(font: sansFont, weight: "semibold", fill: arkBlue, size: 8.5pt, "Keywords")
+        h(0.7em)
+        fm.keywords.join(", ")
+        parbreak()
+      }
+      if (jel.len() > 0) {
+        text(font: sansFont, weight: "semibold", fill: arkBlue, size: 8.5pt, "JEL codes")
+        h(0.7em)
+        jel.join(", ")
+      }
+      if (reproduce.len() > 0) {
+        v(1.1em, weak: true)
+        reproduceBlock(reproduce)
+      }
+    })
   }
 
-  show par: set par(spacing: 1.4em, justify: true)
+  // Line numbers start with the main text, so the title block and abstract stay clean
+  set par.line(numbering: if linenumbers { n => text(font: sansFont, size: 7pt, fill: arkGrey, str(n)) } else { none })
 
+  show raw: set text(font: "DejaVu Sans Mono", size: 8pt)
   show raw.where(block: true): (it) => {
-      set text(size: 7pt)
-      set align(left)
-      block(sticky: true, fill: luma(240), width: 100%, inset: 10pt, radius: 1pt, it)
+    set align(left)
+    set par(justify: false)
+    block(sticky: true, fill: arkBlue.lighten(95%), width: 100%, inset: 9pt, radius: 2pt, it)
   }
   show figure.caption: leftCaption
   show figure.where(kind: "table"): set figure.caption(position: top)
-  set figure(placement: auto)
+  // Figures and tables move whole to the next page rather than splitting a table across the break
+  show figure: set block(above: 1.4em, below: 1.4em, breakable: false)
+  set figure(placement: none)
 
-  set bibliography(title: text(10pt, "References"), style: "chicago-author-date")
+  set bibliography(title: [References], style: "chicago-author-date")
   show bibliography: (it) => {
-    set text(8pt)
-    set block(spacing: 0.9em)
+    set text(9.5pt)
+    set par(first-line-indent: 0pt, justify: false)
+    set block(spacing: 0.7em)
     it
   }
 

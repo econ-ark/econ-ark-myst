@@ -9,6 +9,7 @@ project:
     - name: Jane Economist
       email: jane@example.org
       corresponding: true
+      note: Support from the Alfred P. Sloan Foundation is gratefully acknowledged.
       orcid: 0000-0002-7859-8394
       affiliations:
         - id: jhu
