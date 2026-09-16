@@ -1,0 +1,24 @@
+version: 1
+project:
+  title: Econ-ARK template example
+  github: https://github.com/econ-ark/econ-ark-myst
+  license: CC-BY-4.0
+  bibliography:
+    - main.bib
+  authors:
+    - name: Jane Economist
+      email: jane@example.org
+      corresponding: true
+      orcid: 0000-0002-7859-8394
+      affiliations:
+        - id: jhu
+          name: Johns Hopkins University
+          ror: 00za53h95
+    - name: John Modeler
+      equal_contributor: true
+      affiliations:
+        - jhu
+        - id: econark
+          name: Econ-ARK
+site:
+  template: book-theme

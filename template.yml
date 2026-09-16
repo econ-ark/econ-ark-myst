@@ -1,0 +1,53 @@
+myst: v1
+kind: typst
+title: Econ-ARK Template
+description: Econ-ARK working paper and technical report template
+template: template.typ
+files:
+  - template.typ
+  - econark.typ
+  - logo.png
+authors:
+  - name: Alan Lujan
+    github: alanlujan91
+    affiliations:
+      - Econ-ARK
+version: 0.1.0
+license: MIT
+source: https://github.com/curvenote-templates/openrxivlabs
+tags:
+  - preprint
+  - article
+  - paper
+  - economics
+thumbnail: ./thumbnail.png
+github: https://github.com/econ-ark/econ-ark-myst
+doc:
+  - id: title
+    required: true
+  - id: authors
+    required: true
+  - id: subtitle
+  - id: short_title
+  - id: venue
+  - id: open_access
+  - id: keywords
+  - id: doi
+  - id: github
+  - id: first_page
+options:
+  - id: kind
+    type: string
+    description: Label shown above the dates in the margin, for example "Working Paper" or "REMARK"
+  - id: jel
+    type: string
+    description: JEL classification codes shown under the keywords, for example "C63, D14, E21"
+parts:
+  - id: abstract
+    description: >
+      An abstract is a short summary of your research paper or report.
+    max_words: 500
+  - id: acknowledgements
+    description: Acknowledgements, shown unnumbered after the main text.
+  - id: declaration
+    description: Declaration of competing interest, shown unnumbered after the acknowledgements.
