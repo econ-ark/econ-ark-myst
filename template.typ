@@ -1,3 +1,4 @@
+[#- macro s(value) -#]"[- value | replace("\\", "\\\\") | replace('"', '\\"') -]"[#- endmacro -#]
 #import "econark.typ": *
 
 [-IMPORTS-]
@@ -23,31 +24,32 @@
   },
 )
 
+// Every frontmatter string goes through s(), which escapes backslashes and double quotes for a Typst string
 #show: template.with(
   frontmatter: (
-    title: "[-doc.title-]",
+    title: [-s(doc.title)-],
   [# if parts.abstract #]
     abstract: [
       [-parts.abstract-]
     ],
   [# endif #]
   [# if doc.subtitle #]
-    subtitle: "[-doc.subtitle-]",
+    subtitle: [-s(doc.subtitle)-],
   [# endif #]
   [# if doc.short_title #]
-    short-title: "[-doc.short_title-]",
+    short-title: [-s(doc.short_title)-],
   [# endif #]
   [# if doc.venue.title #]
-    venue: "[-doc.venue.title-]",
+    venue: [-s(doc.venue.title)-],
   [# endif #]
   [# if doc.open_access !== undefined #]
     open-access: [-doc.open_access-],
   [# endif #]
   [# if doc.github !== undefined #]
-    github: "[-doc.github-]",
+    github: [-s(doc.github)-],
   [# endif #]
   [# if doc.doi #]
-    doi: "[-doc.doi-]",
+    doi: [-s(doc.doi)-],
   [# endif #]
   [# if doc.date #]
     date: datetime(
@@ -58,21 +60,21 @@
   [# endif #]
   [# if doc.keywords #]
     keywords: (
-      [#- for keyword in doc.keywords -#]"[-keyword-]",[#- endfor -#]
+      [#- for keyword in doc.keywords -#][-s(keyword)-],[#- endfor -#]
     ),
   [# endif #]
     authors: (
   [# for author in doc.authors #]
       (
-        name: "[-author.name-]",
+        name: [-s(author.name)-],
   [# if author.orcid #]
-        orcid: "[-author.orcid-]",
+        orcid: [-s(author.orcid)-],
   [# endif #]
   [# if author.email #]
-        email: "[-author.email-]",
+        email: [-s(author.email)-],
   [# endif #]
   [# if author.note #]
-        note: "[-author.note-]",
+        note: [-s(author.note)-],
   [# endif #]
   [# if author.corresponding #]
         corresponding: [-author.corresponding.value-],
@@ -90,28 +92,28 @@
   [# for aff in doc.affiliations #]
       (
         id: "[-aff.index-]",
-        name: "[-aff.name-]",
+        name: [-s(aff.name)-],
   [# if aff.ror #]
-        ror: "[-aff.ror-]",
+        ror: [-s(aff.ror)-],
   [# endif #]
       ),
   [# endfor #]
     ),
   [# if doc.license.content #]
-    license: (id: "[-doc.license.content.id-]", name: "[-doc.license.content.name-]", url: "[-doc.license.content.url-]"),
+    license: (id: [-s(doc.license.content.id)-], name: [-s(doc.license.content.name)-], url: [-s(doc.license.content.url)-]),
   [# endif #]
   ),
   [# if options.kind #]
-  kind: "[-options.kind-]",
+  kind: [-s(options.kind)-],
   [# endif #]
   [# if doc.tags #]
-  jel: ([#- for code in doc.tags -#]"[-code-]",[#- endfor -#]),
+  jel: ([#- for code in doc.tags -#][-s(code)-],[#- endfor -#]),
   [# endif #]
   [# if options.linenumbers #]
   linenumbers: true,
   [# endif #]
   [# if doc.binder #]
-  binder: "[-doc.binder-]",
+  binder: [-s(doc.binder)-],
   [# endif #]
   [# if parts.title_note #]
   title-note: [
@@ -150,5 +152,5 @@
 [# endif #]
 
 [# if doc.bibtex #]
-#bibliography("[-doc.bibtex-]")
+#bibliography([-s(doc.bibtex)-])
 [# endif #]
