@@ -21,11 +21,13 @@
   it.body
 }
 
-// Wide figure spanning the margin rail and text column, floated to the top or bottom of the page.
-// Page one floats to the bottom at column width: a top float lands above the title. Both branches
-// float, so the choice never moves the anchor and the layout converges.
-#let fullwidth(it) = context {
-  if here().page() == 1 {
+// Wide figure spanning the margin rail and text column. With float: false it stays in the text flow,
+// right-aligned so the excess spills left over the rail; that collides with page one's margin notes.
+#let fullwidth(it, float: true) = context {
+  if not float {
+    align(right, box(width: 133%, it))
+  } else if here().page() == 1 {
+    // A top float lands above the title; both branches float, so the anchor never moves and layout converges
     place(bottom, float: true, it)
   } else {
     // A float wider than the column is centered on it, so shifting by half the 33% overhang aligns it with the rail
