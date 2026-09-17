@@ -35,6 +35,26 @@
   }
 }
 
+// Styles for the tables MyST writes with tablex: a bold header, rules only above and below it, no vertical lines.
+// template.typ binds tableStyle to arkTableStyle; an article included in a multi-article export must bind it itself.
+#let arkTableStyle = (
+  map-cells: cell => {
+    if (cell.y == 0) {
+      return (..cell, content: strong(text(cell.content, 9pt)))
+    }
+    (..cell, content: text(cell.content, 9pt))
+  },
+  auto-vlines: false,
+  map-hlines: line => {
+    if (line.y == 0 or line.y == 1) {
+      line.stroke = arkGrey + 0.75pt;
+    } else {
+      line.stroke = 0pt;
+    }
+    return line
+  },
+)
+
 #let smallTableStyle = (
   map-cells: cell => {
     if (cell.y == 0) {

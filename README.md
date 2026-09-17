@@ -123,11 +123,25 @@ An export with `articles:` renders each article as a separate Typst file, which 
 
 If you keep `articles:`, MyST restarts figure and table numbers in each article while the PDF numbers them continuously, so references and captions disagree. Set `numbering: {figure: {continue: true}, table: {continue: true}}` in the frontmatter of every article after the first.
 
+A table without a caption, such as the output of a code cell, is drawn with every grid line in an article after the first. To give it the template's rules, start that article with a block that rebinds the style for the rest of the file:
+
+```text
+:::{raw:typst}
+#import "econark.typ": arkTableStyle
+#let tableStyle = arkTableStyle
+:::
+```
+
+Import `smallTableStyle` instead for 7pt tables.
+
+The running header of an `articles:` export takes the `short_title` of the project. To use a different one, set `short_title` in the export block.
+
 ## Known limitations
 
 | Symptom | Cause | Workaround |
 |---------|-------|------------|
 | `[Section %s](#label)` prints "Section ??" | MyST resolves `%s` to nothing for headings in a single-article export, even with `numbering: headings: true` ([mystmd#3035](https://github.com/jupyter-book/mystmd/pull/3035)) | Refer to sections by name with `@label` or `[](#label)`, which print the section title |
+| A long table without a caption prints `state("tablex_tablex_header_pages__...") did not converge` | The table package MyST uses repeats the header on each page and needs more layout passes than Typst allows | Ignore the warning, because the table still breaks across pages with its header repeated |
 | A table or figure taller than the page runs off the bottom | Figures and tables never break across pages, which stops a short table from splitting | Split a long table into two |
 
 ## Example

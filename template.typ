@@ -8,23 +8,7 @@
 // Theorem-like blocks in flow, replacing the floating boxes defined in the imports above
 #let proof = arkProof
 
-#let tableStyle = (
-  map-cells: cell => {
-    if (cell.y == 0) {
-      return (..cell, content: strong(text(cell.content, 9pt)))
-    }
-    (..cell, content: text(cell.content, 9pt))
-  },
-  auto-vlines: false,
-  map-hlines: line => {
-    if (line.y == 0 or line.y == 1) {
-      line.stroke = arkGrey + 0.75pt;
-    } else {
-      line.stroke = 0pt;
-    }
-    return line
-  },
-)
+#let tableStyle = arkTableStyle
 
 // Every frontmatter string goes through s(), which escapes backslashes and double quotes for a Typst string
 #show: template.with(
