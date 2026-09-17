@@ -1,16 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 445" width="1600" height="445" role="img" aria-label="Four kinked curves in the Econ-ARK colours rising to the top right of a deep blue field">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 445" width="1600" height="445" role="img" aria-label="Four consumption functions in the Econ-ARK colours, their kinks along one line, on a deep blue field">
   <!--
-    The default banner for an Econ-ARK paper: four consumption functions rising towards
-    their asymptotes, in the colours and the order of the logo curves, each with the kink
-    the logo draws, where the constraint stops binding. article-theme lays its title card
-    over the middle and leaves a frame, so the curves run through the corner the frame
-    shows rather than across the field the card covers.
+    The default banner for an Econ-ARK paper. Four consumption functions climb while the
+    constraint binds, leave it at their own kinks, and flatten towards their asymptotes,
+    in the colours and the order of the logo curves. A kink is where a curve leaves the
+    line c = m, which is why the four sit on one straight line, here and in the logo.
+    article-theme lays its title card over the middle of a banner, so the kinks and the
+    tails fall in the frame the card leaves open.
   -->
   <rect width="1600" height="445" fill="#1f476b"/>
-  <g transform="translate(-60,150)" fill="none" stroke-width="4" stroke-linecap="round" stroke-linejoin="miter" opacity="0.95">
-    <path d="M 640 470 C 900 420 1080 330 1200 250 L 1250 196 C 1340 140 1480 96 1620 62" stroke="#fcb040"/>
-    <path d="M 700 470 C 960 424 1140 338 1258 260 L 1308 208 C 1396 154 1520 112 1620 84" stroke="#ed217c"/>
-    <path d="M 760 470 C 1020 428 1198 346 1314 270 L 1364 220 C 1448 168 1560 130 1620 110" stroke="#00aeef"/>
-    <path d="M 820 470 C 1080 432 1254 354 1368 280 L 1418 232 C 1496 182 1580 148 1620 136" stroke="#39b54a"/>
+  <g fill="none" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="miter" opacity="0.95">
+    <path d="M 710 520 L 800 438 C 950 420 1250 402 1620 390" stroke="#39b54a"/>
+    <path d="M 750 494 L 840 412 C 1000 390 1300 366 1620 350" stroke="#00aeef"/>
+    <path d="M 790 468 L 880 386 C 1060 360 1350 330 1620 310" stroke="#ed217c"/>
+    <path d="M 830 442 L 920 360 C 1120 328 1400 294 1620 270" stroke="#fcb040"/>
   </g>
 </svg>
