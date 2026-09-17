@@ -32,6 +32,9 @@
   assert(placement in ("top", "bottom", "auto", "none"), message: "placeNextFigure takes \"top\", \"bottom\", \"auto\" or \"none\"")
   nextFigurePlacement.update(placement)
 }
+// Widen the next figure over the margin rail, as fullwidth does for a figure written in raw Typst
+#let nextFigureWide = state("ark-next-figure-wide", false)
+#let widenNextFigure() = nextFigureWide.update(true)
 
 // Wide figure spanning the margin rail and text column. With float: false it stays in the text flow,
 // right-aligned so the excess spills left over the rail; that collides with page one's margin notes.
@@ -530,7 +533,8 @@
   // a taller one breaks across pages. Theorem-like figures stay breakable, since a proof may span pages.
   show figure: it => if it.placement == none and it.kind in ("figure", "table", "code", image, table, raw) {
     context {
-      let columnWidth = page.width * 0.75 - 1.35in
+      let wide = nextFigureWide.get() and figureDepth.get() == 0
+      let columnWidth = (page.width * 0.75 - 1.35in) * (if wide { 1.33 } else { 1 })
       let height = measure(block(width: columnWidth, it)).height
       let fits = height <= page.height - 2in - 3em.to-absolute()
       let whole = block(above: 1.4em, below: 1.4em, breakable: not fits, nested(it))
@@ -540,7 +544,10 @@
       let floatTo(end) = place(if here().page() == 1 { bottom } else { end }, float: true, clearance: 1.4em, whole)
       // Placement never reads the page position: a choice made from the space left on the page moves the text
       // before the figure, and eight figures placed that way failed to converge and misnumbered
-      if not fits {
+      if wide and fits {
+        // In the flow unless a placement mode floats it; fullwidth keeps page one's float at column width
+        if mode == "none" { block(above: 1.4em, below: 1.4em, breakable: false, fullwidth(float: false, it)) } else { fullwidth(it) }
+      } else if not fits {
         // Like LaTeX's \needspace: an empty unbreakable block moves to the next page when the caption, header and
         // first rows would not fit, and the negative space returns the table to where that block starts
         block(breakable: false, height: 10em, above: 1.4em, below: 0pt)
@@ -552,6 +559,7 @@
         floatTo(("auto": auto, "top": top, "bottom": bottom).at(mode))
       }
       nextFigurePlacement.update(none)
+      nextFigureWide.update(false)
     }
   } else { it }
   set figure(placement: none)
