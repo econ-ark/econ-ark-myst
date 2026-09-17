@@ -120,24 +120,17 @@ html.dark .myst-article-header-fm::before {
 }
 
 /*
- * Reading text. Libertinus Serif runs small, so 1.15rem here sets the same apparent size
- * as the PDF's 11pt, and the measure is capped where the paper caps it, under 80
- * characters. Figures, tables and code keep the theme's full column and so run wider than
- * the text, as a widened figure does in the PDF.
+ * Reading text. Text, tables, equations and code share the theme's column, as they share
+ * the text block of the PDF. Libertinus Serif runs small, and 1.25rem sets the line of
+ * that column near the 80 characters the paper holds.
  */
 article.article {
   font-family: var(--ark-serif);
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   line-height: 1.62;
   color: var(--ark-ink);
 }
 
-article.article p,
-article.article li,
-article.article blockquote,
-article.article .myst-abstract-content {
-  max-width: 36em;
-}
 
 @media (min-width: 640px) {
   article.article p {
@@ -188,7 +181,6 @@ article.article cite a {
   content: "";
   display: block;
   height: 2px;
-  max-width: 36em;
   margin: 2rem 0 1.4rem;
   background: linear-gradient(
     to right,

@@ -1,6 +1,5 @@
 version: 1
 project:
-  title: Econ-ARK template example
   github: https://github.com/econ-ark/econ-ark-myst
   license:
     content: CC-BY-4.0
