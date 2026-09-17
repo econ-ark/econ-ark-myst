@@ -30,7 +30,7 @@ jobs:
       - name: Install fonts and poppler
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends poppler-utils unzip
+          sudo apt-get install -y --no-install-recommends poppler-utils imagemagick unzip
           mkdir -p ~/.local/share/fonts
           curl -sL -o roboto.zip https://github.com/googlefonts/roboto-3-classic/releases/download/v3.012/Roboto_v3.012.zip
           unzip -q -j roboto.zip 'unhinted/static/Roboto-*.ttf' -d ~/.local/share/fonts

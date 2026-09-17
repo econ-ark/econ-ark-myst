@@ -28,6 +28,8 @@ ANCHORS=(
   'Declaration of generative AI use'
   'Carroll 1997'
   'References'
+  'The Quarterly Journal of Economics 112 (1): 1'
+  'zenodo.0000000'
   'Appendix A derives the Euler'
   'Appendix A Derivation'
   'Key points'
@@ -116,6 +118,32 @@ check_same_page() {
     ok "$name: caption and first row share page $pcap"
   else
     bad "$name: caption on page ${pcap:-none} but first row on page ${prow:-none}, so the caption is orphaned"
+  fi
+}
+
+# Colour is what an admonition's styling changes, and pdftotext reads none of it. Rasterise the
+# page and look for the rule the template draws beside a word, in the exact colour it uses.
+check_rule() {
+  local name=$1 pdf=$2 word=$3 colour=$4 hit page x0 y0 w h scratch n
+  hit=$(pdftotext -bbox "$pdf" - 2>/dev/null | awk -v w=">$word</word>" '
+    /<page / { p++ }
+    index($0, w) { print p, $0; exit }')
+  if [ -z "$hit" ]; then
+    bad "$name: '$word' is not in the PDF, so its rule cannot be checked"
+    return
+  fi
+  page=${hit%% *}
+  # 150 dpi over the PDF's 72pt: a 20pt band to the left of the word, a little taller than its line
+  read -r x0 y0 w h < <(sed -E 's/.*xMin="([0-9.]+)" yMin="([0-9.]+)" xMax="[0-9.]+" yMax="([0-9.]+)".*/\1 \2 \3/' <<<"$hit" |
+    awk '{ printf "%d %d %d %d\n", ($1 - 20) * 150 / 72, ($2 - 4) * 150 / 72, 20 * 150 / 72, ($3 - $2 + 8) * 150 / 72 }')
+  scratch=$(mktemp -d)
+  pdftoppm -png -r 150 -f "$page" -l "$page" "$pdf" "$scratch/page" 2>/dev/null
+  n=$(convert "$scratch"/page-*.png -crop "${w}x${h}+${x0}+${y0}" +repage txt: 2>/dev/null | grep -c "${colour#\#}")
+  rm -rf "$scratch"
+  if [ "${n:-0}" -gt 0 ]; then
+    ok "$name: '$word' carries a $colour rule ($n pixels)"
+  else
+    bad "$name: no $colour pixel beside '$word', so the rule is missing or off palette"
   fi
 }
 
@@ -251,6 +279,14 @@ self_test() {
     bad "self-test: a stale tracked PDF went undetected"
   fi
 
+  # A word in the table has no rule beside it, so the colour check must report one missing
+  out=$(check_rule seeded "$PAPER" 'Discount' '#1F476B')
+  if grep -q 'FAIL.*off palette' <<<"$out"; then
+    ok "self-test: a missing rule is caught"
+  else
+    bad "self-test: a missing rule went undetected"
+  fi
+
   out=$(check_site seeded "$(mktemp -d)")
   if grep -q 'FAIL.*unstyled' <<<"$out" && grep -q 'FAIL.*no banner' <<<"$out"; then
     ok "self-test: a site built without the stylesheet or banner is caught"
@@ -259,7 +295,7 @@ self_test() {
   fi
 }
 
-for tool in myst pdftotext pdfinfo; do
+for tool in myst pdftotext pdfinfo pdftoppm convert; do
   command -v "$tool" >/dev/null || { echo "missing required tool: $tool"; exit 2; }
 done
 
@@ -272,6 +308,7 @@ else
   check_pdf tall-table "$TALL" 'Case 35' 'Text after the table'
   check_breaks tall-table "$TALL" 'Case 1 A description' 'Case 35 A description'
   check_same_page tall-table "$TALL" 'Every case, one row each.' 'Case 1 A description'
+  check_rule paper "$PAPER" 'Admonitions' '#1F476B'
   check_left_of tall-table "$TALL" 'Widecaption' 100
   check_left_of tall-table "$TALL" 'Widetablecaption' 100
   committed=$(mktemp)
