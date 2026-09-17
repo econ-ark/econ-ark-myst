@@ -44,6 +44,22 @@ html.dark {
 }
 
 /*
+ * The site title and its contents list stay inside the sidebar column. A machine whose
+ * fonts are wider than the theme expects otherwise runs the title over the paper beside
+ * it, which is what a reader sees when the site's fonts are missing.
+ */
+.myst-primary-sidebar-nav,
+.myst-primary-sidebar-toc,
+.myst-toc {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.myst-toc a {
+  overflow-wrap: anywhere;
+}
+
+/*
  * The paper's own front matter takes the brand sans. The site's navigation, sidebar and
  * search keep the theme's typeface: those columns are sized for it, and a wider fallback
  * on a reader's machine runs the site title into the paper beside it.
