@@ -23,6 +23,7 @@ ANCHORS=(
   'BufferStockTheory'
   'BibTeX'
   'JEL codes'
+  '2.1.1 Sources of the parameters'
   'Proposition 1 (Concavity)'
   'Admonitions take a rule in the palette'
   'Declaration of generative AI use'
@@ -118,6 +119,25 @@ check_same_page() {
     ok "$name: caption and first row share page $pcap"
   else
     bad "$name: caption on page ${pcap:-none} but first row on page ${prow:-none}, so the caption is orphaned"
+  fi
+}
+
+# Typst warns about this template's own files and about the packages it imports alike, and the
+# packages are noisy: scienceicons alone warns once per icon. Only a warning that names a file of
+# this repository is ours to fix, so those fail the run and the rest are counted.
+check_warnings() {
+  local name=$1 log=$2 locations ours theirs
+  # A warning names its file on the line below it, as "┌─ path.typ:line:column"; a package path
+  # carries its own colons, so match the file suffix rather than splitting on them
+  locations=$(grep -oE '─ .*\.typ:[0-9]+:[0-9]+' "$log" 2>/dev/null)
+  ours=$(grep -vc '@preview/' <<<"$locations" || true)
+  theirs=$(grep -c '@preview/' <<<"$locations" || true)
+  [ -n "$locations" ] || ours=0
+  if [ "${ours:-0}" -eq 0 ]; then
+    ok "$name: the build warns about no file of this template ($theirs from imported packages)"
+  else
+    bad "$name: $ours build warnings name files of this template:"
+    grep -v '@preview/' <<<"$locations" | head -10
   fi
 }
 
@@ -279,6 +299,25 @@ self_test() {
     bad "self-test: a stale tracked PDF went undetected"
   fi
 
+  # A log carrying a warning about a file of this template, beside the packages' own noise
+  local log
+  log=$(mktemp)
+  printf 'warning: unknown variable\n  ┌─ econark.typ:12:3\nwarning: no whitespace\n  ┌─ @preview/scienceicons:0.1.0/index.typ:2:20\n' >"$log"
+  out=$(check_warnings seeded "$log")
+  if grep -q 'FAIL.*name files of this template' <<<"$out"; then
+    ok "self-test: a build warning about this template is caught"
+  else
+    bad "self-test: a build warning about this template went undetected"
+  fi
+  printf 'warning: no whitespace\n  ┌─ @preview/scienceicons:0.1.0/index.typ:2:20\n' >"$log"
+  out=$(check_warnings seeded "$log")
+  if grep -q 'ok.*imported packages' <<<"$out"; then
+    ok "self-test: a package's own warnings pass"
+  else
+    bad "self-test: a package's own warnings failed the run"
+  fi
+  rm -f "$log"
+
   # A word in the table has no rule beside it, so the colour check must report one missing
   out=$(check_rule seeded "$PAPER" 'Discount' '#1F476B')
   if grep -q 'FAIL.*off palette' <<<"$out"; then
@@ -302,7 +341,10 @@ done
 if [ "${1:-}" = "--self-test" ]; then
   self_test
 else
-  (cd "$ROOT" && rm -rf _build examples/_build && myst build --typst) >/dev/null 2>&1
+  buildlog=$(mktemp)
+  (cd "$ROOT" && rm -rf _build examples/_build && myst build --typst) >"$buildlog" 2>&1
+  check_warnings build "$buildlog"
+  rm -f "$buildlog"
   check_pdf paper "$PAPER" "${ANCHORS[@]}"
   check_pdf minimal "$MINIMAL" 'Minimal Example'
   check_pdf tall-table "$TALL" 'Case 35' 'Text after the table'
