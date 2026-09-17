@@ -77,11 +77,14 @@
 
 // Materials under the abstract: (label, body) groups in quarter-width columns under the logo's four colours.
 // All four rules show however many groups a paper has, so the block always carries the full logo palette.
+// With no groups the rules alone remain, as the divider that ends the front matter.
 #let materialsBlock(groups) = {
   set text(font: sansFont, size: 8pt)
   set par(first-line-indent: 0pt, justify: false, leading: 0.45em, spacing: 0.45em)
-  text(size: 8.5pt, fill: arkBlue, weight: "semibold", "Materials")
-  v(5pt, weak: true)
+  if groups.len() > 0 {
+    text(size: 8.5pt, fill: arkBlue, weight: "semibold", "Materials")
+    v(5pt, weak: true)
+  }
   grid(
     columns: (1fr,) * 4,
     column-gutter: 1.4em,
@@ -428,7 +431,8 @@
     // Abstract, keywords and JEL codes, set as a run-in paragraph in the economics convention,
     // then key points that did not fit the rail and the reproducibility strip, so both are read before the paper begins
     let mainKeyPoints = keypoints != none and not railKeyPoints
-    if ("abstracts" in fm or summary != none or "keywords" in fm or jel.len() > 0 or materials.len() > 0 or mainKeyPoints) {
+    // Always drawn: the four-colour rule closes the front matter even when the paper has nothing above it
+    {
       block(above: 1.4em, below: 2em, inset: (x: 1.5em), {
         set par(first-line-indent: 0pt)
         set text(size: 10pt)
@@ -466,10 +470,9 @@
           v(1.1em, weak: true)
           keyPoints(keypoints, size: 9pt)
         }
-        if (materials.len() > 0) {
-          v(1.3em, weak: true)
-          materialsBlock(materials)
-        }
+        // A bare rule sits a little lower, so it reads as a divider between the front matter and the text
+        v(if materials.len() > 0 { 1.3em } else { 1.8em }, weak: true)
+        materialsBlock(materials)
       })
     }
   }
