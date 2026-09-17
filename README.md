@@ -254,6 +254,13 @@ site:
 
 Paths are relative to the `myst.yml` that holds them. This repository keeps its own at the root, beside the template and the stylesheet.
 
+`banner.svg` is a default banner for a paper that wants one: the brand blue behind four consumption functions that rise towards their asymptotes, in the colours and the order of the logo curves, each carrying the kink the logo draws. article-theme lays its title card over the middle of a banner. The curves run out below the card and off the right edge, where the card leaves the field open. Set it for every page under `project:`, or for one page in its own frontmatter:
+
+```yaml
+project:
+  banner: banner.svg
+```
+
 `logo.png` is the mark the PDF prints in its margin. book-theme shows it in the site's navigation. article-theme leaves that place empty beside a paper. The stylesheet puts the published file over the title instead. The wordmark is black. At night both marks rest on a white plate.
 
 A reader sees Libertinus Serif, Roboto and Libertinus Mono only when those fonts are installed on their machine. Without them the stylesheet falls back to Georgia, the system sans and the system mono, and the hierarchy survives. To serve the fonts yourself, list the files under `static_files` and add an `@font-face` block to a stylesheet of your own.

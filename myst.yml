@@ -1,6 +1,7 @@
 version: 1
 project:
   github: https://github.com/econ-ark/econ-ark-myst
+  banner: banner.svg
   license:
     content: CC-BY-4.0
     code: MIT
