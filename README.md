@@ -92,11 +92,27 @@ A link to this same PDF at its permanent address tells a reader holding an old c
 
 ## Figure placement
 
-By default a figure or table stays where it is written. When the rest of the page is too short for it, it moves whole to the next page and leaves white space behind. A table taller than a page breaks across pages.
+By default a figure or table stays where it is written. When the rest of the page is too short for it, it moves whole to the next page and leaves white space behind. A table taller than a page breaks across pages, and starts on a new page when its caption, header and first rows would not fit at the foot of the current one.
+
+Floating a figure only when the rest of the page is too short for it, as LaTeX's `[h]` does, is left out on purpose. A choice made from the space left on a page moves the text above the figure. In a test with eight figures, Typst's layout failed to settle and printed wrong figure numbers.
 
 With `figure_placement: auto` in the export block, a figure or table that fits on a page floats to the top or bottom of a page, as LaTeX floats do, and the text fills the space it would have left. `top` and `bottom` choose one end. Page one takes floats only at the bottom, below the title. A table taller than a page, a panel inside a figure with several panels, and a `fullwidth` figure never float on their own.
 
-The option applies to every figure in the export, since MyST's `figure` and `table` directives carry no placement of their own. To place one figure differently, write it in a `:::{raw:typst}` block with `placement: top` or `placement: bottom` on the `figure` call. The template leaves such a figure where Typst puts it.
+The option sets the placement for every figure in the export. MyST's `figure` and `table` directives carry no placement of their own, so to place one figure differently, call `placeNextFigure` in a raw Typst block just before it, like LaTeX's `[t]` or `[b]` on a single figure:
+
+```text
+:::{raw:typst}
+#placeNextFigure("top")
+:::
+
+:::{figure} results.png
+:label: fig-results
+
+Results.
+:::
+```
+
+`placeNextFigure` takes `"top"`, `"bottom"`, `"auto"` or `"none"` and applies to the next figure or table only. The MyST site ignores the raw block and shows the figure as written.
 
 ## Parts
 

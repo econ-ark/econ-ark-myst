@@ -91,7 +91,7 @@ check_breaks() {
   local name=$1 pdf=$2 first=$3 last=$4 pages p text pfirst="" plast=""
   pages=$(pdfinfo "$pdf" 2>/dev/null | awk '/^Pages:/ {print $2}')
   for ((p = 1; p <= ${pages:-0}; p++)); do
-    text=$(pdftotext -f "$p" -l "$p" "$pdf" - 2>/dev/null)
+    text=$(pdftotext -layout -f "$p" -l "$p" "$pdf" - 2>/dev/null | tr -s "[:space:]" " ")
     grep -qF -- "$first" <<<"$text" && [ -z "$pfirst" ] && pfirst=$p
     grep -qF -- "$last" <<<"$text" && plast=$p
   done
@@ -99,6 +99,22 @@ check_breaks() {
     ok "$name: table breaks from page $pfirst to page $plast"
   else
     bad "$name: '$first' and '$last' are not on successive pages (pages ${pfirst:-none} and ${plast:-none}), so the table did not break"
+  fi
+}
+
+# A caption above a table that breaks must stay on the page where the table's first row is
+check_same_page() {
+  local name=$1 pdf=$2 caption=$3 row=$4 pages p text pcap="" prow=""
+  pages=$(pdfinfo "$pdf" 2>/dev/null | awk '/^Pages:/ {print $2}')
+  for ((p = 1; p <= ${pages:-0}; p++)); do
+    text=$(pdftotext -layout -f "$p" -l "$p" "$pdf" - 2>/dev/null | tr -s "[:space:]" " ")
+    [ -z "$pcap" ] && grep -qF -- "$caption" <<<"$text" && pcap=$p
+    [ -z "$prow" ] && grep -qF -- "$row" <<<"$text" && prow=$p
+  done
+  if [ -n "$pcap" ] && [ "$pcap" = "$prow" ]; then
+    ok "$name: caption and first row share page $pcap"
+  else
+    bad "$name: caption on page ${pcap:-none} but first row on page ${prow:-none}, so the caption is orphaned"
   fi
 }
 
@@ -159,7 +175,8 @@ else
   check_pdf paper "$PAPER" "${ANCHORS[@]}"
   check_pdf minimal "$MINIMAL" 'Minimal Example'
   check_pdf tall-table "$TALL" 'Case 35' 'Text after the table'
-  check_breaks tall-table "$TALL" 'Case 1' 'Case 35'
+  check_breaks tall-table "$TALL" 'Case 1 A description' 'Case 35 A description'
+  check_same_page tall-table "$TALL" 'Every case, one row each.' 'Case 1 A description'
   if ! git -C "$ROOT" diff --quiet -- examples/exports/paper.pdf; then
     committed=$(mktemp)
     git -C "$ROOT" show HEAD:examples/exports/paper.pdf >"$committed"
