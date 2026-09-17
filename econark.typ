@@ -109,6 +109,17 @@
     #figure(kind: kind, supplement: supplement, numbering: "1", outlined: false, statement)#if labelName != none { label(labelName) }]
 }
 
+// Appendix number of the heading at loc, such as "A" or "B.2", or none before the <appendix> marker.
+// Counted from the marker, so the author need not reset the heading counter; call inside context.
+#let appendixNumber(loc) = {
+  let markers = query(selector(<appendix>).before(loc))
+  if markers.len() == 0 { return none }
+  let nums = counter(heading).at(loc)
+  let first = nums.at(0) - counter(heading).at(markers.last().location()).at(0, default: 0)
+  if first < 1 { return none }
+  (numbering("A", first), ..nums.slice(1).map(str)).join(".")
+}
+
 #let template(
   frontmatter: (),
   heading-numbering: "1.1.1",
@@ -156,6 +167,12 @@
   // Citations and URLs leave the document, so they are blue; internal references stay black
   show link: it => if type(it.dest) == str { text(fill: arkBlue, it) } else { it }
   show cite: set text(fill: arkBlue)
+  // A native reference to an appendix heading reads "Appendix A" rather than "Section 3"
+  show ref: it => context {
+    let el = it.element
+    let appendix = if el != none and el.func() == heading and el.numbering != none { appendixNumber(el.location()) }
+    if appendix == none { it } else { link(it.target)[Appendix #appendix] }
+  }
 
   // Body text: serif at 11pt keeps the measure under 80 characters
   set text(font: serifFont, size: 11pt, number-type: "lining")
@@ -174,7 +191,11 @@
   set heading(numbering: heading-numbering)
   show heading: it => {
     let number = if it.numbering != none {
-      text(fill: arkGrey, weight: "regular", counter(heading).display(it.numbering))
+      context {
+        let appendix = appendixNumber(it.location())
+        let shown = if appendix == none { counter(heading).display(it.numbering) } else if it.level == 1 { [Appendix #appendix] } else { appendix }
+        text(fill: arkGrey, weight: "regular", shown)
+      }
       h(0.6em)
     }
     set par(first-line-indent: 0pt, justify: false)

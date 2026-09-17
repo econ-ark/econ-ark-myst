@@ -24,6 +24,8 @@ ANCHORS=(
   'Declaration of generative AI use'
   'Carroll 1997'
   'References'
+  'Appendix A derives the Euler'
+  'Appendix A Derivation'
 )
 
 fail=0

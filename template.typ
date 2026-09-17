@@ -127,8 +127,7 @@
   [# endif #]
 )
 
-[-CONTENT-]
-
+#let backMatter = [
 [# if parts.acknowledgments #]
 #heading(numbering: none)[Acknowledgments]
 
@@ -156,3 +155,12 @@
 [# if doc.bibtex #]
 #bibliography([-s(doc.bibtex)-])
 [# endif #]
+]
+
+// The back matter and references go before an <appendix> marker, or at the end when there is none.
+// Show rules and labels, unlike names, also reach articles included in a multi-article export.
+#show <appendix>: it => backMatter + it
+
+[-CONTENT-]
+
+#context if query(<appendix>).len() == 0 { backMatter }

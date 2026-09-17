@@ -85,6 +85,27 @@ MyST does not know labels defined inside raw Typst, and `@tbl-wide` in the text 
 
 `fullwidth(float: false, ...)` keeps the figure in the text flow, directly after the sentence that introduces it, as LaTeX `[h]` does. A figure that does not fit the rest of the page moves whole to the next page and leaves white space. Use it from page two on, because on page one the wide figure would run over the margin notes.
 
+## Appendices
+
+Open the appendices in the body with a marker, then write them as ordinary `#` sections:
+
+```text
+:::{raw:typst}
+#metadata("appendix") <appendix>
+:::
+
+(app-proofs)=
+# Proofs
+```
+
+After the marker, top-level sections read "Appendix A", "Appendix B" and their subsections "A.1", "A.2". The acknowledgments, declarations and references move to just before the marker, the usual order in economics papers. Add `#pagebreak()` inside the marker block to start the appendices on a new page. The marker also works inside an article of a multi-article export.
+
+To keep an appendix in its own file, pull it in after the marker with the `include` directive and list the pages in the project `toc`. Without a `toc` the included file is also a page of its own, and MyST warns about duplicate identifiers.
+
+`@app-proofs` prints the section title. To print "Appendix A", use {raw:typst}`@app-proofs`, which appears in the PDF only. Equations, figures and tables keep one numbering sequence through the appendices, because MyST writes their reference numbers into the text before Typst lays out the page.
+
+The template defines no `appendix` part, so write appendices in the body.
+
 ## Several articles in one PDF
 
 An export with `articles:` renders each article as a separate Typst file, which cannot see the names the template defines. In every article of such an export, MyST tables fall back to its default style (the template still removes their vertical rules and sets their size), `prf:` blocks float to the top of the page in tinted boxes, and `fullwidth` is undefined. To keep the template's styling, write one article that pulls the others in with the `include` directive:

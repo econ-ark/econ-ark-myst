@@ -97,3 +97,14 @@ from HARK.ConsumptionSaving.ConsIndShockModel import IndShockConsumerType
 agent = IndShockConsumerType()
 agent.solve()
 ```
+
+{raw:typst}`@app-euler` derives the Euler equation.
+
+:::{raw:typst}
+#metadata("appendix") <appendix>
+:::
+
+(app-euler)=
+# Derivation of the Euler equation
+
+The first-order condition for $c_t$ in @eq-bellman sets $u'(c_t)$ equal to $\beta R \, \mathbb{E}_t[v'(m_{t+1})]$. The envelope condition gives $v'(m_t) = u'(c_t)$, and substituting it yields the Euler equation.
