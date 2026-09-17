@@ -78,7 +78,7 @@ exports:
     binder_label: Dashboard
 ```
 
-The PDF leaves out a `downloads` entry that points to one of the project's exports by `id`, because such an entry has no web address until the MyST site is published.
+A link to this same PDF at its permanent address tells a reader holding an old copy where the current one lives; title it "Latest version" rather than "PDF", which reads as the file already open. The PDF leaves out a `downloads` entry that points to one of the project's exports by `id`, because such an entry has no web address until the MyST site is published.
 
 ## Options
 
