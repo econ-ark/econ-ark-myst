@@ -254,6 +254,8 @@ site:
 
 Paths are relative to the `myst.yml` that holds them. This repository keeps its own at the root, beside the template and the stylesheet.
 
+When a paper points `template:` at this repository's URL, MyST copies the Typst side alone, because `template.yml` lists `template.typ`, `econark.typ` and `logo.png`. Copy `theme.css`, `banner.svg` and `logo.png` by hand, from a checkout of this repository into the paper's own.
+
 `banner.svg` is a default banner for a paper that wants one: the brand blue behind four consumption functions that rise towards their asymptotes, in the colours and the order of the logo curves, each carrying the kink the logo draws. article-theme lays its title card over the middle of a banner. The curves run out below the card and off the right edge, where the card leaves the field open. Set it for every page under `project:`, or for one page in its own frontmatter:
 
 ```yaml
