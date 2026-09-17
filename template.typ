@@ -146,6 +146,21 @@
   [# if doc.binder #]
   binder: [-s(doc.binder)-],
   [# endif #]
+  [# if options.binder_label #]
+  binder-label: [-s(options.binder_label)-],
+  [# endif #]
+  [# if options.remark #]
+  remark: [-s(options.remark)-],
+  [# endif #]
+  [# if doc.downloads #]
+  downloads: (
+  [# for d in doc.downloads #]
+  [# if d.url #]
+    (url: [-s(d.url)-], title: [-s(d.title or d.filename or (d.url.split("/") | last))-]),
+  [# endif #]
+  [# endfor #]
+  ),
+  [# endif #]
   [# if parts.title_note #]
   title-note: [
     [-parts.title_note-]

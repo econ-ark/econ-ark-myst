@@ -33,7 +33,7 @@ doc:
   - id: date
     description: Shown in the margin; MyST uses the build date when it is unset
   - id: license
-    description: The content license shows in the margin; a separate code license shows in the reproduce strip
+    description: The content license shows in the margin; a separate code license shows under the code link in the materials block
   - id: copyright
     description: Copyright holder, replacing the author names in the margin's copyright line
   - id: funding
@@ -58,6 +58,8 @@ doc:
   - id: issue
   - id: github
   - id: binder
+  - id: downloads
+    description: Other formats of the paper, linked in the materials block; a web address ending in .bib goes to "Cite as" as BibTeX
   - id: first_page
   - id: last_page
 options:
@@ -68,6 +70,12 @@ options:
     type: boolean
     description: Number the lines of the main text, for review drafts
     default: false
+  - id: remark
+    type: string
+    description: Name of the paper's REMARK on econ-ark.org, such as "LiqConstr", linked in the materials block
+  - id: binder_label
+    type: string
+    description: Label over the binder link in the materials block, such as "Dashboard"; defaults to "Run online"
 parts:
   - id: abstract
     description: >

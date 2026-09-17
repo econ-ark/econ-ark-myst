@@ -5,7 +5,7 @@
 // Econ-ARK brand palette, from econ-ark.org assets/sass/_variables.scss
 #let arkBlue = rgb("#1f476b");
 #let arkGrey = rgb("#676470");
-// The four logo curves, top to bottom; kept to marks that echo the logo, such as the reproduce strip
+// The four logo curves, top to bottom; kept to marks that echo the logo, such as the materials rules
 #let arkCurves = (rgb("#fcb040"), rgb("#ed217c"), rgb("#00aeef"), rgb("#39b54a"));
 // Preferred fonts first, then fonts bundled with Typst so the template always compiles
 #let sansFont = ("Roboto", "Libertinus Serif");
@@ -75,32 +75,28 @@
   text(size: 7.5pt, content)
 }
 
-// Reproducibility strip under the abstract: the logo's four curves as its edge, items in one row
-#let reproduceBlock(items) = {
-  set text(font: sansFont)
+// Materials under the abstract: (label, body) groups in quarter-width columns under the logo's four colours.
+// All four rules show however many groups a paper has, so the block always carries the full logo palette.
+#let materialsBlock(groups) = {
+  set text(font: sansFont, size: 8pt)
   set par(first-line-indent: 0pt, justify: false, leading: 0.45em, spacing: 0.45em)
-  // Cell fills stretch to the row height, which a rect cannot do
+  text(size: 8.5pt, fill: arkBlue, weight: "semibold", "Materials")
+  v(5pt, weak: true)
   grid(
-    columns: (1.2pt, 1.2pt, 1.2pt, 1.2pt, 1fr),
-    column-gutter: (0.9pt, 0.9pt, 0.9pt, 8pt),
-    inset: 0pt,
-    fill: (x, y) => if x < arkCurves.len() { arkCurves.at(x) },
-    [], [], [], [],
-    block(inset: (y: 2pt), {
-      text(size: 8.5pt, fill: arkBlue, weight: "semibold", "Reproduce this paper")
-      v(5pt, weak: true)
-      grid(
-        columns: items.len(),
-        column-gutter: 1.6em,
-        ..items.map(((label, value)) => {
-          text(size: 7pt, fill: arkGrey, label)
-          linebreak()
-          text(size: 8pt, value)
-        }),
-      )
+    columns: (1fr,) * 4,
+    column-gutter: 1.4em,
+    row-gutter: 4pt,
+    ..arkCurves.map(colour => line(length: 100%, stroke: 1pt + colour)),
+    ..groups.map(((label, body)) => {
+      text(size: 7pt, fill: arkGrey, label)
+      linebreak()
+      body
     }),
   )
 }
+
+// A note under a material, such as how long a dashboard takes to start
+#let materialNote(body) = text(size: 6.5pt, fill: arkGrey, body)
 
 // The keypoints part: a short list read beside the title and abstract
 #let keyPoints(body, size: 8pt) = {
@@ -231,6 +227,10 @@
   funding: (),
   copyright: none,
   code-license: none,
+  // Materials: a REMARK name on econ-ark.org, the label over the binder link, and (title, url) downloads
+  remark: none,
+  binder-label: "Run online",
+  downloads: (),
   // The paper's content.
   body
 ) = {
@@ -334,10 +334,25 @@
   counter(footnote).update(0)
 
   let corresponding = pubmatter.get-corresponding-author(fm)
-  let reproduce = (
-    if github != none { ("Code", bareLink(github)) },
-    if binder != none { ("Run online", link(binder, "Launch on Binder")) },
-    if code-license != none { ("Code license", link(code-license.url, code-license.id)) },
+  // Only web addresses print; a download that names one of the project's own exports resolves on the MyST site alone
+  let webDownloads = downloads.filter(d => d.url.starts-with(regex("https?://")))
+  let bibtexUrl = webDownloads.find(d => d.url.ends-with(".bib"))
+  let formats = webDownloads.filter(d => not d.url.ends-with(".bib"))
+  // In this order: running the paper, its code, its REMARK, the paper in other formats
+  let materials = (
+    if binder != none {
+      (binder-label, [#link(binder)[Launch] \ #materialNote[Starts in a few minutes]])
+    },
+    if github != none {
+      let repo = github.replace(regex("^https?://(www\.)?github\.com/"), "").trim("/")
+      ("Code", [#link(github, repo)#if code-license != none [ \ #materialNote[#link(code-license.url, code-license.id) license]]])
+    },
+    if remark != none {
+      ("REMARK", link("https://econ-ark.org/materials/" + remark, remark))
+    },
+    if formats.len() > 0 {
+      ("Also as", formats.map(d => link(d.url, d.title)).join(linebreak()))
+    },
   ).filter(x => x != none)
 
   // The DOI follows the citation as a URL, as Chicago style asks; arXiv and Zenodo follow as short links
@@ -345,6 +360,7 @@
   let otherVersions = (
     if arxiv != none { link(arxiv, "arXiv:" + arxiv.replace(regex("^https?://(www\.)?arxiv\.org/(abs|pdf)/|\.pdf$"), "")) },
     if zenodo != none { link(zenodo, "Zenodo archive") },
+    if bibtexUrl != none { link(bibtexUrl.url, "BibTeX") },
   ).filter(x => x != none)
   let pages = if page-start != none and last-page != none { str(page-start) + "-" + str(last-page) }
 
@@ -412,7 +428,7 @@
     // Abstract, keywords and JEL codes, set as a run-in paragraph in the economics convention,
     // then key points that did not fit the rail and the reproducibility strip, so both are read before the paper begins
     let mainKeyPoints = keypoints != none and not railKeyPoints
-    if ("abstracts" in fm or summary != none or "keywords" in fm or jel.len() > 0 or reproduce.len() > 0 or mainKeyPoints) {
+    if ("abstracts" in fm or summary != none or "keywords" in fm or jel.len() > 0 or materials.len() > 0 or mainKeyPoints) {
       block(above: 1.4em, below: 2em, inset: (x: 1.5em), {
         set par(first-line-indent: 0pt)
         set text(size: 10pt)
@@ -450,9 +466,9 @@
           v(1.1em, weak: true)
           keyPoints(keypoints, size: 9pt)
         }
-        if (reproduce.len() > 0) {
-          v(1.1em, weak: true)
-          reproduceBlock(reproduce)
+        if (materials.len() > 0) {
+          v(1.3em, weak: true)
+          materialsBlock(materials)
         }
       })
     }
