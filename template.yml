@@ -34,14 +34,24 @@ doc:
   - id: keywords
   - id: tags
     description: JEL classification codes, shown under the keywords (same field as the Econometric Society template)
+  - id: subject
+    description: Kind of paper, shown above the date in the margin, for example "Working paper" or "REMARK"
   - id: doi
+    description: Shown in the "Cite as" block in the margin
+  - id: arxiv
+    description: arXiv URL, shown in the "Cite as" block
+  - id: zenodo
+    description: Zenodo archive URL, shown in the "Cite as" block
+  - id: volume
+  - id: issue
   - id: github
   - id: binder
   - id: first_page
+  - id: last_page
 options:
   - id: kind
     type: string
-    description: Label shown above the date in the margin, for example "Working paper" or "REMARK"
+    description: Label shown above the date in the margin, overriding the subject field
   - id: linenumbers
     type: boolean
     description: Number the lines of the main text, for review drafts
@@ -51,6 +61,11 @@ parts:
     description: >
       An abstract is a short summary of your research paper or report.
     max_words: 500
+  - id: keypoints
+    description: >
+      Three or four short bullet points, shown in the margin under the logo,
+      or under the abstract when the margin has no room.
+    max_words: 80
   - id: acknowledgments
     description: Acknowledgments, shown unnumbered after the main text.
   - id: data_availability

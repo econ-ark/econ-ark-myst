@@ -50,9 +50,6 @@
   [# if doc.github !== undefined #]
     github: [-s(doc.github)-],
   [# endif #]
-  [# if doc.doi #]
-    doi: [-s(doc.doi)-],
-  [# endif #]
   [# if doc.date #]
     date: datetime(
       year: [-doc.date.year-],
@@ -69,6 +66,18 @@
   [# for author in doc.authors #]
       (
         name: [-s(author.name)-],
+  [# if author.nameParsed.family #]
+        family: [-s(author.nameParsed.family)-],
+  [# endif #]
+  [# if author.nameParsed.given #]
+        given: [-s(author.nameParsed.given)-],
+  [# endif #]
+  [# if author.nameParsed.non_dropping_particle #]
+        particle: [-s(author.nameParsed.non_dropping_particle)-],
+  [# endif #]
+  [# if author.nameParsed.suffix #]
+        suffix: [-s(author.nameParsed.suffix)-],
+  [# endif #]
   [# if author.orcid #]
         orcid: [-s(author.orcid)-],
   [# endif #]
@@ -107,6 +116,31 @@
   ),
   [# if options.kind #]
   kind: [-s(options.kind)-],
+  [# elif doc.subject #]
+  kind: [-s(doc.subject)-],
+  [# endif #]
+  [# if parts.keypoints #]
+  keypoints: [
+    [-parts.keypoints-]
+  ],
+  [# endif #]
+  [# if doc.doi #]
+  doi: [-s(doc.doi)-],
+  [# endif #]
+  [# if doc.identifiers.arxiv #]
+  arxiv: [-s(doc.identifiers.arxiv)-],
+  [# endif #]
+  [# if doc.identifiers.zenodo #]
+  zenodo: [-s(doc.identifiers.zenodo)-],
+  [# endif #]
+  [# if doc.volume.number #]
+  volume: [-s(doc.volume.number)-],
+  [# endif #]
+  [# if doc.issue.number #]
+  issue: [-s(doc.issue.number)-],
+  [# endif #]
+  [# if doc.last_page #]
+  last-page: [-s(doc.last_page)-],
   [# endif #]
   [# if doc.tags #]
   jel: ([#- for code in doc.tags -#][-s(code)-],[#- endfor -#]),

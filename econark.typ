@@ -87,6 +87,47 @@
   )
 }
 
+// The keypoints part: a short list read beside the title and abstract
+#let keyPoints(body, size: 8pt) = {
+  set text(font: sansFont, size: size)
+  set par(first-line-indent: 0pt, justify: false, leading: 0.5em, spacing: 0.7em)
+  set list(marker: text(fill: arkBlue, sym.bullet), indent: 0pt, body-indent: 0.5em, spacing: 0.8em)
+  // Label half a point under the text, matching the rail labels and, under the abstract, the keyword labels
+  text(size: size - 0.5pt, fill: arkBlue, weight: "semibold", "Key points")
+  v(0.6em, weak: true)
+  body
+}
+
+// A link shown without its scheme, so it fits the rail
+#let bareLink(url) = link(url, url.replace(regex("^https?://(www\.)?"), ""))
+
+// Chicago author-date entry for the paper itself, the style of its reference list.
+// Lists up to three authors; with more, the first author and "et al."
+#let citation(authors, year, title, venue, volume, issue, pages) = {
+  let family(a) = (a.at("particle", default: none), a.at("family", default: a.name)).filter(x => x != none).join(" ")
+  let inverted(a) = if "family" in a { (family(a), a.at("given", default: none), a.at("suffix", default: none)).filter(x => x != none).join(", ") } else { a.name }
+  let direct(a) = if "family" in a { ((a.at("given", default: none), family(a)).filter(x => x != none).join(" "), a.at("suffix", default: none)).filter(x => x != none).join(", ") } else { a.name }
+  let names = if authors.len() == 1 {
+    inverted(authors.first())
+  } else if authors.len() <= 3 {
+    let rest = authors.slice(1).map(direct)
+    inverted(authors.first()) + ", " + rest.slice(0, -1).map(n => n + ", ").sum(default: "") + "and " + rest.last()
+  } else {
+    inverted(authors.first()) + ", et al"
+  }
+  let close(s) = if s.ends-with(regex("[.?!]")) { s } else { s + "." }
+  [#close(names) ]
+  if year != none [#year. ]
+  ["#close(title)"]
+  if venue != none {
+    [ #emph(venue)]
+    if volume != none [ #volume]
+    if issue != none [ (#issue)]
+    if pages != none [: #pages]
+    [.]
+  }
+}
+
 // Theorem-like blocks from MyST prf: directives, set in flow the way economics papers set them.
 // Replaces MyST's own proof(), which floats each block to the top of the page inside a tinted box.
 #let italicKinds = ("theorem", "lemma", "proposition", "corollary", "conjecture", "claim")
@@ -130,14 +171,21 @@
   title-note: none,
   paper-size: "us-letter",
   page-start: none,
+  last-page: none,
   max-page: none,
+  keypoints: none,
+  // Citation details for the "Cite as" block; the DOI is kept out of frontmatter so the page header does not repeat it
+  doi: none,
+  arxiv: none,
+  zenodo: none,
+  volume: none,
+  issue: none,
   // The paper's content.
   body
 ) = {
   let fm = pubmatter.load(frontmatter)
-  // pubmatter.load drops a document-level github and defaults a missing date to today
+  // pubmatter.load drops a document-level github
   let github = frontmatter.at("github", default: none)
-  let has-date = "date" in frontmatter
 
   // Set document metadata; no creation timestamp, so rebuilding an unchanged paper gives identical bytes
   set document(title: fm.title, author: fm.authors.map(author => author.name), date: none)
@@ -235,10 +283,30 @@
 
   let corresponding = pubmatter.get-corresponding-author(fm)
   let reproduce = (
-    if github != none { ("Code", link(github, github.replace(regex("^https?://(www\.)?"), ""))) },
-    if binder != none { ("Run online", link(binder, "Launch on Binder")) },  ).filter(x => x != none)
+    if github != none { ("Code", bareLink(github)) },
+    if binder != none { ("Run online", link(binder, "Launch on Binder")) },
+  ).filter(x => x != none)
+
+  // The DOI follows the citation as a URL, as Chicago style asks; arXiv and Zenodo follow as short links
+  let doiUrl = if doi != none { "https://doi.org/" + doi.replace(regex("^https?://(dx\.)?doi\.org/"), "") }
+  let otherVersions = (
+    if arxiv != none { link(arxiv, "arXiv:" + arxiv.replace(regex("^https?://(www\.)?arxiv\.org/(abs|pdf)/|\.pdf$"), "")) },
+    if zenodo != none { link(zenodo, "Zenodo archive") },
+  ).filter(x => x != none)
+  let pages = if page-start != none and last-page != none { str(page-start) + "-" + str(last-page) }
 
   let rail = (
+    // A paper with a persistent identifier is ready to cite; a draft without one is not
+    if doiUrl != none or otherVersions.len() > 0 {
+      railItem("Cite as", {
+        citation(frontmatter.authors, if type(fm.date) == datetime { fm.date.year() }, frontmatter.title, frontmatter.at("venue", default: none), volume, issue, pages)
+        // A new line for each link, so a long URL breaks once rather than mid-sentence
+        for version in (if doiUrl != none { (link(doiUrl),) } else { () }) + otherVersions {
+          linebreak()
+          version
+        }
+      })
+    },
     if corresponding != none and "email" in corresponding {
       railItem("Correspondence", [#corresponding.name\ #link("mailto:" + corresponding.email, corresponding.email)])
     },
@@ -252,59 +320,74 @@
   ).filter(x => x != none)
 
   // Margin rail, bottom: what kind of paper this is, then the information a reader acts on
-  place(
-    left + bottom,
-    dx: -33%,
-    dy: -10pt,
-    box(width: 27%, {
-      // Rail size set here so line spacing scales with the small type
-      set text(font: sansFont, size: 7.5pt)
-      set par(first-line-indent: 0pt, justify: false, leading: 0.5em, spacing: 0.6em)
-      if (kind != none) {
-        text(11pt, fill: arkBlue, weight: "semibold", kind)
-        parbreak()
-      }
-      if (has-date and type(fm.date) == datetime) {
-        text(size: 7.5pt, fill: arkGrey, fm.date.display("[month repr:long] [day], [year]"))
-      }
-      v(1.6em)
-      grid(columns: 1, row-gutter: 1.6em, ..rail)
-    }),
-  )
+  let railBottom = {
+    // Rail size set here so line spacing scales with the small type
+    set text(font: sansFont, size: 7.5pt)
+    set par(first-line-indent: 0pt, justify: false, leading: 0.5em, spacing: 0.6em)
+    if (kind != none) {
+      text(11pt, fill: arkBlue, weight: "semibold", kind)
+      parbreak()
+    }
+    // MyST fills a missing date with the build date, so an undated paper shows the day it was built
+    if (type(fm.date) == datetime) {
+      text(size: 7.5pt, fill: arkGrey, fm.date.display("[month repr:long] [day padding:none], [year]"))
+    }
+    v(1.6em)
+    grid(columns: 1, row-gutter: 1.6em, ..rail)
+  }
 
-  // Abstract, keywords and JEL codes, set as a run-in paragraph in the economics convention,
-  // then the reproducibility strip, so it is read before the paper begins
-  if ("abstracts" in fm or "keywords" in fm or jel.len() > 0 or reproduce.len() > 0) {
-    block(above: 1.4em, below: 2em, inset: (x: 1.5em), {
-      set par(first-line-indent: 0pt)
-      set text(size: 10pt)
-      if ("abstracts" in fm) {
-        for abs in fm.abstracts {
-          text(font: sansFont, weight: "semibold", fill: arkBlue, size: 9.5pt, abs.title)
+  context {
+    // The rail is 27% of the text column, which is the page less its 25% left and 1.35in right margins
+    let railWidth = (page.width * 0.75 - 1.35in) * 0.27
+    let height(it) = measure(block(width: railWidth, it)).height
+    let keyPointsTop = height(venueLogo) + 2.4em.to-absolute()
+    // Key points sit under the logo, beside the title and abstract, unless they would run into the bottom of the rail
+    let railKeyPoints = keypoints != none and keyPointsTop + height(keyPoints(keypoints)) + 3em.to-absolute() + height(railBottom) + 10pt <= page.height - 2in
+
+    place(left + bottom, dx: -33%, dy: -10pt, box(width: 27%, railBottom))
+    if railKeyPoints {
+      place(top, dx: -33%, dy: keyPointsTop, box(width: 27%, keyPoints(keypoints)))
+    }
+
+    // Abstract, keywords and JEL codes, set as a run-in paragraph in the economics convention,
+    // then key points that did not fit the rail and the reproducibility strip, so both are read before the paper begins
+    let mainKeyPoints = keypoints != none and not railKeyPoints
+    if ("abstracts" in fm or "keywords" in fm or jel.len() > 0 or reproduce.len() > 0 or mainKeyPoints) {
+      block(above: 1.4em, below: 2em, inset: (x: 1.5em), {
+        set par(first-line-indent: 0pt)
+        set text(size: 10pt)
+        if ("abstracts" in fm) {
+          for abs in fm.abstracts {
+            text(font: sansFont, weight: "semibold", fill: arkBlue, size: 9.5pt, abs.title)
+            h(0.7em)
+            abs.content
+            parbreak()
+          }
+        }
+        set text(size: 9pt)
+        set par(justify: false, spacing: 0.65em)
+        if ("keywords" in fm and fm.keywords.len() > 0) {
+          v(0.5em)
+          text(font: sansFont, weight: "semibold", fill: arkBlue, size: 8.5pt, "Keywords")
           h(0.7em)
-          abs.content
+          fm.keywords.join(", ")
           parbreak()
         }
-      }
-      set text(size: 9pt)
-      set par(justify: false, spacing: 0.65em)
-      if ("keywords" in fm and fm.keywords.len() > 0) {
-        v(0.5em)
-        text(font: sansFont, weight: "semibold", fill: arkBlue, size: 8.5pt, "Keywords")
-        h(0.7em)
-        fm.keywords.join(", ")
-        parbreak()
-      }
-      if (jel.len() > 0) {
-        text(font: sansFont, weight: "semibold", fill: arkBlue, size: 8.5pt, "JEL codes")
-        h(0.7em)
-        jel.join(", ")
-      }
-      if (reproduce.len() > 0) {
-        v(1.1em, weak: true)
-        reproduceBlock(reproduce)
-      }
-    })
+        if (jel.len() > 0) {
+          text(font: sansFont, weight: "semibold", fill: arkBlue, size: 8.5pt, "JEL codes")
+          h(0.7em)
+          jel.join(", ")
+        }
+        if mainKeyPoints {
+          v(1.1em, weak: true)
+          keyPoints(keypoints, size: 9pt)
+        }
+        if (reproduce.len() > 0) {
+          v(1.1em, weak: true)
+          reproduceBlock(reproduce)
+        }
+      })
+    }
   }
 
   // Line numbers start with the main text, so the title block and abstract stay clean
