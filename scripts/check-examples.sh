@@ -34,6 +34,7 @@ ANCHORS=(
   'arXiv:2609.00000'
   'Non-technical summary'
   'MIT license'
+  'Econ-ARK Working Papers 1 (3)'
   'Department of Economics, Johns Hopkins'
   'Computational Economics Grant (G-2026-00001)'
   "1990$(printf '\342\200\231')s"

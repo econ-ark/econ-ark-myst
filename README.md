@@ -43,7 +43,7 @@ While the repository is private, MyST cannot download it and the URL above fails
 | `keywords` | Under the abstract | Omitted |
 | `tags` | JEL codes under the keywords. The [Econometric Society template](https://github.com/alanlujan91/econsoc_template) reads the same field, so one manuscript builds with both | Omitted |
 | `doi`, `arxiv`, `zenodo` | "Cite as" block in the margin, described below | No "Cite as" block |
-| `volume`, `issue`, `last_page` | Added to the "Cite as" entry | Left out of the entry |
+| `volume`, `issue`, `last_page` | Added to the "Cite as" entry. The volume and issue also follow the venue in the footer, as in "Econ-ARK Working Papers 1 (3)" | Left out of the entry and the footer |
 | `license` | Margin, with a Creative Commons badge and a copyright line. With `license: {content: CC-BY-4.0, code: MIT}`, the code license shows under the code link in the materials block | Omitted |
 | `copyright` | Replaces the author names in the margin's copyright line. Text that already carries "©" or starts with "Copyright" is printed as written | "Copyright © year" and the authors' family names |
 | `funding` | Each statement, then each award as "name (id)", in the starred footnote on the title. Write `funding` as a list, because mystmd 1.10.1 stops with `funding?.forEach is not a function` on a single funding object | Omitted |
