@@ -119,6 +119,42 @@ check_same_page() {
   fi
 }
 
+# The tracked PDF must be what the current sources produce. Text that differs is a stale file,
+# whatever machine built it; bytes that differ on a pinned toolchain are stale too, which is why
+# CI takes the stricter reading and a contributor with another font build only gets a note.
+check_tracked() {
+  local name=$1 fresh=$2 committed=$3
+  if diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$fresh" - 2>/dev/null) >/dev/null; then
+    if cmp -s "$committed" "$fresh"; then
+      ok "$name: the tracked PDF is what the sources produce"
+    elif [ -n "${CI:-}" ]; then
+      bad "$name: the tracked PDF differs from the fresh build in bytes; commit the rebuilt file"
+    else
+      ok "$name: the tracked PDF differs in bytes only, the text is unchanged (usually a different font file version)"
+    fi
+  else
+    bad "$name: the tracked PDF's text differs from the fresh build; commit the rebuilt file:"
+    diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$fresh" - 2>/dev/null) | head -20
+  fi
+}
+
+# The site half is an artifact too: the stylesheet and the banner must reach the built site
+check_site() {
+  local name=$1 dir=$2 css banner
+  css=$(find "$dir" -name 'theme-*.css' -size +1k 2>/dev/null | head -1)
+  if [ -n "$css" ] && grep -q -- '--ark-blue' "$css"; then
+    ok "$name: the site serves theme.css"
+  else
+    bad "$name: no theme-*.css carrying the palette under $dir, so the site is unstyled"
+  fi
+  banner=$(find "$dir" -name 'banner-*.svg' 2>/dev/null | head -1)
+  if [ -n "$banner" ] && grep -q 'fcb040' "$banner"; then
+    ok "$name: the site serves banner.svg"
+  else
+    bad "$name: no banner-*.svg under $dir, so the paper has no banner"
+  fi
+}
+
 # A widened figure's caption starts over the margin rail, left of the text column at x = 153pt
 check_left_of() {
   local name=$1 pdf=$2 word=$3 limit=$4 x
@@ -182,6 +218,45 @@ self_test() {
   else
     bad "self-test: a missing PDF went undetected"
   fi
+
+  # The tall table's caption and its last row are pages apart, so they must read as orphaned
+  out=$(check_same_page seeded "$TALL" 'Every case, one row each.' 'Case 35 A description')
+  if grep -q 'FAIL.*orphaned' <<<"$out"; then
+    ok "self-test: an orphaned caption is caught"
+  else
+    bad "self-test: an orphaned caption went undetected"
+  fi
+
+  # Typst stamps a creation date unless the template clears it, so a plain compile seeds the defect
+  local scratch
+  scratch=$(mktemp -d)
+  printf 'A page.\n' >"$scratch/stamped.typ"
+  if typst compile "$scratch/stamped.typ" "$scratch/stamped.pdf" >/dev/null 2>&1; then
+    out=$(check_pdf seeded "$scratch/stamped.pdf" 'A page.')
+    if grep -q 'FAIL.*creation timestamp' <<<"$out"; then
+      ok "self-test: a creation timestamp is caught"
+    else
+      bad "self-test: a creation timestamp went undetected"
+    fi
+  else
+    bad "self-test: could not compile a timestamped PDF to seed the check"
+  fi
+  rm -rf "$scratch"
+
+  # Two different PDFs stand in for a tracked file left behind by its sources
+  out=$(check_tracked seeded "$PAPER" "$TALL")
+  if grep -q "FAIL.*text differs" <<<"$out"; then
+    ok "self-test: a stale tracked PDF is caught"
+  else
+    bad "self-test: a stale tracked PDF went undetected"
+  fi
+
+  out=$(check_site seeded "$(mktemp -d)")
+  if grep -q 'FAIL.*unstyled' <<<"$out" && grep -q 'FAIL.*no banner' <<<"$out"; then
+    ok "self-test: a site built without the stylesheet or banner is caught"
+  else
+    bad "self-test: a site missing the stylesheet or banner went undetected"
+  fi
 }
 
 for tool in myst pdftotext pdfinfo; do
@@ -199,17 +274,12 @@ else
   check_same_page tall-table "$TALL" 'Every case, one row each.' 'Case 1 A description'
   check_left_of tall-table "$TALL" 'Widecaption' 100
   check_left_of tall-table "$TALL" 'Widetablecaption' 100
-  if ! git -C "$ROOT" diff --quiet -- examples/exports/paper.pdf; then
-    committed=$(mktemp)
-    git -C "$ROOT" show HEAD:examples/exports/paper.pdf >"$committed"
-    if diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$PAPER" - 2>/dev/null) >/dev/null; then
-      echo "note  examples/exports/paper.pdf differs in bytes only, the text is unchanged (usually a different font file version)"
-    else
-      echo "note  examples/exports/paper.pdf text changed; commit it if the change is intended:"
-      diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$PAPER" - 2>/dev/null) | head -20
-    fi
-    rm -f "$committed"
-  fi
+  committed=$(mktemp)
+  git -C "$ROOT" show HEAD:examples/exports/paper.pdf >"$committed" 2>/dev/null
+  check_tracked paper "$PAPER" "$committed"
+  rm -f "$committed"
+  (cd "$ROOT" && myst build --html) >/dev/null 2>&1
+  check_site site "$ROOT/_build/html"
 fi
 
 exit $fail

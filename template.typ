@@ -50,7 +50,7 @@
     // pubmatter shows the badge whenever the key is present, so open_access: false must leave it out
     open-access: true,
   [# endif #]
-  [# if doc.github !== undefined #]
+  [# if doc.github #]
     github: [-s(doc.github)-],
   [# endif #]
   [# if doc.date #]

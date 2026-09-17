@@ -138,9 +138,6 @@
   body
 }
 
-// A link shown without its scheme, so it fits the rail
-#let bareLink(url) = link(url, url.replace(regex("^https?://(www\.)?"), ""))
-
 // An author's family name with its particle, such as "van Beethoven", or else the full name
 #let familyName(a) = (a.at("particle", default: none), a.at("family", default: a.name)).filter(x => x != none).join(" ")
 
@@ -219,6 +216,8 @@
   },
 )
 
+// color and float take the arguments MyST's own proof() accepts and ignore them: a theorem here is
+// set in the flow of the text, never in a coloured box and never floated.
 #let arkProof(body, heading: [], kind: "proof", supplement: "Proof", labelName: none, color: none, float: false) = {
   let note = if heading != [] { [ (#heading)] }
   if kind == "proof" {
@@ -257,6 +256,8 @@
   linenumbers: false,
   binder: none,
   title-note: none,
+  // Not an option of the template: the rail width below and the figure widths in the README are
+  // measured on this size, and another size would need both recomputed
   paper-size: "us-letter",
   page-start: none,
   last-page: none,

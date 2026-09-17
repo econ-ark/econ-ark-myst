@@ -25,7 +25,8 @@ jobs:
             | sudo tar -xJ --strip-components=1 -C /usr/local/bin typst-x86_64-unknown-linux-musl/typst
           typst --version
 
-      # Without these fonts the template falls back to bundled ones, which changes line breaks
+      # Without these fonts the template falls back to bundled ones, which changes line breaks.
+      # Libertinus Serif needs no install: Typst bundles it, along with DejaVu Sans Mono.
       - name: Install fonts and poppler
         run: |
           sudo apt-get update
