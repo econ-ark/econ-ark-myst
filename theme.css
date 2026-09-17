@@ -43,6 +43,41 @@ html.dark {
   --ark-ink: #e7e9ec;
 }
 
+/* The logo's wordmark is black, so at night it sits on a white plate rather than vanishing */
+html.dark .myst-home-link-logo {
+  background: #fff;
+  padding: 3px 5px;
+}
+
+/*
+ * article-theme shows no site logo beside a paper, so the paper carries the mark the PDF
+ * prints at the top of its margin. It appears when the project publishes the file:
+ *
+ *   project:
+ *     static_files:
+ *       - logo.png
+ *
+ * A project that publishes no logo shows nothing here. The mark stands over the title
+ * rather than out in the margin, where the theme leaves too little room at most widths.
+ */
+.myst-article-header-fm::before {
+  content: "";
+  display: block;
+  box-sizing: border-box;
+  width: 96px;
+  height: 66px;
+  margin-bottom: 0.9rem;
+  background: url("/logo.png") no-repeat left center / contain;
+}
+
+html.dark .myst-article-header-fm::before {
+  width: 108px;
+  padding: 5px 6px;
+  border-radius: 3px;
+  background-color: #fff;
+  background-origin: content-box;
+}
+
 /*
  * The site title and its contents list stay inside the sidebar column. A machine whose
  * fonts are wider than the theme expects otherwise runs the title over the paper beside

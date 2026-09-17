@@ -11,7 +11,15 @@ project:
         - id: G-2026-00001
           name: Computational Economics Grant
   bibliography:
-    - main.bib
+    - examples/main.bib
+  # Publishes the logo at the site's root, where the stylesheet looks for the margin mark
+  static_files:
+    - logo.png
+  # Without a table of contents MyST would take the README for a page of the site
+  toc:
+    - file: examples/paper.md
+    - file: examples/tall-table.md
+    - file: examples/minimal.md
   authors:
     - name: Jane Economist
       email: jane@example.org
@@ -30,6 +38,12 @@ project:
         - id: econark
           name: Econ-ARK
 site:
-  template: book-theme
+  template: article-theme
   options:
+    logo: logo.png
+    logo_text: Econ-ARK
+    logo_url: https://econ-ark.org
     style: theme.css
+  nav:
+    - title: Econ-ARK
+      url: https://econ-ark.org

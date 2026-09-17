@@ -41,7 +41,7 @@ jobs:
 
       - name: Self-test the checks
         run: |
-          (cd examples && myst build --typst)
+          myst build --typst
           scripts/check-examples.sh --self-test
 
       - name: Build and check the examples

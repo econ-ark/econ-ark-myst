@@ -190,7 +190,7 @@ done
 if [ "${1:-}" = "--self-test" ]; then
   self_test
 else
-  (cd "$EXAMPLES" && rm -rf _build && myst build --typst) >/dev/null 2>&1
+  (cd "$ROOT" && rm -rf _build examples/_build && myst build --typst) >/dev/null 2>&1
   check_pdf paper "$PAPER" "${ANCHORS[@]}"
   check_pdf minimal "$MINIMAL" 'Minimal Example'
   check_pdf tall-table "$TALL" 'Case 35' 'Text after the table'

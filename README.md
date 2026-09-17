@@ -240,13 +240,21 @@ The running header of an `articles:` export takes the `short_title` of the proje
 `theme.css` gives a MyST site the look of the PDF: the same palette and typefaces, section headings in Econ-ARK blue, captions and tables in the sans, code on the pale blue the PDF uses, and the four logo curves as the rule that closes the front matter. Point a site at it under either theme:
 
 ```yaml
+project:
+  # Publishes the logo at the site's root, where the stylesheet looks for it
+  static_files:
+    - logo.png
 site:
   template: article-theme
   options:
+    logo: logo.png
+    logo_text: Econ-ARK
     style: theme.css
 ```
 
-The path is relative to the project, so a paper that keeps the template as a sibling can link the file, as `examples/theme.css` does.
+Paths are relative to the `myst.yml` that holds them. This repository keeps its own at the root, beside the template and the stylesheet.
+
+`logo.png` is the mark the PDF prints in its margin. book-theme shows it in the site's navigation. article-theme leaves that place empty beside a paper. The stylesheet puts the published file over the title instead. The wordmark is black. At night both marks rest on a white plate.
 
 A reader sees Libertinus Serif, Roboto and Libertinus Mono only when those fonts are installed on their machine. Without them the stylesheet falls back to Georgia, the system sans and the system mono, and the hierarchy survives. To serve the fonts yourself, list the files under `static_files` and add an `@font-face` block to a stylesheet of your own.
 
@@ -264,10 +272,9 @@ The site's navigation, sidebar and search keep the theme's own typeface, which t
 
 ## Example
 
-`examples/paper.md` exercises every field above, `examples/minimal.md` uses as few as possible, and `examples/tall-table.md` holds a table taller than a page. The rendered `examples/exports/paper.pdf` is tracked. The PDF carries no creation timestamp, so rebuilding an unchanged example leaves it byte-identical.
+`examples/paper.md` exercises every field above, `examples/minimal.md` uses as few as possible, and `examples/tall-table.md` holds a table taller than a page. The project's `myst.yml` is at the root of the repository, beside the template it exports with. Run the build there. Its output, `examples/exports/paper.pdf`, is tracked. The PDF carries no creation timestamp, so rebuilding an unchanged example leaves it byte-identical.
 
 ```bash
-cd examples
 myst build --typst
 ```
 
