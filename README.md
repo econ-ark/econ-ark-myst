@@ -88,6 +88,15 @@ A link to this same PDF at its permanent address tells a reader holding an old c
 | `linenumbers` | Number the lines of the main text, for review drafts |
 | `remark` | Name of the paper's REMARK on econ-ark.org, such as `LiqConstr`, linked in the materials block |
 | `binder_label` | Label over the `binder` link in the materials block, such as `Dashboard`. Defaults to "Run online" |
+| `figure_placement` | Where figures and tables go, described under "Figure placement" below. `none`, the default, keeps each where it is written. `auto`, `top` or `bottom` floats them |
+
+## Figure placement
+
+By default a figure or table stays where it is written. When the rest of the page is too short for it, it moves whole to the next page and leaves white space behind. A table taller than a page breaks across pages.
+
+With `figure_placement: auto` in the export block, a figure or table that fits on a page floats to the top or bottom of a page, as LaTeX floats do, and the text fills the space it would have left. `top` and `bottom` choose one end. Page one takes floats only at the bottom, below the title. A table taller than a page, a panel inside a figure with several panels, and a `fullwidth` figure never float on their own.
+
+The option applies to every figure in the export, since MyST's `figure` and `table` directives carry no placement of their own. To place one figure differently, write it in a `:::{raw:typst}` block with `placement: top` or `placement: bottom` on the `figure` call. The template leaves such a figure where Typst puts it.
 
 ## Parts
 
