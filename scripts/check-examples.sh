@@ -186,9 +186,11 @@ check_tracked() {
   fi
 }
 
-# The site half is an artifact too: the stylesheet and the banner must reach the built site
+# The site half is an artifact too: the stylesheet and the banner must reach the built site, and
+# the two themes must keep writing the classes the stylesheet reaches the paper through. A theme
+# that renamed them would serve the stylesheet and ignore it.
 check_site() {
-  local name=$1 dir=$2 css banner
+  local name=$1 dir=$2 css banner html
   css=$(find "$dir" -name 'theme-*.css' -size +1k 2>/dev/null | head -1)
   if [ -n "$css" ] && grep -q -- '--ark-blue' "$css"; then
     ok "$name: the site serves theme.css"
@@ -200,6 +202,18 @@ check_site() {
     ok "$name: the site serves banner.svg"
   else
     bad "$name: no banner-*.svg under $dir, so the paper has no banner"
+  fi
+  html=$(cat "$dir"/index.html "$dir"/*/index.html 2>/dev/null)
+  # The class list must hold "article" as a whole token, which "article-grid" alone does not give
+  if grep -oE '<article[^>]*>' <<<"$html" | grep -qE 'class="([^"]* )?article( [^"]*)?"'; then
+    ok "$name: the paper carries the class the stylesheet styles"
+  else
+    bad "$name: no <article class=\"... article ...\"> under $dir, so every article.article rule is inert"
+  fi
+  if grep -qE 'myst-fm-parts|id="skip-to-article"' <<<"$html"; then
+    ok "$name: the front matter carries the anchor the four-colour rule hangs on"
+  else
+    bad "$name: neither myst-fm-parts nor skip-to-article under $dir, so the four-colour rule is missing"
   fi
 }
 
@@ -327,11 +341,26 @@ self_test() {
   fi
 
   out=$(check_site seeded "$(mktemp -d)")
-  if grep -q 'FAIL.*unstyled' <<<"$out" && grep -q 'FAIL.*no banner' <<<"$out"; then
-    ok "self-test: a site built without the stylesheet or banner is caught"
+  if grep -q 'FAIL.*unstyled' <<<"$out" && grep -q 'FAIL.*no banner' <<<"$out" &&
+    grep -q 'FAIL.*rule is inert' <<<"$out" && grep -q 'FAIL.*four-colour rule is missing' <<<"$out"; then
+    ok "self-test: a site without the stylesheet, the banner or the classes it styles is caught"
   else
-    bad "self-test: a site missing the stylesheet or banner went undetected"
+    bad "self-test: a site missing the stylesheet, the banner or its classes went undetected"
   fi
+
+  # A theme that renamed the class would still serve the stylesheet, so the token check must be exact
+  local scratchsite
+  scratchsite=$(mktemp -d)
+  printf '<article class="article-grid subgrid-gap">no article token</article>\n' >"$scratchsite/index.html"
+  cp "$ROOT/theme.css" "$scratchsite/theme-0.css"
+  cp "$ROOT/banner.svg" "$scratchsite/banner-0.svg"
+  out=$(check_site seeded "$scratchsite")
+  if grep -q 'FAIL.*rule is inert' <<<"$out"; then
+    ok "self-test: a theme that dropped the article class is caught"
+  else
+    bad "self-test: a theme that dropped the article class went undetected"
+  fi
+  rm -rf "$scratchsite"
 }
 
 for tool in myst pdftotext pdfinfo pdftoppm convert; do
@@ -358,7 +387,20 @@ else
   check_tracked paper "$PAPER" "$committed"
   rm -f "$committed"
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
-  check_site site "$ROOT/_build/html"
+  check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
+  # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
+  other=$(mktemp -d)
+  tar -c --exclude=_build --exclude=.git -C "$ROOT" . | tar -x -C "$other"
+  if grep -q 'template: article-theme' "$other/myst.yml"; then
+    sed -i 's/template: article-theme/template: book-theme/' "$other/myst.yml"
+    othername="book-theme"
+  else
+    sed -i 's/template: book-theme/template: article-theme/' "$other/myst.yml"
+    othername="article-theme"
+  fi
+  (cd "$other" && myst build --html) >/dev/null 2>&1
+  check_site "site ($othername)" "$other/_build/html"
+  rm -rf "$other"
 fi
 
 exit $fail
