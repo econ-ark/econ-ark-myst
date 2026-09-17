@@ -509,13 +509,18 @@
     set text(size: 9pt)
     it
   }
-  // Figures and tables move whole to the next page when the current page is too short for them
-  show figure: set block(above: 1.4em, below: 1.4em, breakable: false)
-  // MyST writes `show figure: set block(breakable: breakableDefault)` into each article of a multi-article
-  // export, where breakableDefault is true. An explicit argument takes precedence over that set rule, so wrap figures and
-  // tables in an unbreakable block; theorem-like figures stay breakable, since a proof may span pages.
+  // Figures are breakable, and the rule below wraps each figure that fits a page in an unbreakable block,
+  // whose explicit argument takes precedence over MyST's `show figure: set block(breakable: ...)`.
+  show figure: set block(above: 1.4em, below: 1.4em, breakable: true)
+  // A figure that fits moves whole to the next page; a taller one breaks across pages, as it must to be read.
+  // Theorem-like figures are left breakable, since a proof may span pages.
   show figure: it => if it.placement == none and it.kind in ("figure", "table", "code", image, table, raw) {
-    block(above: 1.4em, below: 1.4em, breakable: false, it)
+    context {
+      let columnWidth = page.width * 0.75 - 1.35in
+      let pageBody = page.height - 2in - 3em.to-absolute()
+      let fits = measure(block(width: columnWidth, it)).height <= pageBody
+      block(above: 1.4em, below: 1.4em, breakable: not fits, it)
+    }
   } else { it }
   set figure(placement: none)
 

@@ -3,8 +3,8 @@
 
 [-IMPORTS-]
 
-// MyST's content sets figure breakability from this binding; short tables must not split across pages
-#let breakableDefault = false
+// MyST sets figure breakability from this binding; econark.typ keeps a figure that fits a page whole
+#let breakableDefault = true
 // Theorem-like blocks in flow, replacing the floating boxes defined in the imports above
 #let proof = arkProof
 
