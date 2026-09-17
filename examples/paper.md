@@ -75,7 +75,7 @@ Prepared for the Econ-ARK template documentation.
 
 Precautionary saving arises when income risk interacts with a convex marginal utility [@Carroll1997]. The endogenous grid method [@Carroll2006] makes such models cheap to solve, because it replaces root finding with an inversion of the Euler equation.[^egm] Households hold a buffer of wealth against bad income draws. The size of that buffer depends on patience, the return on saving and the degree of risk.
 
-[^egm]: The method inverts the first-order condition on a grid of end-of-period assets rather than solving it on a grid of market resources.
+[^egm]: The method inverts the first-order condition on a grid of end-of-period assets rather than solving it on a grid of market resources. `IndShockConsumerType` applies it to Section 2's model.
 
 # Model
 

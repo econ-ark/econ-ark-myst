@@ -21,7 +21,7 @@ While the repository is private, MyST cannot download it and the URL above fails
 ## Requirements
 
 - Typst 0.13 or newer (tested with 0.13.1 and 0.15.1). Typst 0.12 fails inside the `pubmatter` package.
-- Install [Roboto](https://github.com/googlefonts/roboto-3-classic) for headings and [Libertinus Math](https://github.com/alerque/libertinus) for equations. Without them the template still compiles with fonts bundled in the Typst binary. Headings fall back to Libertinus Serif and equations to New Computer Modern Math.
+- Install [Roboto](https://github.com/googlefonts/roboto-3-classic) for headings, and Libertinus Math for equations and Libertinus Mono for code, both in the [Libertinus](https://github.com/alerque/libertinus) release. Without them the template still compiles with fonts bundled in the Typst binary. Headings fall back to Libertinus Serif, equations to New Computer Modern Math and code to DejaVu Sans Mono.
 
 ## Frontmatter
 

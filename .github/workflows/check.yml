@@ -34,9 +34,10 @@ jobs:
           curl -sL -o roboto.zip https://github.com/googlefonts/roboto-3-classic/releases/download/v3.012/Roboto_v3.012.zip
           unzip -q -j roboto.zip 'unhinted/static/Roboto-*.ttf' -d ~/.local/share/fonts
           curl -sL -o libertinus.zip https://github.com/alerque/libertinus/releases/download/v7.051/Libertinus-7.051.zip
-          unzip -q -j libertinus.zip '*/LibertinusMath-Regular.otf' -d ~/.local/share/fonts
+          unzip -q -j libertinus.zip '*/LibertinusMath-Regular.otf' '*/LibertinusMono-Regular.otf' -d ~/.local/share/fonts
           fc-cache -f
-          typst fonts | grep -E '^(Roboto|Libertinus Math)$'
+          # Each family must be found, or the build falls back to a bundled font and the tracked PDF changes
+          test "$(typst fonts | grep -cE '^(Roboto|Libertinus Math|Libertinus Mono)$')" -eq 3
 
       - name: Self-test the checks
         run: |
