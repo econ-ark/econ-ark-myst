@@ -79,8 +79,9 @@ options:
       - bottom
     default: none
     description: >
-      Float figures and tables that fit a page to the top or bottom of a page, so the text fills the space
-      they would leave; none keeps each where it is written. A table taller than a page stays in the text.
+      none keeps each figure and table where it is written. auto, top and bottom float those that fit a page
+      to that end of a page, so the text fills the space they would leave. A table taller than a page stays
+      in the text. placeNextFigure in a raw Typst block sets one figure's placement.
   - id: remark
     type: string
     description: Name of the paper's REMARK on econ-ark.org, such as "LiqConstr", linked in the materials block

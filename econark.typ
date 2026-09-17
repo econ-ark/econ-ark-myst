@@ -25,6 +25,14 @@
 #let figureDepth = state("ark-figure-depth", 0)
 #let nested(it) = { figureDepth.update(d => d + 1); it; figureDepth.update(d => d - 1) }
 
+// Placement for the next figure only, like LaTeX's [t], [b] and [h]: "top", "bottom", "auto" or "none".
+// Write it in a raw Typst block just before a MyST figure, which has no placement setting of its own.
+#let nextFigurePlacement = state("ark-next-figure-placement", none)
+#let placeNextFigure(placement) = {
+  assert(placement in ("top", "bottom", "auto", "none"), message: "placeNextFigure takes \"top\", \"bottom\", \"auto\" or \"none\"")
+  nextFigurePlacement.update(placement)
+}
+
 // Wide figure spanning the margin rail and text column. With float: false it stays in the text flow,
 // right-aligned so the excess spills left over the rail; that collides with page one's margin notes.
 #let fullwidth(it, float: true) = context {
@@ -236,8 +244,8 @@
   // Materials: a REMARK name on econ-ark.org, the label over the binder link, and (title, url) downloads
   remark: none,
   binder-label: "Run online",
-  // "auto", "top" or "bottom" floats figures that fit a page; none keeps each figure where it is written
-  figure-placement: none,
+  // "auto", "top" or "bottom" floats figures that fit a page; "none" keeps each figure where it is written
+  figure-placement: "none",
   downloads: (),
   // The paper's content.
   body
@@ -523,15 +531,27 @@
   show figure: it => if it.placement == none and it.kind in ("figure", "table", "code", image, table, raw) {
     context {
       let columnWidth = page.width * 0.75 - 1.35in
-      let pageBody = page.height - 2in - 3em.to-absolute()
-      let fits = measure(block(width: columnWidth, it)).height <= pageBody
+      let height = measure(block(width: columnWidth, it)).height
+      let fits = height <= page.height - 2in - 3em.to-absolute()
       let whole = block(above: 1.4em, below: 1.4em, breakable: not fits, nested(it))
-      if figure-placement == none or not fits or figureDepth.get() > 0 {
+      let mode = nextFigurePlacement.get()
+      if mode == none { mode = figure-placement }
+      // Page one floats only to the bottom, since a top float would land above the title
+      let floatTo(end) = place(if here().page() == 1 { bottom } else { end }, float: true, clearance: 1.4em, whole)
+      // Placement never reads the page position: a choice made from the space left on the page moves the text
+      // before the figure, and eight figures placed that way failed to converge and misnumbered
+      if not fits {
+        // Like LaTeX's \needspace: an empty unbreakable block moves to the next page when the caption, header and
+        // first rows would not fit, and the negative space returns the table to where that block starts
+        block(breakable: false, height: 10em, above: 1.4em, below: 0pt)
+        v(-10em)
+        whole
+      } else if mode == "none" or figureDepth.get() > 0 {
         whole
       } else {
-        let alignment = if here().page() == 1 { bottom } else { ("auto": auto, "top": top, "bottom": bottom).at(figure-placement) }
-        place(alignment, float: true, clearance: 1.4em, whole)
+        floatTo(("auto": auto, "top": top, "bottom": bottom).at(mode))
       }
+      nextFigurePlacement.update(none)
     }
   } else { it }
   set figure(placement: none)

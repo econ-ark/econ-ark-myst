@@ -149,7 +149,7 @@
   [# if options.binder_label #]
   binder-label: [-s(options.binder_label)-],
   [# endif #]
-  [# if options.figure_placement and options.figure_placement != "none" #]
+  [# if options.figure_placement #]
   figure-placement: [-s(options.figure_placement)-],
   [# endif #]
   [# if options.remark #]
