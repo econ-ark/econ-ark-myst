@@ -149,6 +149,9 @@
   [# if options.binder_label #]
   binder-label: [-s(options.binder_label)-],
   [# endif #]
+  [# if options.figure_placement and options.figure_placement != "none" #]
+  figure-placement: [-s(options.figure_placement)-],
+  [# endif #]
   [# if options.remark #]
   remark: [-s(options.remark)-],
   [# endif #]

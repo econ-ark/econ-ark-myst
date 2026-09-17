@@ -21,17 +21,21 @@
   it.body
 }
 
+// Counts the figures and fullwidth wrappers enclosing a point, so figure_placement floats only outermost figures
+#let figureDepth = state("ark-figure-depth", 0)
+#let nested(it) = { figureDepth.update(d => d + 1); it; figureDepth.update(d => d - 1) }
+
 // Wide figure spanning the margin rail and text column. With float: false it stays in the text flow,
 // right-aligned so the excess spills left over the rail; that collides with page one's margin notes.
 #let fullwidth(it, float: true) = context {
   if not float {
-    align(right, box(width: 133%, it))
+    align(right, box(width: 133%, nested(it)))
   } else if here().page() == 1 {
     // A top float lands above the title; both branches float, so the anchor never moves and layout converges
-    place(bottom, float: true, it)
+    place(bottom, float: true, nested(it))
   } else {
     // A float wider than the column is centered on it, so shifting by half the 33% overhang aligns it with the rail
-    place(auto, dx: -16.5%, float: true, box(width: 133%, it))
+    place(auto, dx: -16.5%, float: true, box(width: 133%, nested(it)))
   }
 }
 
@@ -232,6 +236,8 @@
   // Materials: a REMARK name on econ-ark.org, the label over the binder link, and (title, url) downloads
   remark: none,
   binder-label: "Run online",
+  // "auto", "top" or "bottom" floats figures that fit a page; none keeps each figure where it is written
+  figure-placement: none,
   downloads: (),
   // The paper's content.
   body
@@ -512,14 +518,20 @@
   // Figures are breakable, and the rule below wraps each figure that fits a page in an unbreakable block,
   // whose explicit argument takes precedence over MyST's `show figure: set block(breakable: ...)`.
   show figure: set block(above: 1.4em, below: 1.4em, breakable: true)
-  // A figure that fits moves whole to the next page; a taller one breaks across pages, as it must to be read.
-  // Theorem-like figures are left breakable, since a proof may span pages.
+  // A figure that fits moves whole, or floats under figure_placement (bottom only on page one, below the title);
+  // a taller one breaks across pages. Theorem-like figures stay breakable, since a proof may span pages.
   show figure: it => if it.placement == none and it.kind in ("figure", "table", "code", image, table, raw) {
     context {
       let columnWidth = page.width * 0.75 - 1.35in
       let pageBody = page.height - 2in - 3em.to-absolute()
       let fits = measure(block(width: columnWidth, it)).height <= pageBody
-      block(above: 1.4em, below: 1.4em, breakable: not fits, it)
+      let whole = block(above: 1.4em, below: 1.4em, breakable: not fits, nested(it))
+      if figure-placement == none or not fits or figureDepth.get() > 0 {
+        whole
+      } else {
+        let alignment = if here().page() == 1 { bottom } else { ("auto": auto, "top": top, "bottom": bottom).at(figure-placement) }
+        place(alignment, float: true, clearance: 1.4em, whole)
+      }
     }
   } else { it }
   set figure(placement: none)
