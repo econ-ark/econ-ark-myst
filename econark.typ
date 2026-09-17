@@ -11,11 +11,15 @@
 #let sansFont = ("Roboto", "Libertinus Serif");
 #let serifFont = ("Libertinus Serif", "New Computer Modern");
 #let mathFont = ("Libertinus Math", "New Computer Modern Math");
+// Libertinus Mono pairs with the serif body; DejaVu Sans Mono is bundled in the Typst binary
+#let monoFont = ("Libertinus Mono", "DejaVu Sans Mono");
 
 #let leftCaption(it) = context {
   set text(font: sansFont, size: 8.5pt)
   set align(left)
   set par(justify: false, first-line-indent: 0pt)
+  // Inline code's 0.8em of 1.24em gives 0.99em, which sets Libertinus Mono's x-height at 0.9 of Roboto's
+  show raw.where(block: false): set text(size: 1.24em)
   text(weight: "semibold", fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]
   h(6pt)
   it.body
@@ -290,6 +294,21 @@
     ),
   )
 
+  // Rules for text in footnotes go here, before the title block: a footnote picks up only rules set before it
+  show raw.where(block: true): set text(font: monoFont, size: 8pt)
+  // Typst reads ' after a digit as a prime, so "Table 1's" would print a prime. Restore the apostrophe,
+  // except in inline code, which a state marks because show rules cannot see their surroundings.
+  let inCode = state("ark-inline-code", false)
+  // Inline code keeps Typst's 0.8em, which sets Libertinus Mono's x-height at 0.9 of Libertinus Serif's;
+  // captions raise it for Roboto's taller x-height. An empty box after _ and . lets a long name wrap
+  // without adding a character to copied text.
+  show raw.where(block: false): it => {
+    set text(font: monoFont)
+    show regex("[_.]"): s => [#s#box()]
+    inCode.update(true); it; inCode.update(false)
+  }
+  show regex("\d's\b"): it => context if inCode.get() { it } else { it.text.slice(0, -2) + sym.quote.r.single + "s" }
+
   // Citations and URLs leave the document, so they are blue; internal references stay black
   show link: it => if type(it.dest) == str { text(fill: arkBlue, it) } else { it }
   show cite: set text(fill: arkBlue)
@@ -504,12 +523,6 @@
   // Line numbers start with the main text, so the title block and abstract stay clean
   set par.line(numbering: if linenumbers { n => text(font: sansFont, size: 7pt, fill: arkGrey, str(n)) } else { none })
 
-  show raw: set text(font: "DejaVu Sans Mono", size: 8pt)
-  // Typst reads ' after a digit as a prime, so "Table 1's" would print a prime. Restore the apostrophe,
-  // except in inline code, which a state marks because show rules cannot see their surroundings.
-  let inCode = state("ark-inline-code", false)
-  show raw.where(block: false): it => { inCode.update(true); it; inCode.update(false) }
-  show regex("\d's\b"): it => context if inCode.get() { it } else { it.text.slice(0, -2) + sym.quote.r.single + "s" }
   show raw.where(block: true): (it) => {
     set align(left)
     set par(justify: false)
