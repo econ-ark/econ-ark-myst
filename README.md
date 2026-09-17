@@ -235,6 +235,23 @@ For 7pt tables, also import `smallTableStyle` and add `#let tableStyle = smallTa
 
 The running header of an `articles:` export takes the `short_title` of the project. To use a different one, set `short_title` in the export block.
 
+## The site
+
+`theme.css` gives a MyST site the look of the PDF: the same palette and typefaces, section headings in Econ-ARK blue, captions and tables in the sans, code on the pale blue the PDF uses, and the four logo curves as the rule that closes the front matter. Point a site at it under either theme:
+
+```yaml
+site:
+  template: article-theme
+  options:
+    style: theme.css
+```
+
+The path is relative to the project, so a paper that keeps the template as a sibling can link the file, as `examples/theme.css` does.
+
+A reader sees Libertinus Serif, Roboto and Libertinus Mono only when those fonts are installed on their machine. Without them the stylesheet falls back to Georgia, the system sans and the system mono, and the hierarchy survives. To serve the fonts yourself, list the files under `static_files` and add an `@font-face` block to a stylesheet of your own.
+
+The site's navigation, sidebar and search keep the theme's own typeface, which the theme sizes its columns for.
+
 ## Known limitations
 
 | Symptom | Cause | Workaround |

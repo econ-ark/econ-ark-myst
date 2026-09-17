@@ -1,0 +1,325 @@
+/*
+ * The website's half of the Econ-ARK house style; econark.typ holds the PDF's half.
+ * Same palette, the same pairing of Roboto with Libertinus Serif, the same tables and
+ * captions, and the four logo curves as the rule that closes the front matter.
+ * Readers without Libertinus or Roboto fall back to Georgia and the system sans, so the
+ * hierarchy survives even when the typefaces do not. To install them on a site, list the
+ * font files under static_files and add an @font-face block of your own.
+ *
+ * Point a MyST site at this file from myst.yml, under either theme:
+ *
+ *   site:
+ *     template: article-theme
+ *     options:
+ *       style: theme.css
+ *
+ * The two themes wrap the paper in different classes, so the rules below reach the text
+ * through article.article, which article-theme and book-theme both write.
+ */
+
+:root {
+  /* Econ-ARK brand palette, from econ-ark.org assets/sass/_variables.scss */
+  --ark-blue: #1f476b;
+  --ark-grey: #676470;
+  /* The four logo curves, in the order the rule under the front matter shows them */
+  --ark-curve-1: #fcb040;
+  --ark-curve-2: #ed217c;
+  --ark-curve-3: #00aeef;
+  --ark-curve-4: #39b54a;
+  /* The fills and rules the PDF draws: arkBlue lightened 95%, arkGrey lightened 40% */
+  --ark-tint: #f4f6f8;
+  --ark-rule: #a4a2a9;
+  --ark-ink: #000;
+  --ark-sans: "Roboto", "Helvetica Neue", Arial, sans-serif;
+  --ark-serif: "Libertinus Serif", "Linux Libertine O", Georgia, serif;
+  --ark-mono: "Libertinus Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+}
+
+html.dark {
+  --ark-blue: #8ab4d8;
+  --ark-grey: #a9a5b3;
+  --ark-tint: #1b2530;
+  --ark-rule: #4a4750;
+  --ark-ink: #e7e9ec;
+}
+
+/*
+ * The paper's own front matter takes the brand sans. The site's navigation, sidebar and
+ * search keep the theme's typeface: those columns are sized for it, and a wider fallback
+ * on a reader's machine runs the site title into the paper beside it.
+ */
+.myst-fm-block-header,
+.myst-fm-authors-grid,
+.myst-fm-block-date-doi,
+.myst-supporting-documents {
+  font-family: var(--ark-sans);
+}
+
+/*
+ * Reading text. Libertinus Serif runs small, so 1.15rem here sets the same apparent size
+ * as the PDF's 11pt, and the measure is capped where the paper caps it, under 80
+ * characters. Figures, tables and code keep the theme's full column and so run wider than
+ * the text, as a widened figure does in the PDF.
+ */
+article.article {
+  font-family: var(--ark-serif);
+  font-size: 1.15rem;
+  line-height: 1.62;
+  color: var(--ark-ink);
+}
+
+article.article p,
+article.article li,
+article.article blockquote,
+article.article .myst-abstract-content {
+  max-width: 36em;
+}
+
+@media (min-width: 640px) {
+  article.article p {
+    text-align: justify;
+    hyphens: auto;
+  }
+}
+
+/* The keyboard route through the paper stays visible */
+article.article a:focus-visible,
+.myst-top-nav a:focus-visible,
+.myst-toc a:focus-visible {
+  outline: 2px solid var(--ark-blue);
+  outline-offset: 2px;
+}
+
+/* Links leave the document, so they carry the blue; so do citations */
+article.article a,
+article.article cite a {
+  color: var(--ark-blue);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+/* Title block */
+.myst-fm-block-title {
+  font-family: var(--ark-sans);
+  font-weight: 600;
+  font-size: clamp(2rem, 1.2rem + 2.2vw, 2.8rem);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--ark-ink);
+}
+
+.myst-fm-block-subtitle {
+  font-family: var(--ark-sans);
+  font-weight: 400;
+  color: var(--ark-grey);
+}
+
+/*
+ * The four curves close the front matter, where the PDF draws them. A page with no
+ * abstract, key points or summary has no parts block, and the rule falls to the anchor
+ * that sits in its place, so the colors show whichever fields an author fills in.
+ */
+.myst-fm-parts::after,
+#skip-to-article:not(:has(+ .myst-fm-parts))::after {
+  content: "";
+  display: block;
+  height: 2px;
+  max-width: 36em;
+  margin: 2rem 0 1.4rem;
+  background: linear-gradient(
+    to right,
+    var(--ark-curve-1) 0 25%,
+    var(--ark-curve-2) 0 50%,
+    var(--ark-curve-3) 0 75%,
+    var(--ark-curve-4) 0
+  );
+}
+
+/*
+ * Abstract, key points and summary. The blue label carries them, as it does in the PDF,
+ * and the theme's box is dropped so that a filled block means one thing on the page: code.
+ */
+article.article .myst-abstract-title {
+  font-family: var(--ark-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ark-blue);
+  margin-bottom: 0.4rem;
+}
+
+article.article .myst-abstract-box {
+  background: transparent;
+  padding: 0;
+}
+
+/* Key points take the blue bullet they have in the margin of the PDF */
+article.article .myst-abstract-box li::marker {
+  color: var(--ark-blue);
+}
+
+/*
+ * Section headings, which MyST sets one level down from the markdown: a first-level
+ * heading in the paper is an h2 here. Sans and blue, then sans and black, then italic
+ * serif, as in the PDF. The :has() picks out headings written in the text, leaving the
+ * theme's own h2 headings for the parts and the back matter alone.
+ */
+article.article h2:has(> .heading-text) {
+  font-family: var(--ark-sans);
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ark-blue);
+  margin-top: 2.2em;
+}
+
+article.article h3:has(> .heading-text) {
+  font-family: var(--ark-sans);
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: var(--ark-ink);
+  margin-top: 1.8em;
+}
+
+article.article h4:has(> .heading-text) {
+  font-family: var(--ark-serif);
+  font-size: 1.06rem;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ark-ink);
+}
+
+/* Captions: sans and small, with the number in blue, set left under a figure and over a table */
+article.article figcaption {
+  font-family: var(--ark-sans);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  text-align: left;
+  color: var(--ark-grey);
+}
+
+article.article figcaption a[href^="#"] {
+  color: var(--ark-blue);
+  font-weight: 600;
+}
+
+/* Tables: horizontal rules only, a heavy rule top and bottom and a light one under the header */
+article.article figure table {
+  font-family: var(--ark-sans);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums lining-nums;
+  border-collapse: collapse;
+  border-top: 1.5px solid var(--ark-grey);
+  border-bottom: 1.5px solid var(--ark-grey);
+}
+
+article.article figure table th {
+  font-weight: 600;
+  text-align: left;
+  vertical-align: bottom;
+  color: var(--ark-ink);
+  border: 0;
+  border-bottom: 1px solid var(--ark-grey);
+  padding: 0.35em 0.75em;
+}
+
+article.article figure table td {
+  color: var(--ark-ink);
+  border: 0;
+  padding: 0.3em 0.75em;
+}
+
+/* Both themes rule every row; the rules that carry the table are the three set above */
+article.article figure table tr {
+  border: 0;
+}
+
+/* Code, in the mono face that pairs with the body serif and the PDF's pale blue block */
+code,
+pre code {
+  font-family: var(--ark-mono);
+}
+
+/* Code in a sentence takes the color of the sentence, as it does in the PDF */
+article.article :not(pre) > code {
+  font-size: 0.92em;
+  color: inherit;
+}
+
+article.article .myst-code {
+  background: var(--ark-tint);
+  border: 0;
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+article.article .myst-code-body {
+  background: transparent;
+}
+
+/* Theorems and proofs, run against a blue edge rather than the theme's banded box */
+article.article aside.myst-proof {
+  background: transparent;
+  border-left: 2px solid var(--ark-blue);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+article.article .myst-proof-header {
+  background: transparent;
+  border: 0;
+  padding-bottom: 0;
+}
+
+/* The statement follows its label, as it runs on from the label in the PDF */
+article.article .myst-proof-body > :first-child {
+  margin-top: 0.3em;
+}
+
+article.article .myst-proof-title {
+  font-family: var(--ark-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ark-blue);
+}
+
+/* Notes: the code block's tint with the link blue at the edge */
+aside.myst-admonition-note {
+  background: var(--ark-tint);
+  border-color: var(--ark-blue);
+  box-shadow: none;
+}
+
+aside.myst-admonition-note .myst-admonition-header {
+  background: transparent;
+  font-family: var(--ark-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ark-blue);
+}
+
+/* Back matter: acknowledgments and the rest, then the footnotes and the references */
+article.article .myst-backmatter-title,
+.myst-footnotes-header,
+.myst-bibliography-header {
+  font-family: var(--ark-sans);
+  color: var(--ark-blue);
+}
+
+.myst-footnotes {
+  font-family: var(--ark-serif);
+  font-size: 0.9rem;
+  color: var(--ark-ink);
+}
+
+.myst-bibliography-list {
+  font-family: var(--ark-serif);
+  font-size: 0.88rem;
+  color: var(--ark-ink);
+}
+
+.myst-footnotes-header,
+.myst-bibliography-header,
+.myst-footnotes hr,
+.myst-bibliography hr {
+  border-color: var(--ark-rule);
+}

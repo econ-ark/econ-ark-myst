@@ -31,3 +31,5 @@ project:
           name: Econ-ARK
 site:
   template: book-theme
+  options:
+    style: theme.css
