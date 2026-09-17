@@ -197,6 +197,7 @@ else
   check_breaks tall-table "$TALL" 'Case 1 A description' 'Case 35 A description'
   check_same_page tall-table "$TALL" 'Every case, one row each.' 'Case 1 A description'
   check_left_of tall-table "$TALL" 'Widecaption' 100
+  check_left_of tall-table "$TALL" 'Widetablecaption' 100
   if ! git -C "$ROOT" diff --quiet -- examples/exports/paper.pdf; then
     committed=$(mktemp)
     git -C "$ROOT" show HEAD:examples/exports/paper.pdf >"$committed"

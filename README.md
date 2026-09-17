@@ -131,7 +131,7 @@ Three panels in one row.
 :::
 ```
 
-The figure keeps its MyST label, so `@fig-panels` refers to it as usual, and its caption runs the full wide width. Give the image `:width: 100%`; a narrower image is centered in the wide space. On US letter paper the widths are:
+The figure keeps its MyST label, so `@fig-panels` refers to it as usual, and its caption runs the full wide width. Give the image `:width: 100%`; a narrower image is centered in the wide space. A widened MyST table also fills the wide width: its first column keeps the width of its labels and the other columns share the rest. A wide figure, a widened MyST table and a raw Typst table in `fullwidth` all start their captions at the same left edge. On US letter paper the widths are:
 
 | Width | Points | Inches |
 |-------|--------|--------|

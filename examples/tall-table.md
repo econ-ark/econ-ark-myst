@@ -71,3 +71,15 @@ Text after the table.
 
 Widecaption spans the margin rail and the text column.
 :::
+
+:::{raw:typst}
+#widenNextFigure()
+:::
+
+:::{table} Widetablecaption starts at the same edge as the wide figure.
+:label: tbl-wide
+| Case | A | B | C |
+|------|---|---|---|
+| First | 1 | 2 | 3 |
+| Second | 4 | 5 | 6 |
+:::
