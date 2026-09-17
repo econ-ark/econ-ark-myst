@@ -60,3 +60,14 @@ Filler sentence to push the caption toward the foot of the page. Filler sentence
 :::
 
 Text after the table.
+
+:::{raw:typst}
+#widenNextFigure()
+:::
+
+:::{figure} ../logo.png
+:label: fig-wide
+:width: 100%
+
+Widecaption spans the margin rail and the text column.
+:::

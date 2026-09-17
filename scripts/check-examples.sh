@@ -118,6 +118,17 @@ check_same_page() {
   fi
 }
 
+# A widened figure's caption starts over the margin rail, left of the text column at x = 153pt
+check_left_of() {
+  local name=$1 pdf=$2 word=$3 limit=$4 x
+  x=$(pdftotext -bbox "$pdf" - 2>/dev/null | grep -F -- ">$word</word>" | head -1 | sed -E 's/.*xMin="([0-9.]+)".*/\1/')
+  if [ -n "$x" ] && awk -v x="$x" -v l="$limit" 'BEGIN { exit !(x < l) }'; then
+    ok "$name: '$word' starts at x = ${x%%.*}pt, over the margin rail"
+  else
+    bad "$name: '$word' starts at x = ${x:-none}pt, not left of ${limit}pt, so the figure was not widened"
+  fi
+}
+
 self_test() {
   local good seeded out
   good=$(pdftotext "$PAPER" - 2>/dev/null)
@@ -156,6 +167,14 @@ self_test() {
     bad "self-test: a table that stays on one page went undetected"
   fi
 
+  # The full example's table caption sits in the text column, so it must fail the widened-figure test
+  out=$(check_left_of seeded "$PAPER" 'Baseline' 100)
+  if grep -q 'FAIL.*not widened' <<<"$out"; then
+    ok "self-test: a figure left at text width is caught"
+  else
+    bad "self-test: a figure left at text width went undetected"
+  fi
+
   out=$(check_pdf seeded "$EXAMPLES/exports/does-not-exist.pdf")
   if grep -q 'FAIL.*not written' <<<"$out"; then
     ok "self-test: a missing PDF is caught"
@@ -177,6 +196,7 @@ else
   check_pdf tall-table "$TALL" 'Case 35' 'Text after the table'
   check_breaks tall-table "$TALL" 'Case 1 A description' 'Case 35 A description'
   check_same_page tall-table "$TALL" 'Every case, one row each.' 'Case 1 A description'
+  check_left_of tall-table "$TALL" 'Widecaption' 100
   if ! git -C "$ROOT" diff --quiet -- examples/exports/paper.pdf; then
     committed=$(mktemp)
     git -C "$ROOT" show HEAD:examples/exports/paper.pdf >"$committed"

@@ -114,6 +114,32 @@ Results.
 
 `placeNextFigure` takes `"top"`, `"bottom"`, `"auto"` or `"none"` and applies to the next figure or table only. The MyST site ignores the raw block and shows the figure as written.
 
+## Wide figures
+
+A figure with several panels in a row can take the width of the margin rail as well as the text column. Call `widenNextFigure` in a raw Typst block just before a MyST figure or table:
+
+```text
+:::{raw:typst}
+#widenNextFigure()
+:::
+
+:::{figure} three-panels.png
+:label: fig-panels
+:width: 100%
+
+Three panels in one row.
+:::
+```
+
+The figure keeps its MyST label, so `@fig-panels` refers to it as usual, and its caption runs the full wide width. Give the image `:width: 100%`; a narrower image is centered in the wide space. On US letter paper the widths are:
+
+| Width | Points | Inches |
+|-------|--------|--------|
+| Text column | 361.8 | 5.03 |
+| Wide, over the margin rail | 481.2 | 6.68 |
+
+Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib for a wide figure, to print its fonts at their set size. A wide figure stays where it is written unless `figure_placement` or `placeNextFigure` floats it. The running head, footer and page numbers keep the text column's width. On page one the rail holds the logo and notes, so widen a figure only from page two on. A wide figure that floats from page one is placed at the foot of the page at column width.
+
 ## Parts
 
 | Part | In the PDF | On a MyST site with article-theme |
