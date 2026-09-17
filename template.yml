@@ -27,8 +27,13 @@ doc:
     required: true
   - id: authors
     required: true
+  - id: affiliations
   - id: subtitle
   - id: short_title
+  - id: date
+    description: Shown in the margin; MyST uses the build date when it is unset
+  - id: license
+  - id: bibliography
   - id: venue
   - id: open_access
   - id: keywords

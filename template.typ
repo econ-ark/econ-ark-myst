@@ -28,8 +28,9 @@
   [# if doc.venue.title #]
     venue: [-s(doc.venue.title)-],
   [# endif #]
-  [# if doc.open_access !== undefined #]
-    open-access: [-doc.open_access-],
+  [# if doc.open_access #]
+    // pubmatter shows the badge whenever the key is present, so open_access: false must leave it out
+    open-access: true,
   [# endif #]
   [# if doc.github !== undefined #]
     github: [-s(doc.github)-],
