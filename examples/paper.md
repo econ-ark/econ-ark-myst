@@ -3,8 +3,16 @@ title: Buffer Stock Saving with Heterogeneous Agents
 subtitle: An example of the Econ-ARK MyST template
 short_title: Buffer Stock Saving
 date: 2026-09-16
+subject: Working paper
 venue:
   title: Econ-ARK Working Papers
+volume: 1
+issue: 3
+first_page: 1
+last_page: 3
+doi: 10.5281/zenodo.0000000
+arxiv: https://arxiv.org/abs/2609.00000
+zenodo: https://zenodo.org/records/0000000
 binder: https://mybinder.org/v2/gh/econ-ark/econ-ark-myst/HEAD
 keywords:
   - consumption
@@ -19,12 +27,17 @@ exports:
     format: typst
     template: ..
     output: exports/paper.pdf
-    kind: Working paper
 ---
 
 +++ {"part": "abstract"}
 
 We solve a buffer stock saving model with the endogenous grid method and show how the Econ-ARK template typesets a working paper: title block, margin notes, equations, tables, code and author-year citations.
+
++++ {"part": "keypoints"}
+
+- A buffer of wealth protects households against bad income draws.
+- The endogenous grid method solves the model without root finding.
+- Patience, returns and risk set the size of the buffer.
 
 +++ {"part": "acknowledgement"}
 

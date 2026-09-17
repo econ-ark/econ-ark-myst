@@ -26,6 +26,10 @@ ANCHORS=(
   'References'
   'Appendix A derives the Euler'
   'Appendix A Derivation'
+  'Key points'
+  'Cite as'
+  'Working paper'
+  'arXiv:2609.00000'
 )
 
 fail=0

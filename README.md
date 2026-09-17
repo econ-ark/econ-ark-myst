@@ -31,20 +31,25 @@ While the repository is private, MyST cannot download it and the URL above fails
 | author `note` | Starred footnote on the title, for thanks and funding |
 | `short_title` | Running header |
 | `venue.title` | Footer |
-| `date` | Margin |
+| `subject` | Margin, as the kind of paper, for example `Working paper` or `REMARK` |
+| `date` | Margin. MyST uses the build date when `date` is unset, so set it for a PDF that rebuilds identically |
 | `keywords` | Under the abstract |
 | `tags` | JEL codes under the keywords. The [Econometric Society template](https://github.com/alanlujan91/econsoc_template) reads the same field, so one manuscript builds with both |
+| `doi`, `arxiv`, `zenodo` | "Cite as" block in the margin, described below |
+| `volume`, `issue`, `last_page` | Added to the "Cite as" citation |
 | `license` | Margin, with a Creative Commons badge |
 | `github`, `binder` | "Reproduce this paper" strip under the abstract |
-| `first_page` | Starting page number |
+| `first_page` | Starting page number, also the first page in the citation |
 
 Authors marked `corresponding: true` (or the first author with an email) appear under "Correspondence"; `equal_contributor: true` adds a dagger.
+
+The "Cite as" block appears once the paper has a `doi`, `arxiv` or `zenodo` link, since a draft without a persistent identifier changes under its readers. It gives a Chicago author-date entry, the style of the reference list, followed by the DOI as a URL, the arXiv identifier and a link to the Zenodo archive. The entry lists up to three authors and shortens more to the first author and "et al." MyST reads a suffix such as "Jr." as part of the family name. To cite such a name correctly, give the author's `name` as an object with `given`, `family` and `suffix`.
 
 ## Options
 
 | Option | Description |
 |--------|-------------|
-| `kind` | Label in the margin, for example `Working paper` or `REMARK` |
+| `kind` | Label in the margin, overriding `subject` for this export |
 | `linenumbers` | Number the lines of the main text, for review drafts |
 
 ## Parts
@@ -52,6 +57,7 @@ Authors marked `corresponding: true` (or the first author with an email) appear 
 | Part | Description |
 |------|-------------|
 | `abstract` | Run-in abstract under the title |
+| `keypoints` | Three or four short bullet points, at most 80 words, in the margin under the logo. When the margin cannot hold them above its lower notes, they move under the abstract |
 | `acknowledgments` | Unnumbered section after the main text (`acknowledgements` and `acknowledgement` also work) |
 | `data_availability` | Unnumbered data availability statement |
 | `declaration` | Unnumbered declaration of competing interest |
