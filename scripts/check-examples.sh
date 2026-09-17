@@ -14,6 +14,7 @@ ROOT=${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}
 EXAMPLES="$ROOT/examples"
 PAPER="$EXAMPLES/exports/paper.pdf"
 MINIMAL="$EXAMPLES/_build/exports/minimal.pdf"
+TALL="$EXAMPLES/_build/exports/tall-table.pdf"
 
 # Text the full example must contain; each is produced by a different template feature.
 ANCHORS=(
@@ -84,6 +85,23 @@ check_pdf() {
   fi
 }
 
+# A table taller than a page must break: its first and last rows land on different pages.
+# An unbreakable one overflows the page foot, where its rows still extract as text, so a text search misses it.
+check_breaks() {
+  local name=$1 pdf=$2 first=$3 last=$4 pages p text pfirst="" plast=""
+  pages=$(pdfinfo "$pdf" 2>/dev/null | awk '/^Pages:/ {print $2}')
+  for ((p = 1; p <= ${pages:-0}; p++)); do
+    text=$(pdftotext -f "$p" -l "$p" "$pdf" - 2>/dev/null)
+    grep -qF -- "$first" <<<"$text" && [ -z "$pfirst" ] && pfirst=$p
+    grep -qF -- "$last" <<<"$text" && plast=$p
+  done
+  if [ -n "$pfirst" ] && [ -n "$plast" ] && [ "$plast" -gt "$pfirst" ]; then
+    ok "$name: table breaks from page $pfirst to page $plast"
+  else
+    bad "$name: '$first' and '$last' are not on successive pages (pages ${pfirst:-none} and ${plast:-none}), so the table did not break"
+  fi
+}
+
 self_test() {
   local good seeded out
   good=$(pdftotext "$PAPER" - 2>/dev/null)
@@ -114,6 +132,14 @@ self_test() {
     bad "self-test: a missing anchor went undetected"
   fi
 
+  # The calibration table in the full example fits on one page, so its first and last rows share a page
+  out=$(check_breaks seeded "$PAPER" 'Discount factor' 'Relative risk aversion')
+  if grep -q 'FAIL.*did not break' <<<"$out"; then
+    ok "self-test: a table that stays on one page is caught"
+  else
+    bad "self-test: a table that stays on one page went undetected"
+  fi
+
   out=$(check_pdf seeded "$EXAMPLES/exports/does-not-exist.pdf")
   if grep -q 'FAIL.*not written' <<<"$out"; then
     ok "self-test: a missing PDF is caught"
@@ -132,6 +158,8 @@ else
   (cd "$EXAMPLES" && rm -rf _build && myst build --typst) >/dev/null 2>&1
   check_pdf paper "$PAPER" "${ANCHORS[@]}"
   check_pdf minimal "$MINIMAL" 'Minimal Example'
+  check_pdf tall-table "$TALL" 'Case 35' 'Text after the table'
+  check_breaks tall-table "$TALL" 'Case 1' 'Case 35'
   if ! git -C "$ROOT" diff --quiet -- examples/exports/paper.pdf; then
     committed=$(mktemp)
     git -C "$ROOT" show HEAD:examples/exports/paper.pdf >"$committed"
