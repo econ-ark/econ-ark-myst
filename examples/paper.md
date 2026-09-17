@@ -33,6 +33,10 @@ exports:
 
 We solve a buffer stock saving model with the endogenous grid method and show how the Econ-ARK template typesets a working paper: title block, margin notes, equations, tables, code and author-year citations.
 
++++ {"part": "summary"}
+
+Households save more when their income is uncertain. This paper shows how much more, and how quickly the extra saving can be computed.
+
 +++ {"part": "keypoints"}
 
 - A buffer of wealth protects households against bad income draws.

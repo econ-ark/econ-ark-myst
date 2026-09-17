@@ -30,6 +30,10 @@ ANCHORS=(
   'Cite as'
   'Working paper'
   'arXiv:2609.00000'
+  'Non-technical summary'
+  'Code license'
+  'Department of Economics, Johns Hopkins'
+  'Computational Economics Grant (G-2026-00001)'
 )
 
 fail=0

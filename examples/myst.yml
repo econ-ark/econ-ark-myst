@@ -2,18 +2,26 @@ version: 1
 project:
   title: Econ-ARK template example
   github: https://github.com/econ-ark/econ-ark-myst
-  license: CC-BY-4.0
+  license:
+    content: CC-BY-4.0
+    code: MIT
+  funding:
+    - statement: Support from the Alfred P. Sloan Foundation is gratefully acknowledged
+      awards:
+        - id: G-2026-00001
+          name: Computational Economics Grant
   bibliography:
     - main.bib
   authors:
     - name: Jane Economist
       email: jane@example.org
       corresponding: true
-      note: Support from the Alfred P. Sloan Foundation is gratefully acknowledged.
+      note: Also a visiting scholar at Econ-ARK.
       orcid: 0000-0002-7859-8394
       affiliations:
         - id: jhu
-          name: Johns Hopkins University
+          institution: Johns Hopkins University
+          department: Department of Economics
           ror: 00za53h95
     - name: John Modeler
       equal_contributor: true

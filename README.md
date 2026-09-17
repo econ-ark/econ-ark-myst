@@ -34,7 +34,7 @@ While the repository is private, MyST cannot download it and the URL above fails
 | author `corresponding`, `email` | "Correspondence" in the margin, naming the first author with `corresponding: true`, or else the first with an email | Omitted when no author has an email |
 | author `equal_contributor` | Dagger after the name, explained under the affiliations | Omitted |
 | author `note` | Starred footnote on the title, for thanks and funding | Omitted |
-| `affiliations`, affiliation `ror` | Numbered list under the authors, with a linked ROR icon | Omitted |
+| `affiliations`, affiliation `ror`, `department` | Numbered list under the authors, with a linked ROR icon. A `department` goes before the institution, as in "Department of Economics, Johns Hopkins University" | Omitted |
 | `short_title` | Running header from page two | The title |
 | `venue.title` | Footer and "Cite as" entry | Page number only |
 | `open_access` | "Open Access" badge at the top of page one when `true` | Omitted |
@@ -44,12 +44,15 @@ While the repository is private, MyST cannot download it and the URL above fails
 | `tags` | JEL codes under the keywords. The [Econometric Society template](https://github.com/alanlujan91/econsoc_template) reads the same field, so one manuscript builds with both | Omitted |
 | `doi`, `arxiv`, `zenodo` | "Cite as" block in the margin, described below | No "Cite as" block |
 | `volume`, `issue`, `last_page` | Added to the "Cite as" entry | Left out of the entry |
-| `license` | Margin, with a Creative Commons badge and a copyright line | Omitted |
+| `license` | Margin, with a Creative Commons badge and a copyright line. With `license: {content: CC-BY-4.0, code: MIT}`, the code license shows in the "Reproduce this paper" strip | Omitted |
+| `copyright` | Replaces the author names in the margin's copyright line. Text that already carries "©" or starts with "Copyright" is printed as written | "Copyright © year" and the authors' family names |
+| `funding` | Each statement, then each award as "name (id)", in the starred footnote on the title. Write `funding` as a list, because mystmd 1.10.1 stops with `funding?.forEach is not a function` on a single funding object | Omitted |
+| `numbering` | `headings: false` removes the section numbers, including the appendix letters | Sections are numbered |
 | `github`, `binder` | "Reproduce this paper" strip under the abstract | The strip shows whichever is set, and disappears when neither is |
 | `first_page` | Starting page number, also the first page in the "Cite as" entry | Pages start at 1 |
 | `bibliography` | References, in Chicago author-date style, after the declarations | No references section |
 
-These are all the fields the template reads. It ignores `funding`, author `url` and every affiliation detail beyond the name and ROR, so put a funding statement in an author `note` or the `title_note` part.
+These are all the fields the template reads. It ignores the fields that serve a website or a build, such as `description`, `thumbnail` and `downloads`, along with author `url`, `roles` and contact details, and affiliation addresses.
 
 The "Cite as" block appears once the paper has a `doi`, `arxiv` or `zenodo` link, since a draft without a persistent identifier changes under its readers. It gives a Chicago author-date entry, the style of the reference list, followed by the DOI as a URL, the arXiv identifier and a link to the Zenodo archive. The entry lists up to three authors and shortens more to the first author and "et al." MyST reads a suffix such as "Jr." as part of the family name. To cite such a name correctly, give the author's `name` as an object with `given`, `family` and `suffix`.
 
@@ -65,12 +68,15 @@ The "Cite as" block appears once the paper has a `doi`, `arxiv` or `zenodo` link
 | Part | In the PDF | On a MyST site with article-theme |
 |------|------------|-----------------------------------|
 | `abstract` | Run-in abstract under the title | Above the page |
+| `summary` | Run-in "Non-technical summary" after the abstract | Above the page, as "Plain Language Summary" |
 | `keypoints` | Three or four short bullet points, at most 80 words, in the margin under the logo. When the margin cannot hold them above its lower notes, they move under the abstract | Above the page, as "Key Points" |
 | `acknowledgments` | First unnumbered section of the back matter (`acknowledgements` and `acknowledgement` also work) | Below the page |
 | `data_availability` | Unnumbered section after the acknowledgments | Below the page |
 | `declaration` | Unnumbered "Declaration of competing interest" after the data availability statement | In the text, where the block is written |
 | `ai_declaration` | Unnumbered "Declaration of generative AI use", immediately before the references. Same part name as [elsarticle-myst](https://github.com/alanlujan91/elsarticle-myst) | In the text, where the block is written |
 | `title_note` | Starred footnote on the title, placed before any author notes | In the text, where the block is written |
+
+A part the template does not list, such as `dedication` or `epigraph`, stays in the text of the PDF as an unlabeled paragraph.
 
 The back matter, these four sections and then the references, goes before the `<appendix>` marker, or at the end of the paper when there is no marker. MyST removes a part from the text of a PDF wherever it is written. The `parts:` key of the project frontmatter does not reach a PDF export.
 
