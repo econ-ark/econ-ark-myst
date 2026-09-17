@@ -14,6 +14,11 @@ doi: 10.5281/zenodo.0000000
 arxiv: https://arxiv.org/abs/2609.00000
 zenodo: https://zenodo.org/records/0000000
 binder: https://mybinder.org/v2/gh/econ-ark/econ-ark-myst/HEAD
+downloads:
+  - title: PDF
+    url: https://github.com/econ-ark/econ-ark-myst/blob/main/examples/exports/paper.pdf
+  - title: BibTeX
+    url: https://github.com/econ-ark/econ-ark-myst/blob/main/examples/paper.bib
 keywords:
   - consumption
   - precautionary saving
@@ -27,6 +32,7 @@ exports:
     format: typst
     template: ..
     output: exports/paper.pdf
+    remark: BufferStockTheory
 ---
 
 +++ {"part": "abstract"}

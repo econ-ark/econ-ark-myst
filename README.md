@@ -44,11 +44,11 @@ While the repository is private, MyST cannot download it and the URL above fails
 | `tags` | JEL codes under the keywords. The [Econometric Society template](https://github.com/alanlujan91/econsoc_template) reads the same field, so one manuscript builds with both | Omitted |
 | `doi`, `arxiv`, `zenodo` | "Cite as" block in the margin, described below | No "Cite as" block |
 | `volume`, `issue`, `last_page` | Added to the "Cite as" entry | Left out of the entry |
-| `license` | Margin, with a Creative Commons badge and a copyright line. With `license: {content: CC-BY-4.0, code: MIT}`, the code license shows in the "Reproduce this paper" strip | Omitted |
+| `license` | Margin, with a Creative Commons badge and a copyright line. With `license: {content: CC-BY-4.0, code: MIT}`, the code license shows under the code link in the materials block | Omitted |
 | `copyright` | Replaces the author names in the margin's copyright line. Text that already carries "©" or starts with "Copyright" is printed as written | "Copyright © year" and the authors' family names |
 | `funding` | Each statement, then each award as "name (id)", in the starred footnote on the title. Write `funding` as a list, because mystmd 1.10.1 stops with `funding?.forEach is not a function` on a single funding object | Omitted |
 | `numbering` | `headings: false` removes the section numbers, including the appendix letters | Sections are numbered |
-| `github`, `binder` | "Reproduce this paper" strip under the abstract | The strip shows whichever is set, and disappears when neither is |
+| `binder`, `github`, `downloads` | Materials block under the abstract, described below | The block disappears when none of these, nor the `remark` option, is set |
 | `first_page` | Starting page number, also the first page in the "Cite as" entry | Pages start at 1 |
 | `bibliography` | References, in Chicago author-date style, after the declarations | No references section |
 
@@ -56,12 +56,38 @@ These are all the fields the template reads. It ignores the fields that serve a 
 
 The "Cite as" block appears once the paper has a `doi`, `arxiv` or `zenodo` link, since a draft without a persistent identifier changes under its readers. It gives a Chicago author-date entry, the style of the reference list, followed by the DOI as a URL, the arXiv identifier and a link to the Zenodo archive. The entry lists up to three authors and shortens more to the first author and "et al." MyST reads a suffix such as "Jr." as part of the family name. To cite such a name correctly, give the author's `name` as an object with `given`, `family` and `suffix`.
 
+The materials block lists what exists for the paper beyond the PDF, in up to four columns under rules in the four colors of the Econ-ARK logo. All four rules print however many columns a paper fills. The columns keep this order:
+
+| Column | Source |
+|--------|--------|
+| Run online, or the `binder_label` option | `binder`, with a note that it starts in a few minutes |
+| Code | `github`, shown as `owner/repo`, with the code license under it |
+| REMARK | The `remark` option |
+| Also as | Each entry of `downloads` with a web address, by its `title`. An entry whose address ends in `.bib` goes to "Cite as" as a BibTeX link instead |
+
+```yaml
+binder: https://econ-ark.org/materials/LiqConstr?dashboard
+downloads:
+  - title: Slides
+    url: https://econ-ark.github.io/LiqConstr/LiqConstr-Slides.pdf
+  - title: BibTeX
+    url: https://econ-ark.github.io/LiqConstr/LiqConstr-Self.bib
+exports:
+  - format: typst
+    remark: LiqConstr
+    binder_label: Dashboard
+```
+
+The PDF leaves out a `downloads` entry that points to one of the project's exports by `id`, because such an entry has no web address until the MyST site is published.
+
 ## Options
 
 | Option | Description |
 |--------|-------------|
 | `kind` | Label in the margin, overriding `subject` for this export |
 | `linenumbers` | Number the lines of the main text, for review drafts |
+| `remark` | Name of the paper's REMARK on econ-ark.org, such as `LiqConstr`, linked in the materials block |
+| `binder_label` | Label over the `binder` link in the materials block, such as `Dashboard`. Defaults to "Run online" |
 
 ## Parts
 

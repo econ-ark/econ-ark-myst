@@ -18,7 +18,9 @@ MINIMAL="$EXAMPLES/_build/exports/minimal.pdf"
 # Text the full example must contain; each is produced by a different template feature.
 ANCHORS=(
   'Buffer Stock Saving with Heterogeneous'
-  'Reproduce this paper'
+  'Materials'
+  'BufferStockTheory'
+  'BibTeX'
   'JEL codes'
   'Proposition 1 (Concavity)'
   'Declaration of generative AI use'
@@ -31,7 +33,7 @@ ANCHORS=(
   'Working paper'
   'arXiv:2609.00000'
   'Non-technical summary'
-  'Code license'
+  'MIT license'
   'Department of Economics, Johns Hopkins'
   'Computational Economics Grant (G-2026-00001)'
   "1990$(printf '\342\200\231')s"
