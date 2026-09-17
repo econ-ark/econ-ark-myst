@@ -5,7 +5,7 @@
 // Econ-ARK brand palette, from econ-ark.org assets/sass/_variables.scss
 #let arkBlue = rgb("#1f476b");
 #let arkGrey = rgb("#676470");
-// The four logo curves, top to bottom; used only in the logo's own contexts, never for text
+// The four logo curves, top to bottom; kept to marks that echo the logo, such as the reproduce strip
 #let arkCurves = (rgb("#fcb040"), rgb("#ed217c"), rgb("#00aeef"), rgb("#39b54a"));
 // Preferred fonts first, then fonts bundled with Typst so the template always compiles
 #let sansFont = ("Roboto", "Libertinus Serif");
@@ -35,43 +35,38 @@
   }
 }
 
-// Styles for the tables MyST writes with tablex: a bold header, rules only above and below it, no vertical lines.
-// template.typ binds tableStyle to arkTableStyle; an article included in a multi-article export must bind it itself.
-#let arkTableStyle = (
-  map-cells: cell => {
-    if (cell.y == 0) {
-      return (..cell, content: strong(text(cell.content, 9pt)))
-    }
-    (..cell, content: text(cell.content, 9pt))
-  },
-  auto-vlines: false,
-  map-hlines: line => {
-    if (line.y == 0 or line.y == 1) {
-      line.stroke = arkGrey + 0.75pt;
-    } else {
-      line.stroke = 0pt;
-    }
-    return line
-  },
-)
+// Styles for the tables MyST writes with tablex: a bold header, a rule above and below it, no vertical lines.
+// Cells are set ragged and unhyphenated, since a justified narrow cell stretches and splits its words.
+#let tableCells(size) = cell => {
+  let body = {
+    set par(justify: false)
+    set text(size: size, hyphenate: false)
+    cell.content
+  }
+  (..cell, content: if cell.y == 0 { strong(body) } else { body })
+}
+// Booktabs rules: heavier at the top and bottom of the table, lighter under the header.
+// Only arkTablex knows the row count, so a style used on its own draws just the top and header rules.
+#let tableRules(header-rows: 1, rows: none) = line => {
+  line.stroke = if line.y == 0 or line.y == rows { arkGrey + 0.75pt } else if header-rows > 0 and line.y == header-rows { arkGrey + 0.5pt } else { 0pt }
+  line
+}
+#let arkTableStyle = (map-cells: tableCells(9pt), auto-vlines: false, map-hlines: tableRules())
+#let smallTableStyle = (map-cells: tableCells(7pt), auto-vlines: false, map-hlines: tableRules())
 
-#let smallTableStyle = (
-  map-cells: cell => {
-    if (cell.y == 0) {
-      return (..cell, content: strong(text(cell.content, 7pt)))
-    }
-    (..cell, content: text(cell.content, 7pt))
-  },
-  auto-vlines: false,
-  map-hlines: line => {
-    if (line.y == 0 or line.y == 1) {
-      line.stroke = arkGrey + 0.75pt;
-    } else {
-      line.stroke = 0pt;
-    }
-    return line
-  },
-)
+// Wraps MyST's tablex to count the rows, which the bottom rule needs, and to style a table MyST left unstyled.
+// Bind it with `#let tablex = arkTablex.with(tablex)`: template.typ does, and each article of a multi-article export must.
+#let arkTablex(base, ..args) = {
+  let named = args.named()
+  let cols = named.at("columns", default: auto)
+  let ncols = if type(cols) == int { cols } else if type(cols) == array { cols.len() } else { none }
+  // A plain cell fills one grid slot and a cellx fills its colspan times its rowspan; hlinex and vlinex count zero
+  let slots = args.pos().map(item => if type(item) != dictionary { 1 } else if item.at("tablex-dict-type", default: none) == "cell" { item.at("colspan", default: 1) * item.at("rowspan", default: 1) } else { 0 }).sum(default: 0)
+  let rows = if ncols != none and ncols > 0 { calc.ceil(slots / ncols) }
+  let style = (map-cells: tableCells(9pt), auto-vlines: false) + named
+  style.insert("map-hlines", tableRules(header-rows: named.at("header-rows", default: 1), rows: rows))
+  base(..style, ..args.pos())
+}
 
 // A small labelled block in the margin rail
 #let railItem(title, content) = {
@@ -121,7 +116,7 @@
 // A link shown without its scheme, so it fits the rail
 #let bareLink(url) = link(url, url.replace(regex("^https?://(www\.)?"), ""))
 
-// An author's family name with its particle, such as "van Beethoven"; the full name when MyST parsed none
+// An author's family name with its particle, such as "van Beethoven", or else the full name
 #let familyName(a) = (a.at("particle", default: none), a.at("family", default: a.name)).filter(x => x != none).join(" ")
 
 // Authors as an author-date citation names them: "Carroll", "Carroll and Lujan", "Carroll et al."
@@ -354,7 +349,7 @@
   let pages = if page-start != none and last-page != none { str(page-start) + "-" + str(last-page) }
 
   let rail = (
-    // A paper with a persistent identifier is ready to cite; a draft without one is not
+    // Shown once the paper has a persistent identifier, which marks it as ready to cite
     if doiUrl != none or otherVersions.len() > 0 {
       railItem("Cite as", {
         citation(frontmatter.authors, if type(fm.date) == datetime { fm.date.year() }, frontmatter.title, frontmatter.at("venue", default: none), volume, issue, pages)
@@ -467,6 +462,11 @@
   set par.line(numbering: if linenumbers { n => text(font: sansFont, size: 7pt, fill: arkGrey, str(n)) } else { none })
 
   show raw: set text(font: "DejaVu Sans Mono", size: 8pt)
+  // Typst reads ' after a digit as a prime, so "Table 1's" would print a prime. Restore the apostrophe,
+  // except in inline code, which a state marks because show rules cannot see their surroundings.
+  let inCode = state("ark-inline-code", false)
+  show raw.where(block: false): it => { inCode.update(true); it; inCode.update(false) }
+  show regex("\d's\b"): it => context if inCode.get() { it } else { it.text.slice(0, -2) + sym.quote.r.single + "s" }
   show raw.where(block: true): (it) => {
     set align(left)
     set par(justify: false)
@@ -492,6 +492,12 @@
   }
   // Figures and tables move whole to the next page rather than splitting a table across the break
   show figure: set block(above: 1.4em, below: 1.4em, breakable: false)
+  // MyST writes `show figure: set block(breakable: breakableDefault)` into each article of a multi-article
+  // export, where breakableDefault is true. An explicit argument outranks that set rule, so wrap figures and
+  // tables in an unbreakable block; theorem-like figures stay breakable, since a proof may span pages.
+  show figure: it => if it.placement == none and it.kind in ("figure", "table", "code", image, table, raw) {
+    block(above: 1.4em, below: 1.4em, breakable: false, it)
+  } else { it }
   set figure(placement: none)
 
   set bibliography(title: [References], style: "chicago-author-date")
@@ -499,6 +505,9 @@
     set text(9.5pt)
     set par(first-line-indent: 0pt, justify: false)
     set block(spacing: 0.7em)
+    // Typst's title casing capitalizes a small word after a comma: "Money, Credit, And Banking".
+    // Lowercase the words that are never given names; In, To and An can be, so they stay as set.
+    show regex(", (And|Or|Nor|But|Of|The|For) "): m => lower(m.text)
     it
   }
 

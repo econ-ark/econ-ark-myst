@@ -9,6 +9,12 @@
 #let proof = arkProof
 
 #let tableStyle = arkTableStyle
+// MyST writes the imports file only for a document that needs imports, and imports tablex only for one with a table
+[# if IMPORTS #]
+#import "myst-imports.typ" as mystImports
+#let tablex = dictionary(mystImports).at("tablex", default: none)
+#let tablex = if tablex != none { arkTablex.with(tablex) }
+[# endif #]
 
 // Every frontmatter string goes through s(), which escapes backslashes and double quotes for a Typst string
 #show: template.with(
