@@ -92,7 +92,7 @@ MyST `prf:` directives (`prf:theorem`, `prf:proposition`, `prf:lemma`, `prf:defi
 
 ## Tables
 
-Tables take captions above them and set their cells unjustified, unhyphenated and at 9pt. A table MyST parses from markdown or from a raw LaTeX `tabular` gets one automatic width per column, which crowds a table with many columns into the text column. For such a table, write a native Typst table in a `:::{raw:typst}` block, where you can set column widths, and pass the figure to `fullwidth`:
+Tables take captions above them, set their cells unjustified, unhyphenated and at 9pt, and draw a heavy rule above the header and below the last row, with a light rule under the header. A table MyST parses from markdown or from a raw LaTeX `tabular` gets one automatic width per column, which crowds a table with many columns into the text column. For such a table, write a native Typst table in a `:::{raw:typst}` block, where you can set column widths, and pass the figure to `fullwidth`:
 
 ```text
 :::{raw:typst}
@@ -145,16 +145,16 @@ An export with `articles:` renders each article as a separate Typst file, which 
 
 If you keep `articles:`, MyST restarts figure and table numbers in each article while the PDF numbers them continuously, so references and captions disagree. Set `numbering: {figure: {continue: true}, table: {continue: true}}` in the frontmatter of every article after the first.
 
-A table without a caption, such as the output of a code cell, is drawn with every grid line in an article after the first. To give it the template's rules, start that article with a block that rebinds the style for the rest of the file:
+Every article of an `articles:` export, the first included, is a separate file that draws MyST tables with every grid line. To give them the template's rules, start each article that has a table with a block that rebinds MyST's table function for the rest of the file:
 
 ```text
 :::{raw:typst}
-#import "econark.typ": arkTableStyle
-#let tableStyle = arkTableStyle
+#import "econark.typ": arkTablex
+#let tablex = arkTablex.with(tablex)
 :::
 ```
 
-Import `smallTableStyle` instead for 7pt tables.
+For 7pt tables, also import `smallTableStyle` and add `#let tableStyle = smallTableStyle`. Rebinding `tableStyle` to `arkTableStyle` alone, the earlier recipe, sets the header and cells but leaves the table without its bottom rule.
 
 The running header of an `articles:` export takes the `short_title` of the project. To use a different one, set `short_title` in the export block.
 
@@ -163,6 +163,8 @@ The running header of an `articles:` export takes the `short_title` of the proje
 | Symptom | Cause | Workaround |
 |---------|-------|------------|
 | `[Section %s](#label)` prints "Section ??" | MyST resolves `%s` to nothing for headings in a single-article export, even with `numbering: headings: true` ([mystmd#3035](https://github.com/jupyter-book/mystmd/pull/3035)) | Refer to sections by name with `@label` or `[](#label)`, which print the section title |
+| A table that breaks across pages has no rule at the foot of each page before the last | The table package MyST uses draws rules only at fixed rows | The header, with its rules, repeats on each page, and the last page ends with the bottom rule |
+| A bibliography title reads "Stock Prices, News, In Markets" | Typst's title casing capitalizes a small word after a comma. The template lowercases And, Or, Nor, But, Of, The and For there, and leaves In, To and An, which can be first names | Write the word in braces in the `.bib` file, as in `{in}` |
 | A long table without a caption prints `state("tablex_tablex_header_pages__...") did not converge` | The table package MyST uses repeats the header on each page and needs more layout passes than Typst allows | Ignore the warning, because the table still breaks across pages with its header repeated |
 | A table or figure taller than the page runs off the bottom | Figures and tables never break across pages, which stops a short table from splitting | Split a long table into two |
 

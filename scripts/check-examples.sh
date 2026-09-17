@@ -34,7 +34,10 @@ ANCHORS=(
   'Code license'
   'Department of Economics, Johns Hopkins'
   'Computational Economics Grant (G-2026-00001)'
+  "1990$(printf '\342\200\231')s"
 )
+
+PRIME=$(printf '\342\200\262')
 
 fail=0
 ok()  { printf 'ok    %s\n' "$*"; }
@@ -51,6 +54,12 @@ check_text() {
     bad "$name: unresolved reference: $(grep -m1 '??' <<<"$text")"
   else
     ok "$name: no unresolved references"
+  fi
+  # Typst sets ' after a digit as a prime (U+2032); the template restores the apostrophe
+  if grep -q "[0-9]$PRIME" <<<"$text"; then
+    bad "$name: prime instead of apostrophe: $(grep -m1 "[0-9]$PRIME" <<<"$text")"
+  else
+    ok "$name: no prime after a digit"
   fi
   for a in "$@"; do
     if grep -qF -- "$a" <<<"$text"; then ok "$name: contains '$a'"; else bad "$name: missing '$a'"; fi
@@ -84,6 +93,14 @@ self_test() {
     ok "self-test: a literal ?? is caught"
   else
     bad "self-test: a literal ?? went undetected"
+  fi
+
+  seeded="$good"$'\n'"Table 1${PRIME}s parameters."
+  out=$(check_text seeded "$seeded" "${ANCHORS[@]}")
+  if grep -q 'FAIL.*prime' <<<"$out"; then
+    ok "self-test: a prime after a digit is caught"
+  else
+    bad "self-test: a prime after a digit went undetected"
   fi
 
   seeded=${good//Proposition 1 (Concavity)/}

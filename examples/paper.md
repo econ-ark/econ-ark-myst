@@ -97,7 +97,7 @@ The Euler equation implied by @eq-bellman is $u'(c_t) = \beta R \, \mathbb{E}_t[
 
 # Results
 
-@tbl-calibration lists the parameters used in the solution. @prop-concave describes the shape of the solution.
+@tbl-calibration lists the parameters used in the solution, which come from the 1990's literature. @prop-concave describes the shape of the solution.
 
 :::{prf:proposition} Concavity
 :label: prop-concave
