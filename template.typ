@@ -9,6 +9,18 @@
 #let proof = arkProof
 
 #let tableStyle = arkTableStyle
+// Admonitions, replacing the boxes defined in the imports above. MyST gives its ten kinds four
+// colours, which the four logo curves and the brand blue take over.
+#let noteBlock = arkAdmonition.with(heading: [Note], color: arkBlue)
+#let importantBlock = arkAdmonition.with(heading: [Important], color: arkBlue)
+#let tipBlock = arkAdmonition.with(heading: [Tip], color: arkCurves.at(3))
+#let hintBlock = arkAdmonition.with(heading: [Hint], color: arkCurves.at(3))
+#let seealsoBlock = arkAdmonition.with(heading: [See Also], color: arkCurves.at(3))
+#let attentionBlock = arkAdmonition.with(heading: [Attention], color: arkCurves.at(0))
+#let cautionBlock = arkAdmonition.with(heading: [Caution], color: arkCurves.at(0))
+#let warningBlock = arkAdmonition.with(heading: [Warning], color: arkCurves.at(0))
+#let dangerBlock = arkAdmonition.with(heading: [Danger], color: arkCurves.at(1))
+#let errorBlock = arkAdmonition.with(heading: [Error], color: arkCurves.at(1))
 // MyST writes the imports file only for a document that needs imports, and imports tablex only for one with a table
 [# if IMPORTS #]
 #import "myst-imports.typ" as mystImports

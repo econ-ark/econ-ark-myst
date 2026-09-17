@@ -48,7 +48,7 @@ While the repository is private, MyST cannot download it and the URL above fails
 | `copyright` | Replaces the author names in the margin's copyright line. Text that already carries "©" or starts with "Copyright" is printed as written | "Copyright © year" and the authors' family names |
 | `funding` | Each statement, then each award as "name (id)", in the starred footnote on the title. Write `funding` as a list, because mystmd 1.10.1 stops with `funding?.forEach is not a function` on a single funding object | Omitted |
 | `numbering` | `headings: false` removes the section numbers, including the appendix letters | Sections are numbered |
-| `binder`, `github`, `downloads` | Materials block under the abstract, described below | With none of these and no `remark` option, the four-color rule alone ends the front matter |
+| `binder`, `github`, `downloads` | Materials block under the abstract, described below | With none of these and no `remark` option, the four-colour rule alone ends the front matter |
 | `first_page` | Starting page number, also the first page in the "Cite as" entry | Pages start at 1 |
 | `bibliography` | References, in Chicago author-date style, after the declarations | No references section |
 
@@ -56,7 +56,7 @@ These are all the fields the template reads. It ignores the fields that serve a 
 
 The "Cite as" block appears once the paper has a `doi`, `arxiv` or `zenodo` link, since a draft without a persistent identifier changes under its readers. It gives a Chicago author-date entry, the style of the reference list, followed by the DOI as a URL, the arXiv identifier and a link to the Zenodo archive. The entry lists up to three authors and shortens more to the first author and "et al." MyST reads a suffix such as "Jr." as part of the family name. To cite such a name correctly, give the author's `name` as an object with `given`, `family` and `suffix`.
 
-The materials block lists what exists for the paper beyond the PDF, in up to four columns under rules in the four colors of the Econ-ARK logo. All four rules print however many columns a paper fills. A paper with no materials keeps the rules without the heading, as the line between its front matter and its text. The columns keep this order:
+The materials block lists what exists for the paper beyond the PDF, in up to four columns under rules in the four colours of the Econ-ARK logo. All four rules print however many columns a paper fills. A paper with no materials keeps the rules without the heading, as the line between its front matter and its text. The columns keep this order:
 
 | Column | Source |
 |--------|--------|
@@ -167,6 +167,10 @@ Parts behave differently. In an `articles:` export MyST collects each part from 
 
 MyST `prf:` directives (`prf:theorem`, `prf:proposition`, `prf:lemma`, `prf:definition`, `prf:assumption`, `prf:proof` and the rest) are set in the flow of the text: a bold label and number, the optional title in parentheses, then the statement. Theorems, propositions, lemmas, corollaries, conjectures and claims are italic. Definitions, assumptions and remarks are upright. A proof ends with a square. Each kind is numbered separately, and `@label` gives "Proposition 1".
 
+## Admonitions
+
+A MyST admonition (`note`, `warning`, `tip` and the rest) stands against a rule in the palette, with its label in the same colour. MyST's own filled box is replaced. Its ten kinds take four colours. Econ-ARK blue carries `note` and `important`, and three logo curves carry the rest: green for `tip`, `hint` and `seealso`, orange for `attention`, `caution` and `warning`, pink for `danger` and `error`. A MyST site gets the same treatment from `theme.css`.
+
 ## Tables
 
 Tables take captions above them, set their cells unjustified, unhyphenated and at 9pt, and draw a heavy rule above the header and below the last row, with a light rule under the header. A table MyST parses from markdown or from a raw LaTeX `tabular` gets one automatic width per column, which crowds a table with many columns into the text column. For such a table, write a native Typst table in a `:::{raw:typst}` block, where you can set column widths, and pass the figure to `fullwidth`:
@@ -240,10 +244,6 @@ The running header of an `articles:` export takes the `short_title` of the proje
 `theme.css` gives a MyST site the look of the PDF: the same palette and typefaces, section headings in Econ-ARK blue, captions and tables in the sans, code on the pale blue the PDF uses, and the four logo curves as the rule that closes the front matter. Point a site at it under either theme:
 
 ```yaml
-project:
-  # Publishes the logo at the site's root, where the stylesheet looks for it
-  static_files:
-    - logo.png
 site:
   template: article-theme
   options:
@@ -261,7 +261,7 @@ project:
   banner: banner.svg
 ```
 
-`logo.png` is the mark the PDF prints in its margin. book-theme shows it in the site's navigation. article-theme leaves that place empty beside a paper. The stylesheet puts the published file over the title instead. The wordmark is black. At night both marks rest on a white plate.
+`logo.png` is the mark the PDF prints in its margin, and book-theme shows the same file in the site's navigation. article-theme leaves that place empty beside a paper. The stylesheet carries its own copy of the mark and sets it over the title. The wordmark is black. At night both marks rest on a white plate.
 
 A reader sees Libertinus Serif, Roboto and Libertinus Mono only when those fonts are installed on their machine. Without them the stylesheet falls back to Georgia, the system sans and the system mono, and the hierarchy survives. To serve the fonts yourself, list the files under `static_files` and add an `@font-face` block to a stylesheet of your own.
 

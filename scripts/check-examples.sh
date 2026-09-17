@@ -24,6 +24,7 @@ ANCHORS=(
   'BibTeX'
   'JEL codes'
   'Proposition 1 (Concavity)'
+  'Admonitions take a rule in the palette'
   'Declaration of generative AI use'
   'Carroll 1997'
   'References'

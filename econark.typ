@@ -202,6 +202,23 @@
 // Theorem-like blocks from MyST prf: directives, set in flow the way economics papers set them.
 // Replaces MyST's own proof(), which floats each block to the top of the page inside a tinted box.
 #let italicKinds = ("theorem", "lemma", "proposition", "corollary", "conjecture", "claim")
+// Admonitions, which MyST otherwise draws as a filled box in a colour outside the palette.
+// A rule in the palette carries them instead, with the label in the same colour.
+#let arkAdmonition(body, heading: none, color: arkBlue) = block(
+  width: 100%,
+  above: 1.2em,
+  below: 1.2em,
+  stroke: (left: 2pt + color),
+  inset: (left: 9pt, top: 5pt, bottom: 5pt),
+  {
+    set par(first-line-indent: 0pt)
+    if heading != none {
+      block(below: 0.5em, text(font: sansFont, size: 9pt, weight: "semibold", fill: color, heading))
+    }
+    body
+  },
+)
+
 #let arkProof(body, heading: [], kind: "proof", supplement: "Proof", labelName: none, color: none, float: false) = {
   let note = if heading != [] { [ (#heading)] }
   if kind == "proof" {

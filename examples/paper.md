@@ -114,6 +114,10 @@ If income risk is present, the consumption function is strictly concave. Its slo
 See @Carroll1997 for the argument under constant relative risk aversion.
 :::
 
+:::{note}
+Admonitions take a rule in the palette rather than the filled box MyST draws by default.
+:::
+
 ```python
 from HARK.ConsumptionSaving.ConsIndShockModel import IndShockConsumerType
 

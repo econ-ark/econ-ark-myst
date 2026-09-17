@@ -51,14 +51,10 @@ html.dark .myst-home-link-logo {
 
 /*
  * article-theme shows no site logo beside a paper, so the paper carries the mark the PDF
- * prints at the top of its margin. It appears when the project publishes the file:
- *
- *   project:
- *     static_files:
- *       - logo.png
- *
- * A project that publishes no logo shows nothing here. The mark stands over the title
- * rather than out in the margin, where the theme leaves too little room at most widths.
+ * prints at the top of its margin. The mark is the logo at 240px, carried in this file so
+ * that a site needs no second copy of it and no file can go missing, and it stands over
+ * the title rather than out in the margin, where the theme leaves too little room at most
+ * widths.
  */
 .myst-article-header-fm::before {
   content: "";
@@ -67,7 +63,7 @@ html.dark .myst-home-link-logo {
   width: 96px;
   height: 66px;
   margin-bottom: 0.9rem;
-  background: url("/logo.png") no-repeat left center / contain;
+  background: url("data:image/png;base64,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") no-repeat left center / contain;
 }
 
 html.dark .myst-article-header-fm::before {
@@ -174,7 +170,7 @@ article.article cite a {
 /*
  * The four curves close the front matter, where the PDF draws them. A page with no
  * abstract, key points or summary has no parts block, and the rule falls to the anchor
- * that sits in its place, so the colors show whichever fields an author fills in.
+ * that sits in its place, so the colours show whichever fields an author fills in.
  */
 .myst-fm-parts::after,
 #skip-to-article:not(:has(+ .myst-fm-parts))::after {
@@ -295,7 +291,7 @@ pre code {
   font-family: var(--ark-mono);
 }
 
-/* Code in a sentence takes the color of the sentence, as it does in the PDF */
+/* Code in a sentence takes the colour of the sentence, as it does in the PDF */
 article.article :not(pre) > code {
   font-size: 0.92em;
   color: inherit;
@@ -338,19 +334,50 @@ article.article .myst-proof-title {
   color: var(--ark-blue);
 }
 
-/* Notes: the code block's tint with the link blue at the edge */
-aside.myst-admonition-note {
-  background: var(--ark-tint);
-  border-color: var(--ark-blue);
+/*
+ * Admonitions, against a rule in the palette rather than a filled box, as in the PDF.
+ * MyST's ten kinds take four colours: the brand blue, then three of the logo curves.
+ */
+aside.myst-admonition {
+  --ark-admonition: var(--ark-blue);
+  background: transparent;
+  border: 0;
+  border-left: 2px solid var(--ark-admonition);
+  border-radius: 0;
   box-shadow: none;
 }
 
-aside.myst-admonition-note .myst-admonition-header {
+aside.myst-admonition-tip,
+aside.myst-admonition-hint,
+aside.myst-admonition-seealso {
+  --ark-admonition: var(--ark-curve-4);
+}
+
+aside.myst-admonition-attention,
+aside.myst-admonition-caution,
+aside.myst-admonition-warning {
+  --ark-admonition: var(--ark-curve-1);
+}
+
+aside.myst-admonition-danger,
+aside.myst-admonition-error {
+  --ark-admonition: var(--ark-curve-2);
+}
+
+aside.myst-admonition .myst-admonition-header,
+aside.myst-admonition .myst-admonition-header-text,
+aside.myst-admonition .myst-admonition-header-icon {
   background: transparent;
+  border: 0;
+  padding-bottom: 0;
   font-family: var(--ark-sans);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: var(--ark-blue);
+  color: var(--ark-admonition);
+}
+
+aside.myst-admonition .myst-admonition-body > :first-child {
+  margin-top: 0.3em;
 }
 
 /* Back matter: acknowledgments and the rest, then the footnotes and the references */

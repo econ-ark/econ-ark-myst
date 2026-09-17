@@ -12,9 +12,6 @@ project:
           name: Computational Economics Grant
   bibliography:
     - examples/main.bib
-  # Publishes the logo at the site's root, where the stylesheet looks for the margin mark
-  static_files:
-    - logo.png
   # Without a table of contents MyST would take the README for a page of the site
   toc:
     - file: examples/paper.md
