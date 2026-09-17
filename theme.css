@@ -55,6 +55,19 @@ html.dark {
   max-width: 100%;
 }
 
+/*
+ * The sidebar runs to the line where the paper's text begins, so a column wider than the
+ * space left for it lands on the paper. Pin it to the margin band instead, which ends one
+ * column earlier.
+ */
+@media (min-width: 1280px) {
+  .myst-primary-sidebar-pointer {
+    grid-column: page-start / body-outset-start;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
 .myst-toc a {
   overflow-wrap: anywhere;
 }
