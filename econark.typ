@@ -80,7 +80,14 @@
   let rows = if ncols != none and ncols > 0 { calc.ceil(slots / ncols) }
   let style = (map-cells: tableCells(9pt), auto-vlines: false) + named
   style.insert("map-hlines", tableRules(header-rows: named.at("header-rows", default: 1), rows: rows))
-  base(..style, ..args.pos())
+  // A widened table fills the wide width, as a wide figure does: the label column keeps its width, the rest share it
+  context {
+    let wideStyle = style
+    if nextFigureWide.get() and type(cols) == int and cols > 1 {
+      wideStyle.insert("columns", (auto,) + (1fr,) * (cols - 1))
+    }
+    base(..wideStyle, ..args.pos())
+  }
 }
 
 // A small labelled block in the margin rail
