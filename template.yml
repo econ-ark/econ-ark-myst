@@ -33,6 +33,13 @@ doc:
   - id: date
     description: Shown in the margin; MyST uses the build date when it is unset
   - id: license
+    description: The content license shows in the margin; a separate code license shows in the reproduce strip
+  - id: copyright
+    description: Copyright holder, replacing the author names in the margin's copyright line
+  - id: funding
+    description: Funding statements and awards, added to the starred title footnote; write it as a list
+  - id: numbering
+    description: "headings: false turns heading numbers off"
   - id: bibliography
   - id: venue
   - id: open_access
@@ -66,6 +73,9 @@ parts:
     description: >
       An abstract is a short summary of your research paper or report.
     max_words: 500
+  - id: summary
+    description: Non-technical summary, shown after the abstract.
+    max_words: 300
   - id: keypoints
     description: >
       Three or four short bullet points, shown in the margin under the logo,

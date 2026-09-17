@@ -88,7 +88,11 @@
   [# for aff in doc.affiliations #]
       (
         id: "[-aff.index-]",
+  [# if aff.department and aff.name.indexOf(aff.department) == -1 #]
+        name: [-s(aff.department ~ ", " ~ aff.name)-],
+  [# else #]
         name: [-s(aff.name)-],
+  [# endif #]
   [# if aff.ror #]
         ror: [-s(aff.ror)-],
   [# endif #]
@@ -140,6 +144,36 @@
   title-note: [
     [-parts.title_note-]
   ],
+  [# endif #]
+  [# if parts.summary #]
+  summary: [
+    [-parts.summary-]
+  ],
+  [# endif #]
+  [# if doc.funding #]
+  funding: (
+  [# for entry in doc.funding #]
+  [# if entry.statement #]
+    [-s(entry.statement)-],
+  [# endif #]
+  [# for award in entry.awards #]
+  [# if award.name and award.id #]
+    [-s(award.name ~ " (" ~ award.id ~ ")")-],
+  [# elif award.name or award.id #]
+    [-s(award.name or award.id)-],
+  [# endif #]
+  [# endfor #]
+  [# endfor #]
+  ),
+  [# endif #]
+  [# if doc.copyright #]
+  copyright: [-s(doc.copyright)-],
+  [# endif #]
+  [# if doc.license.code #]
+  code-license: (id: [-s(doc.license.code.id)-], name: [-s(doc.license.code.name)-], url: [-s(doc.license.code.url)-]),
+  [# endif #]
+  [# if doc.numbering.heading_1.enabled === false or (doc.numbering.heading_1 === undefined and doc.numbering.all.enabled === false) #]
+  heading-numbering: none,
   [# endif #]
   [# if doc.first_page #]
   page-start: [-doc.first_page-],

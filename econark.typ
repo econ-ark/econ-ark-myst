@@ -121,10 +121,41 @@
 // A link shown without its scheme, so it fits the rail
 #let bareLink(url) = link(url, url.replace(regex("^https?://(www\.)?"), ""))
 
+// An author's family name with its particle, such as "van Beethoven"; the full name when MyST parsed none
+#let familyName(a) = (a.at("particle", default: none), a.at("family", default: a.name)).filter(x => x != none).join(" ")
+
+// Authors as an author-date citation names them: "Carroll", "Carroll and Lujan", "Carroll et al."
+#let shortAuthors(authors) = if authors.len() == 0 { none } else if authors.len() == 1 { familyName(authors.first()) } else if authors.len() == 2 { authors.map(familyName).join(" and ") } else { familyName(authors.first()) + " et al." }
+
+// Copyright line and license terms for the margin. The copyright field replaces the generated holder,
+// and is printed as written when it already carries a copyright sign.
+#let copyrightNotice(authors, year, copyright, license) = {
+  let holder = if copyright == none {
+    ("Copyright ©", year, shortAuthors(authors)).filter(x => x != none).map(str).join(" ")
+  } else if copyright.contains("©") or lower(copyright).starts-with("copyright") {
+    copyright
+  } else {
+    ("Copyright ©", year, copyright).filter(x => x != none).map(str).join(" ")
+  }
+  let close(s) = if s.ends-with(regex("[.?!]")) { s } else { s + "." }
+  [#close(holder) ]
+  if license != none {
+    // pubmatter's wording, so existing papers read the same
+    let terms = (
+      "CC-BY-4.0": [, which enables reusers to distribute, remix, adapt, and build upon the material in any medium or format, so long as attribution is given to the creator],
+      "CC-BY-NC-4.0": [, which enables reusers to distribute, remix, adapt, and build upon the material in any medium or format for _noncommercial purposes only_, and only so long as attribution is given to the creator],
+      "CC-BY-NC-SA-4.0": [, which enables reusers to distribute, remix, adapt, and build upon the material in any medium or format for noncommercial purposes only, and only so long as attribution is given to the creator. If you remix, adapt, or build upon the material, you must license the modified material under identical terms],
+      "CC-BY-ND-4.0": [, which enables reusers to copy and distribute the material in any medium or format in _unadapted form only_, and only so long as attribution is given to the creator],
+      "CC-BY-NC-ND-4.0": [, which enables reusers to copy and distribute the material in any medium or format in _unadapted form only_, for _noncommercial purposes only_, and only so long as attribution is given to the creator],
+    )
+    [This article is distributed under the terms of the #link(license.url, license.name) license#terms.at(license.id, default: none).]
+  }
+}
+
 // Chicago author-date entry for the paper itself, the style of its reference list.
 // Lists up to three authors; with more, the first author and "et al."
 #let citation(authors, year, title, venue, volume, issue, pages) = {
-  let family(a) = (a.at("particle", default: none), a.at("family", default: a.name)).filter(x => x != none).join(" ")
+  let family = familyName
   let inverted(a) = if "family" in a { (family(a), a.at("given", default: none), a.at("suffix", default: none)).filter(x => x != none).join(", ") } else { a.name }
   let direct(a) = if "family" in a { ((a.at("given", default: none), family(a)).filter(x => x != none).join(" "), a.at("suffix", default: none)).filter(x => x != none).join(", ") } else { a.name }
   let names = if authors.len() == 1 {
@@ -200,6 +231,11 @@
   zenodo: none,
   volume: none,
   issue: none,
+  summary: none,
+  // Funding statements and awards, as strings, added to the starred title footnote
+  funding: (),
+  copyright: none,
+  code-license: none,
   // The paper's content.
   body
 ) = {
@@ -290,7 +326,8 @@
   // Title block, with the title note and author notes as a starred footnote on the title
   {
     set par(first-line-indent: 0pt, justify: false)
-    let notes = (if title-note != none { (title-note,) } else { () }) + frontmatter.authors.filter(a => "note" in a).map(a => [#a.name: #a.note])
+    let fundingNote = funding.filter(f => f != "").map(f => if f.ends-with(regex("[.?!]")) { f } else { f + "." }).join(" ")
+    let notes = (if title-note != none { (title-note,) } else { () }) + (if fundingNote != none { (fundingNote,) } else { () }) + frontmatter.authors.filter(a => "note" in a).map(a => [#a.name: #a.note])
     if notes.len() > 0 {
       let fm-title = fm
       fm-title.title = [#fm.title#footnote(numbering: "*", notes.join(" "))]
@@ -305,6 +342,7 @@
   let reproduce = (
     if github != none { ("Code", bareLink(github)) },
     if binder != none { ("Run online", link(binder, "Launch on Binder")) },
+    if code-license != none { ("Code license", link(code-license.url, code-license.id)) },
   ).filter(x => x != none)
 
   // The DOI follows the citation as a URL, as Chicago style asks; arXiv and Zenodo follow as short links
@@ -330,12 +368,19 @@
     if corresponding != none and "email" in corresponding {
       railItem("Correspondence", [#corresponding.name\ #link("mailto:" + corresponding.email, corresponding.email)])
     },
-    if "license" in fm and fm.license != none {
-      railItem([License #h(1fr) #pubmatter.show-license-badge(color: arkGrey, fm)], {
+    {
+      let license = frontmatter.at("license", default: none)
+      let year = if type(fm.date) == datetime { fm.date.year() }
+      let notice = {
         set par(justify: false)
         set text(size: 6.5pt, fill: arkGrey)
-        pubmatter.show-copyright(fm)
-      })
+        copyrightNotice(frontmatter.authors, year, copyright, license)
+      }
+      if license != none {
+        railItem([License #h(1fr) #pubmatter.show-license-badge(color: arkGrey, fm)], notice)
+      } else if copyright != none {
+        railItem("Copyright", notice)
+      }
     },
   ).filter(x => x != none)
 
@@ -372,7 +417,7 @@
     // Abstract, keywords and JEL codes, set as a run-in paragraph in the economics convention,
     // then key points that did not fit the rail and the reproducibility strip, so both are read before the paper begins
     let mainKeyPoints = keypoints != none and not railKeyPoints
-    if ("abstracts" in fm or "keywords" in fm or jel.len() > 0 or reproduce.len() > 0 or mainKeyPoints) {
+    if ("abstracts" in fm or summary != none or "keywords" in fm or jel.len() > 0 or reproduce.len() > 0 or mainKeyPoints) {
       block(above: 1.4em, below: 2em, inset: (x: 1.5em), {
         set par(first-line-indent: 0pt)
         set text(size: 10pt)
@@ -383,6 +428,14 @@
             abs.content
             parbreak()
           }
+        }
+        // The summary part: the non-technical summary some discussion paper series ask for
+        if summary != none {
+          v(0.5em)
+          text(font: sansFont, weight: "semibold", fill: arkBlue, size: 9.5pt, "Non-technical summary")
+          h(0.7em)
+          summary
+          parbreak()
         }
         set text(size: 9pt)
         set par(justify: false, spacing: 0.65em)
