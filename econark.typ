@@ -35,7 +35,7 @@
   }
 }
 
-// Styles for the tables MyST writes with tablex: a bold header, a rule above and below it, no vertical lines.
+// Styles for the tables MyST writes with tablex: a bold header between two rules, with horizontal rules only.
 // Cells are set ragged and unhyphenated, since a justified narrow cell stretches and splits its words.
 #let tableCells(size) = cell => {
   let body = {
@@ -217,7 +217,6 @@
   paper-size: "us-letter",
   page-start: none,
   last-page: none,
-  max-page: none,
   keypoints: none,
   // Citation details for the "Cite as" block; the DOI is kept out of frontmatter so the page header does not repeat it
   doi: none,
@@ -259,7 +258,8 @@
       inset: (top: 8pt, right: 2pt),
       context [
         #set text(font: sansFont, size: 8pt, fill: arkGrey)
-        #if "venue" in fm { fm.venue }
+        // The venue with its volume and issue, in the form the "Cite as" entry uses
+        #if "venue" in fm [#fm.venue#if volume != none [ #volume]#if issue != none [ (#issue)]]
         #h(1fr)
         #counter(page).display()
       ]
@@ -337,7 +337,7 @@
   counter(footnote).update(0)
 
   let corresponding = pubmatter.get-corresponding-author(fm)
-  // Only web addresses print; a download that names one of the project's own exports resolves on the MyST site alone
+  // Only web addresses print; a download that points to one of the project's own exports resolves on the MyST site alone
   let webDownloads = downloads.filter(d => d.url.starts-with(regex("https?://")))
   let bibtexUrl = webDownloads.find(d => d.url.ends-with(".bib"))
   let formats = webDownloads.filter(d => not d.url.ends-with(".bib"))
@@ -509,10 +509,10 @@
     set text(size: 9pt)
     it
   }
-  // Figures and tables move whole to the next page rather than splitting a table across the break
+  // Figures and tables move whole to the next page when the current page is too short for them
   show figure: set block(above: 1.4em, below: 1.4em, breakable: false)
   // MyST writes `show figure: set block(breakable: breakableDefault)` into each article of a multi-article
-  // export, where breakableDefault is true. An explicit argument outranks that set rule, so wrap figures and
+  // export, where breakableDefault is true. An explicit argument takes precedence over that set rule, so wrap figures and
   // tables in an unbreakable block; theorem-like figures stay breakable, since a proof may span pages.
   show figure: it => if it.placement == none and it.kind in ("figure", "table", "code", image, table, raw) {
     block(above: 1.4em, below: 1.4em, breakable: false, it)
