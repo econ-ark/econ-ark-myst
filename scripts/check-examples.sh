@@ -244,6 +244,13 @@ check_site() {
   else
     bad "$name: no <article class=\"... article ...\"> under $dir, so every article.article rule is inert"
   fi
+  # article-theme takes its downloads from the project, not from the paper's frontmatter, so a
+  # paper that lists them still reaches a reader with no way to the PDF unless the project does too
+  if find "$dir" -name 'paper-*.pdf' 2>/dev/null | grep -q .; then
+    ok "$name: the site serves the paper as a download"
+  else
+    bad "$name: no paper-*.pdf under $dir, so a reader of the site cannot reach the PDF"
+  fi
   # The softer page is painted over the theme's own white, which the theme writes as a utility
   # class. A theme that renamed it would take its whites back and leave the page half soft.
   if grep -qE 'class="[^"]*bg-white' <<<"$html"; then
@@ -411,7 +418,7 @@ self_test() {
   if grep -q 'FAIL.*unstyled' <<<"$out" && grep -q 'FAIL.*no banner' <<<"$out" &&
     grep -q 'FAIL.*rule is inert' <<<"$out" && grep -q 'FAIL.*four-colour rule is missing' <<<"$out" &&
     grep -q 'FAIL.*vanishes at night' <<<"$out" && grep -q "FAIL.*MyST's own mark" <<<"$out" &&
-    grep -q 'FAIL.*soften the theme' <<<"$out"; then
+    grep -q 'FAIL.*soften the theme' <<<"$out" && grep -q 'FAIL.*cannot reach the PDF' <<<"$out"; then
     ok "self-test: a site without the stylesheet, the banner, the logos or the classes it styles is caught"
   else
     bad "self-test: a site missing the stylesheet, the banner, the logos or its classes went undetected"

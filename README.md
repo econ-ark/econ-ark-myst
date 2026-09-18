@@ -258,6 +258,19 @@ site:
 
 `logo.png` is the wide website lockup, and `logo-dark.png` is the same lockup with a white wordmark, which the themes swap in at night. `favicon.png` is the four curves alone on the brand blue, because the wordmark is illegible at 16 pixels. Paths are relative to the `myst.yml` that holds them. This repository keeps its own at the root, beside the template and the stylesheet.
 
+article-theme draws its downloads panel from the project, not from the paper whose page it is showing, so a paper that lists `downloads` in its own frontmatter still reaches the site with no link to its PDF. Name them under `project:` as well, with `file:` rather than `url:`, and the site copies each one in and links it:
+
+```yaml
+project:
+  downloads:
+    - file: examples/exports/paper.pdf
+      title: Latest version
+    - file: examples/paper.bib
+      title: BibTeX
+```
+
+The paper's own `downloads` still feed the PDF's materials block, where every entry has to be a web address. The two lists coexist. The paper carries absolute URLs for print. The project carries files for the site.
+
 ### Using this template from another repository
 
 The PDF side works over the network. Point an export at this repository's URL and MyST clones it:
@@ -321,7 +334,7 @@ myst build --typst
 
 ## Checks
 
-`scripts/check-examples.sh` rebuilds the examples and reads what they produced. It fails when a PDF was not written, when a literal `??` marks an unresolved reference, when text from a template feature is missing, when the PDF carries a creation timestamp, when the tall table stays on one page and runs off its foot, when a caption is orphaned from its table, when the tracked PDF's text or rendered pages no longer match what the sources produce, when a font weight resolved to a file the template did not ask for, when either theme's site is missing the stylesheet, the banner, a logo, the favicon or the classes the stylesheet reaches the paper through, when an admonition's rule is off the palette, and when Typst warns about a file of this template rather than an imported package. `myst build` exits 0 in all of these cases. `--self-test` seeds each defect and confirms the check catches it. CI runs both on every push with the same Typst, mystmd and fonts used for the tracked PDF.
+`scripts/check-examples.sh` rebuilds the examples and reads what they produced. It fails when a PDF was not written, when a literal `??` marks an unresolved reference, when text from a template feature is missing, when the PDF carries a creation timestamp, when the tall table stays on one page and runs off its foot, when a caption is orphaned from its table, when the tracked PDF's text or rendered pages no longer match what the sources produce, when a font weight resolved to a file the template did not ask for, when either theme's site is missing the stylesheet, the banner, a logo, the favicon, the paper as a download, or the classes the stylesheet reaches the paper through, when an admonition's rule is off the palette, and when Typst warns about a file of this template rather than an imported package. `myst build` exits 0 in all of these cases. `--self-test` seeds each defect and confirms the check catches it. CI runs both on every push with the same Typst, mystmd and fonts used for the tracked PDF.
 
 ## License
 

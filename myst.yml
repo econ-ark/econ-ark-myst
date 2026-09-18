@@ -12,6 +12,13 @@ project:
           name: Computational Economics Grant
   bibliography:
     - examples/main.bib
+  # article-theme reads its downloads panel from the project, not from the paper's own
+  # frontmatter, so a paper that lists downloads still needs them named here to reach the site
+  downloads:
+    - file: examples/exports/paper.pdf
+      title: Latest version
+    - file: examples/paper.bib
+      title: BibTeX
   # Without a table of contents MyST would take the README for a page of the site
   toc:
     - file: examples/paper.md
