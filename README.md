@@ -21,8 +21,8 @@ MyST clones the template from that URL each time it builds.
 ## Requirements
 
 - Typst 0.13 or newer (tested with 0.13.1 and 0.15.1). Typst 0.12 fails inside the `pubmatter` package.
-- Install the [Fira](https://github.com/mozilla/Fira) release for the text and code, and [Fira Math](https://github.com/firamath/firamath) for the equations. One family sets the whole paper: Fira Sans for text and apparatus, Fira Mono for code, and Fira Math, its OpenType math companion, for everything between dollars. Without them the template still compiles with fonts bundled in the Typst binary, falling back to New Computer Modern Sans, DejaVu Sans Mono and New Computer Modern Math.
-- Ask only for a weight that has a file. Fira Sans carries 400, 500, 600 and 700, and the template stays on those. A weight with no file of its own sits midway between two that have one. The order the machine happened to find those two in then decides which it uses.
+- Install the TrueType files from the [Fira](https://github.com/mozilla/Fira) release for the text and code, and [Fira Math](https://github.com/firamath/firamath) for the equations. One family sets the whole paper: Fira Sans for text and apparatus, Fira Mono for code, and Fira Math, its OpenType math companion, for everything between dollars. Without them the template still compiles with fonts bundled in the Typst binary, falling back to New Computer Modern for the text, DejaVu Sans Mono for code and New Computer Modern Math for equations. Typst's bundled faces are serif apart from the mono, so a paper built without Fira comes out in a serif.
+- Ask only for a weight that has a file. Fira Sans carries 400, 500, 600 and 700, and the template stays on those. Take one format and keep to it. The release carries the same faces as `ttf` and as `otf`, this repository builds from the `ttf`, and a machine holding both renders whichever it reaches first. A weight with no file of its own sits midway between two that have one. The order the machine happened to find those two in then decides which it uses.
 
 ## Frontmatter
 
@@ -53,7 +53,7 @@ MyST clones the template from that URL each time it builds.
 | `first_page` | Starting page number, also the first page in the "Cite as" entry | Pages start at 1 |
 | `bibliography` | References, in Chicago author-date style, after the declarations | No references section |
 
-These are all the fields the template reads. It ignores the fields that serve a website or a build, such as `description`, `thumbnail` and `downloads`, along with author `url`, `roles` and contact details, and affiliation addresses.
+These are all the fields the template reads. It ignores the fields that serve a website or a build, such as `description` and `thumbnail`, along with author `url`, `roles` and contact details, and affiliation addresses.
 
 The "Cite as" block appears once the paper has a `doi`, `arxiv` or `zenodo` link, since a draft without a persistent identifier changes under its readers. It gives a Chicago author-date entry, the style of the reference list, followed by the DOI as a URL, the arXiv identifier and a link to the Zenodo archive. The entry lists up to three authors and shortens more to the first author and "et al." MyST reads a suffix such as "Jr." as part of the family name. To cite such a name correctly, give the author's `name` as an object with `given`, `family` and `suffix`.
 

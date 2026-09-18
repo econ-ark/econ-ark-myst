@@ -463,6 +463,11 @@ else
   check_tracked paper "$PAPER" "$committed"
   rm -f "$committed"
   check_font paper "$PAPER" FiraSans-Medium-Identity-H
+  # The suffix names the embedding, which follows the file format: the release's ttf gives a bare
+  # name here and its otf an Identity-H one. Two machines holding different files of the same face
+  # render the same text differently, which is how the ttf and the otf were mixed once already.
+  check_font paper "$PAPER" FiraSans-Italic
+  check_font paper "$PAPER" FiraMath-Regular-Identity-H
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
