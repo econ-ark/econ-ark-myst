@@ -37,7 +37,7 @@ doc:
   - id: copyright
     description: Copyright holder, replacing the author names in the margin's copyright line
   - id: funding
-    description: Funding statements and awards, added to the starred title footnote; write it as a list
+    description: Funding statements and awards, shown in the margin rail; write it as a list
   - id: numbering
     description: "headings: false turns heading numbers off"
   - id: bibliography

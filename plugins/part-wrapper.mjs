@@ -1,8 +1,6 @@
-// Gives the parts MyST has no backmatter slot for something the site can label.
-// The theme reserves slots for acknowledgments and data availability only; every other part
-// renders as a bare paragraph in document order, indistinguishable in the DOM from the last
-// paragraph of the body. Wrapping the part in a class of its own gives theme.css an exact hook,
-// where a positional selector would sooner or later label a paper that has no such part at all.
+// Wraps a part the site theme gives no slot for in a class of its own, so theme.css can label it.
+// A selector reaching such a part by position would sooner or later label a paper that has none.
+// README, "The parts the site has no slot for", carries the rest.
 
 // Parts to wrap. theme.css supplies the heading text, as template.typ does for the PDF.
 const WRAPPED_PARTS = ['declaration'];

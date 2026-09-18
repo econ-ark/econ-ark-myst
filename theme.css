@@ -534,11 +534,9 @@ article.article h2#summary > a {
 }
 
 /*
- * MyST's `declaration` part, which has no backmatter slot of its own and so renders in the body,
- * just above the parts that do. plugins/part-wrapper.mjs gives it this class to hang a heading on;
- * without it the paragraph is indistinguishable in the DOM from the last paragraph of the paper.
- * The rules below reproduce the theme's own backmatter row: label in a fixed left column on a wide
- * screen, stacked on a narrow one. check-examples.sh fails if the class stops being written.
+ * MyST's `declaration` part, which the theme gives no backmatter slot and so leaves as a bare
+ * paragraph. plugins/part-wrapper.mjs writes the class; the rules below reproduce the theme's own
+ * backmatter row. check-examples.sh fails if the class stops being written.
  */
 article.article .ark-part-declaration {
   display: flex;

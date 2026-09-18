@@ -227,6 +227,11 @@
 // pubmatter sets the authors in "semibold", which resolves by discovery order wherever the text
 // face carries no file at that weight. This is its title block with the authors pinned to the
 // weight the rest of the template asks for.
+
+// Footnote marks for an author's note. Typst's own "*" sequence runs * then a dagger, and
+// pubmatter already prints a dagger against an equal contributor, so this one leaves it out.
+#let authorNoteSymbol = n => ("*", "‡", "§", "¶").at(calc.rem(n - 1, 4))
+
 #let titleBlock(fm) = pubmatter.with-theme(_ => {
   pubmatter.show-title(fm)
   pubmatter.show-authors(fm, weight: 500)
@@ -319,7 +324,7 @@
   volume: none,
   issue: none,
   summary: none,
-  // Funding statements and awards, as strings, added to the starred title footnote
+  // Funding statements and awards, as strings, shown in the margin rail
   funding: (),
   copyright: none,
   code-license: none,
@@ -432,18 +437,15 @@
     box(width: railWidthPercent, link(venueUrl, venueLogo)),
   )
 
-  // Title block, with the funding statement and author notes as a starred footnote on the title
+  // Title block. An author's note is that author's, so it hangs off their name rather than the
+  // paper's title; the funding statement is the paper's and sits in the margin rail below.
   {
     set par(first-line-indent: 0pt, justify: false)
-    let fundingNote = funding.filter(f => f != "").map(closeSentence).join(" ")
-    let notes = (if fundingNote != none { (fundingNote,) } else { () }) + frontmatter.authors.filter(a => "note" in a).map(a => [#a.name: #a.note])
-    if notes.len() > 0 {
-      let fm-title = fm
-      fm-title.title = [#fm.title#footnote(numbering: "*", notes.join(" "))]
-      titleBlock(fm-title)
-    } else {
-      titleBlock(fm)
-    }
+    let fm-title = fm
+    fm-title.authors = fm.authors.map(a => if "note" in a {
+      a + (name: [#a.name#footnote(numbering: authorNoteSymbol, a.note)])
+    } else { a })
+    titleBlock(fm-title)
   }
   counter(footnote).update(0)
 
@@ -494,6 +496,12 @@
     },
     if corresponding != none and "email" in corresponding {
       railItem("Correspondence", [#corresponding.name\ #link("mailto:" + corresponding.email, corresponding.email)])
+    },
+    // Funding is a fact about the paper, so the rail carries it beside the rest of what the
+    // project declares
+    {
+      let statements = funding.filter(f => f != "").map(closeSentence)
+      if statements.len() > 0 { railItem("Funding", statements.join(" ")) }
     },
     {
       let license = frontmatter.at("license", default: none)

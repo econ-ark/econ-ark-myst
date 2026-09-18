@@ -56,7 +56,7 @@ grep '#let serifFont' _build/templates/typst/*/*/econark.typ
 | author `orcid`, `email` | Linked icons after the name | Omitted |
 | author `corresponding`, `email` | "Correspondence" in the margin, naming the first author with `corresponding: true`, or else the first with an email | Omitted when no author has an email |
 | author `equal_contributor` | Dagger after the name, explained under the affiliations | Omitted |
-| author `note` | Starred footnote on the title, for thanks and funding | Omitted |
+| author `note` | Footnote on that author's name, marked `*`, then `‡`, `§`, `¶`. The dagger is skipped, since it already marks an equal contributor | Omitted |
 | `affiliations`, affiliation `ror`, `department` | Numbered list under the authors, with a linked ROR icon. A `department` goes before the institution, as in "Department of Economics, Johns Hopkins University" | Omitted |
 | `short_title` | Running header from page two | The title |
 | `venue.title` | Footer and "Cite as" entry | Page number only |
@@ -69,7 +69,7 @@ grep '#let serifFont' _build/templates/typst/*/*/econark.typ
 | `volume`, `issue`, `last_page` | Added to the "Cite as" entry. The volume and issue also follow the venue in the footer, as in "Econ-ARK Working Papers 1 (3)" | Left out of the entry and the footer |
 | `license` | Margin, with a Creative Commons badge and a copyright line. With `license: {content: CC-BY-4.0, code: MIT}`, the code license shows under the code link in the materials block | Omitted |
 | `copyright` | Replaces the author names in the margin's copyright line. Text that already carries "©" or starts with "Copyright" is printed as written | "Copyright © year" and the authors' family names |
-| `funding` | Each statement, then each award as "name (id)", in the starred footnote on the title. Write `funding` as a list, because mystmd 1.10.1 stops with `funding?.forEach is not a function` on a single funding object | Omitted |
+| `funding` | Each statement, then each award as "name (id)", in the margin rail under the correspondence. Write `funding` as a list, because mystmd 1.10.1 stops with `funding?.forEach is not a function` on a single funding object | Omitted |
 | `numbering` | `headings: false` removes the section numbers, including the appendix letters | Sections are numbered |
 | `binder`, `github`, `downloads` | Materials block under the abstract, described below | With none of these and no `remark` option, the four-colour rule alone ends the front matter |
 | `first_page` | Starting page number, also the first page in the "Cite as" entry | Pages start at 1 |
