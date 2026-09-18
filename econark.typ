@@ -440,7 +440,7 @@
   show quote.where(block: true): it => block(
     width: 100%,
     inset: (left: 0.9em),
-    stroke: (left: 2pt + arkGrey.lighten(50%)),
+    stroke: (left: 2pt + arkGrey.lighten(40%)),
     {
       it.body
       if it.attribution != none {

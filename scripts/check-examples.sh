@@ -496,6 +496,13 @@ check_site() {
   else
     bad "$name: no ark-part-declaration under $dir, so the declarations show unlabelled"
   fi
+  # A definition list and a quotation are styled off the bare element, so the rules go inert the
+  # moment the theme wraps either in something else, and the site drifts from the PDF unannounced
+  if grep -q '<dt' <<<"$html" && grep -q '<blockquote' <<<"$html"; then
+    ok "$name: the term and the quotation still reach the page as the elements theme.css styles"
+  else
+    bad "$name: no bare <dt> or <blockquote> under $dir, so those rules are inert and the site drifts from the PDF"
+  fi
   check_css_urls "$name" "$dir"
   if grep -qE 'myst-fm-parts|id="skip-to-article"' <<<"$html"; then
     ok "$name: the front matter carries the anchor the four-colour rule hangs on"
@@ -857,7 +864,7 @@ else
   # definition term, a wrapped subpar.grid for the panel label, and a left rule for the quotation
   check_ink paper "$PAPER" 'Perfect' '#1F476B'
   check_ink paper "$PAPER" '(a)' '#1F476B'
-  check_rule paper "$PAPER" 'Prudence' '#B3B2B8'
+  check_rule paper "$PAPER" 'Prudence' '#A4A2A9'
   check_left_of tall-table "$TALL" 'Widecaption' 100
   check_left_of tall-table "$TALL" 'Widetablecaption' 100
   committed=$(mktemp)

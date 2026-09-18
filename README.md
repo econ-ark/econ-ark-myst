@@ -229,7 +229,7 @@ A MyST admonition (`note`, `warning`, `tip` and the rest) stands against a rule 
 
 ## Definition lists, quotations and subfigures
 
-A definition list (`Term`, then `: definition` on the next line) runs its term into the definition, set in the sans at Econ-ARK blue, the same label the margin uses for "Keywords" and "Cite as". Block quotations stand against a 2pt rule in grey, quieter than an admonition. Several images in one figure become panels side by side through `subpar`, with `(a)` and `(b)` in the blue of the caption above them. Write `(name)=` on the line before a panel's image, so `@name` points at that panel.
+A definition list (`Term`, then `: definition` on the next line) runs its term into the definition, set in the sans at Econ-ARK blue, the same label the margin uses for "Keywords" and "Cite as". Block quotations stand against a 2pt rule in grey, quieter than an admonition. Several images in one figure become panels side by side through `subpar`, with `(a)` and `(b)` in the blue of the caption above them. Write `(name)=` on the line before a panel's image, so `@name` points at that panel. `theme.css` carries all three to a site.
 
 ## Tables
 

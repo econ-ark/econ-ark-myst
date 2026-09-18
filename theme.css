@@ -486,6 +486,43 @@ aside.myst-admonition .myst-admonition-body > :first-child {
   margin-top: 0.3em;
 }
 
+/* A quotation takes the admonition's rule in grey, so it reads a step quieter, as in the PDF */
+article.article blockquote {
+  background: transparent;
+  border: 0;
+  border-left: 2px solid var(--ark-rule);
+  border-radius: 0;
+  padding: 0 0 0 0.9em;
+  font-style: normal;
+}
+
+/*
+ * Definition lists run the term into its definition in the margin's label style, as in the PDF.
+ * The theme sets dt and dd as blocks, so the run-in is rebuilt here: inline both, then a dd::after
+ * carries the gap that the lost block margin used to give.
+ */
+article.article dl dt {
+  display: inline;
+  font-family: var(--ark-sans);
+  font-weight: 500;
+  color: var(--ark-blue);
+}
+
+article.article dl dt::after {
+  content: "\2002";
+}
+
+article.article dl dd {
+  display: inline;
+  margin: 0;
+}
+
+article.article dl dd::after {
+  content: "";
+  display: block;
+  margin-bottom: 0.7em;
+}
+
 /* Back matter: acknowledgments and the rest, then the footnotes and the references */
 article.article .myst-backmatter-title,
 .myst-footnotes-header,
