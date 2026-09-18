@@ -1,7 +1,7 @@
 // Shadows the subpar module MyST calls as `subpar.grid`. Typst refuses `dict.key(..)`, so the
-// binding has to be a module, and importing a file is what makes a module: hence this one.
-// The version stays MyST's own, since the wrapped function comes from the imports file it wrote.
+// binding has to be a module, and importing a file is what makes a module: hence this one. The
+// version is pinned here, since a document with no subfigure has no imports file to take it from.
 #import "econark.typ": arkSubparGrid
-#import "myst-imports.typ" as mystImports
+#import "@preview/subpar:0.2.2"
 
-#let grid = arkSubparGrid(dictionary(mystImports).at("subpar", default: none))
+#let grid = arkSubparGrid(subpar)

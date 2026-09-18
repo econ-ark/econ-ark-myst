@@ -7,10 +7,10 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import temml from 'temml';
 
-// MyST leaves no trace of frontmatter macros on the node, so read the project's own, once for the
-// whole build. A config this cannot read yields the same empty set as a project with no macros,
-// and says so: an equation missing its macro comes back in KaTeX and looks like a dead plugin.
-let macroCache;
+// MyST leaves no trace of frontmatter macros on the node, so both levels are read from their files.
+// A config this cannot read yields the same empty set as a project with no macros, and says so: an
+// equation missing its macro comes back in KaTeX and looks like a dead plugin.
+const macroCache = new Map();
 
 // A macro is written either as a string or as an object carrying it under `macro`
 const asMacros = (math) =>
@@ -18,16 +18,34 @@ const asMacros = (math) =>
     Object.entries(math ?? {}).map(([key, value]) => [key, typeof value === 'string' ? value : value?.macro]),
   );
 
+// The config is found by walking up from the page, never from the process's directory: a build
+// launched anywhere else would read no project macros at all and say nothing. Cached per config,
+// since one process can build more than one project, as the landing page is.
 function projectMacros(file) {
-  if (macroCache) return macroCache;
-  const config = path.resolve('myst.yml');
+  let dir = path.dirname(path.resolve(file?.path ?? '.'));
+  let config;
+  for (;;) {
+    if (fs.existsSync(path.join(dir, 'myst.yml'))) {
+      config = path.join(dir, 'myst.yml');
+      break;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  if (config === undefined) {
+    file.message('fira-math: no myst.yml above this page, so no project macros', undefined, 'fira-math');
+    return {};
+  }
+  if (macroCache.has(config)) return macroCache.get(config);
+  let macros = {};
   try {
-    macroCache = asMacros(yaml.load(fs.readFileSync(config, 'utf8'))?.project?.math);
+    macros = asMacros(yaml.load(fs.readFileSync(config, 'utf8'))?.project?.math);
   } catch (error) {
     file.message(`fira-math: no macros read from ${config} (${error.message})`, undefined, 'fira-math');
-    macroCache = {};
   }
-  return macroCache;
+  macroCache.set(config, macros);
+  return macros;
 }
 
 // A page may define its own macros, which MyST layers over the project's, and those leave no trace

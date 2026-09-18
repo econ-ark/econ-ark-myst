@@ -15798,20 +15798,35 @@ var temml$1 = {
 };
 
 // plugins/fira-math.mjs
-var macroCache;
+var macroCache = /* @__PURE__ */ new Map();
 var asMacros = (math2) => Object.fromEntries(
   Object.entries(math2 ?? {}).map(([key, value]) => [key, typeof value === "string" ? value : value?.macro])
 );
 function projectMacros(file) {
-  if (macroCache) return macroCache;
-  const config = path.resolve("myst.yml");
+  let dir = path.dirname(path.resolve(file?.path ?? "."));
+  let config;
+  for (; ; ) {
+    if (fs.existsSync(path.join(dir, "myst.yml"))) {
+      config = path.join(dir, "myst.yml");
+      break;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  if (config === void 0) {
+    file.message("fira-math: no myst.yml above this page, so no project macros", void 0, "fira-math");
+    return {};
+  }
+  if (macroCache.has(config)) return macroCache.get(config);
+  let macros2 = {};
   try {
-    macroCache = asMacros(yaml.load(fs.readFileSync(config, "utf8"))?.project?.math);
+    macros2 = asMacros(yaml.load(fs.readFileSync(config, "utf8"))?.project?.math);
   } catch (error) {
     file.message(`fira-math: no macros read from ${config} (${error.message})`, void 0, "fira-math");
-    macroCache = {};
   }
-  return macroCache;
+  macroCache.set(config, macros2);
+  return macros2;
 }
 var pageCache = /* @__PURE__ */ new Map();
 function pageMacros(file) {

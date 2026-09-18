@@ -21,11 +21,10 @@
 #let warningBlock = arkAdmonitions.warning
 #let dangerBlock = arkAdmonitions.danger
 #let errorBlock = arkAdmonitions.error
-// MyST writes the imports file only for a document that needs imports, and imports each package only
-// for a document that uses it: tablex for one with a table, subpar for one with a subfigure
+// MyST's own imports above bind tablex for a document with a table, leaving econark.typ's none
+// standing for one without. subpar arrives the same way but is called as a field, so the wrapper
+// has to be a module, and a module can only come from a file.
 [# if IMPORTS #]
-#import "myst-imports.typ" as mystImports
-#let tablex = dictionary(mystImports).at("tablex", default: none)
 #let tablex = if tablex != none { arkTablex.with(tablex) }
 #import "ark-subpar.typ" as subpar
 [# endif #]
@@ -242,23 +241,13 @@
 // acknowledgments and data availability but none for declarations, so the declarations render in
 // the body above both and no reordering here can be met on that side.
 #let backMatter = [
-[# if parts.declaration #]
-#heading(numbering: none)[Declarations]
+[# for part in [["Declarations", parts.declaration], ["Acknowledgments", parts.acknowledgments], ["Data availability", parts.data_availability]] #]
+[# if part[1] #]
+#heading(numbering: none)[[-part[0]-]]
 
-[-parts.declaration-]
+[-part[1]-]
 [# endif #]
-
-[# if parts.acknowledgments #]
-#heading(numbering: none)[Acknowledgments]
-
-[-parts.acknowledgments-]
-[# endif #]
-
-[# if parts.data_availability #]
-#heading(numbering: none)[Data availability]
-
-[-parts.data_availability-]
-[# endif #]
+[# endfor #]
 
 [# if doc.bibtex #]
 #bibliography([-s(doc.bibtex)-])

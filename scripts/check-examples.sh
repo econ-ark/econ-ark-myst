@@ -54,9 +54,28 @@ ANCHORS=(
   'Department of Economics, Johns Hopkins'
   'Computational Economics Grant (G-2026-00001)'
   "1990$(printf '\342\200\231')s"
+  # The same digit and apostrophe inside a listing, where the curly quote belongs to prose alone:
+  # a reader pastes code out of a PDF, and a rewritten quote is source that will not parse
+  "# the 1990's calibration"
 )
 
 PRIME=$(printf '\342\200\262')
+# The one colour asserted often enough to drift: a retuned blue must fail these, never pass the old one
+ARK_BLUE='#1F476B'
+
+# Rasterising a page costs about a quarter second and seven colour checks land on two pages, so the
+# renders are kept. The key carries the file's size and mtime, so a rebuilt PDF misses rather than
+# serving the image of the file it replaced.
+RASTER_CACHE=$(mktemp -d)
+trap 'rm -rf "$RASTER_CACHE"' EXIT
+
+raster_page() {
+  local pdf=$1 page=$2 key png
+  key=$(stat -c '%s-%Y' "$pdf" 2>/dev/null)-$(printf '%s' "$pdf" | md5sum | cut -c1-8)-$page
+  png="$RASTER_CACHE/$key.png"
+  [ -f "$png" ] || pdftoppm -png -r 150 -f "$page" -l "$page" -singlefile "$pdf" "${png%.png}" 2>/dev/null
+  printf '%s\n' "$png"
+}
 
 fail=0
 ok()  { printf 'ok    %s\n' "$*"; }
@@ -179,36 +198,11 @@ check_myst_errors() {
   fi
 }
 
-# Colour is what an admonition's styling changes, and pdftotext reads none of it. Rasterise the
-# page and look for the rule the template draws beside a word, in the exact colour it uses.
-check_rule() {
-  local name=$1 pdf=$2 word=$3 colour=$4 hit page x0 y0 w h scratch n
-  hit=$(pdftotext -bbox "$pdf" - 2>/dev/null | awk -v w=">$word</word>" '
-    /<page / { p++ }
-    index($0, w) { print p, $0; exit }')
-  if [ -z "$hit" ]; then
-    bad "$name: '$word' is not in the PDF, so its rule cannot be checked"
-    return
-  fi
-  page=${hit%% *}
-  # 150 dpi over the PDF's 72pt: a 20pt band to the left of the word, a little taller than its line
-  read -r x0 y0 w h < <(sed -E 's/.*xMin="([0-9.]+)" yMin="([0-9.]+)" xMax="[0-9.]+" yMax="([0-9.]+)".*/\1 \2 \3/' <<<"$hit" |
-    awk '{ printf "%d %d %d %d\n", ($1 - 20) * 150 / 72, ($2 - 4) * 150 / 72, 20 * 150 / 72, ($3 - $2 + 8) * 150 / 72 }')
-  scratch=$(mktemp -d)
-  pdftoppm -png -r 150 -f "$page" -l "$page" "$pdf" "$scratch/page" 2>/dev/null
-  n=$(convert "$scratch"/page-*.png -crop "${w}x${h}+${x0}+${y0}" +repage txt: 2>/dev/null | grep -c "${colour#\#}")
-  rm -rf "$scratch"
-  if [ "${n:-0}" -gt 0 ]; then
-    ok "$name: '$word' carries a $colour rule ($n pixels)"
-  else
-    bad "$name: no $colour pixel beside '$word', so the rule is missing or off palette"
-  fi
-}
-
-# check_rule looks beside a word; this looks at the word itself, for the elements whose branding is
-# the ink rather than a rule. Anti-aliasing softens the edges, so one exact pixel is enough.
-check_ink() {
-  local name=$1 pdf=$2 word=$3 colour=$4 hit page x0 y0 w h scratch n
+# Colour is what these two read, and pdftotext reads none of it. Both find a word, rasterise its
+# page and count pixels of an exact hex: check_rule in the band beside the word, where the template
+# draws a rule, and check_ink over the word itself, where the branding is the ink.
+check_swatch() {
+  local name=$1 pdf=$2 word=$3 colour=$4 mode=$5 hit page x0 y0 w h n
   hit=$(pdftotext -bbox "$pdf" - 2>/dev/null | awk -v w=">$word</word>" '
     /<page / { p++ }
     index($0, w) { print p, $0; exit }')
@@ -217,18 +211,31 @@ check_ink() {
     return
   fi
   page=${hit%% *}
+  # 150 dpi over the PDF's 72pt. Beside: a 20pt band left of the word, a little taller than its line
   read -r x0 y0 w h < <(sed -E 's/.*xMin="([0-9.]+)" yMin="([0-9.]+)" xMax="([0-9.]+)" yMax="([0-9.]+)".*/\1 \2 \3 \4/' <<<"$hit" |
-    awk '{ printf "%d %d %d %d\n", $1 * 150 / 72, $2 * 150 / 72, ($3 - $1) * 150 / 72, ($4 - $2) * 150 / 72 }')
-  scratch=$(mktemp -d)
-  pdftoppm -png -r 150 -f "$page" -l "$page" "$pdf" "$scratch/page" 2>/dev/null
-  n=$(convert "$scratch"/page-*.png -crop "${w}x${h}+${x0}+${y0}" +repage txt: 2>/dev/null | grep -c "${colour#\#}")
-  rm -rf "$scratch"
+    awk -v mode="$mode" '{
+      s = 150 / 72
+      if (mode == "beside") { printf "%d %d %d %d\n", ($1 - 20) * s, ($2 - 4) * s, 20 * s, ($4 - $2 + 8) * s }
+      else { printf "%d %d %d %d\n", $1 * s, $2 * s, ($3 - $1) * s, ($4 - $2) * s }
+    }')
+  n=$(convert "$(raster_page "$pdf" "$page")" -crop "${w}x${h}+${x0}+${y0}" +repage txt: 2>/dev/null | grep -c "${colour#\#}")
   if [ "${n:-0}" -gt 0 ]; then
-    ok "$name: '$word' is set in $colour ($n pixels)"
+    if [ "$mode" = beside ]; then
+      ok "$name: '$word' carries a $colour rule ($n pixels)"
+    else
+      ok "$name: '$word' is set in $colour ($n pixels)"
+    fi
+  elif [ "$mode" = beside ]; then
+    bad "$name: no $colour pixel beside '$word', so the rule is missing or off palette"
   else
     bad "$name: '$word' carries no $colour pixel, so it is unbranded or off palette"
   fi
 }
+
+check_rule() { check_swatch "$1" "$2" "$3" "$4" beside; }
+
+# Anti-aliasing softens a glyph's edges, so one pixel of the exact hex is enough
+check_ink() { check_swatch "$1" "$2" "$3" "$4" self; }
 
 # fonts.sh fetches Temml's stylesheet from a release tag and package.json pins the library the
 # plugin bundles. They render the same markup, so a build where they disagree styles MathML with
@@ -330,7 +337,7 @@ check_font() {
 # pages are what gets compared. Text alone misses a weight or a colour that changed; bytes alone
 # over-reach, since a subset tag and an XMP instance id can differ between two identical renders.
 check_tracked() {
-  local name=$1 fresh=$2 committed=$3 scratch pages p differing total=0
+  local name=$1 fresh=$2 committed=$3 scratch pages p differing digits total=0
   if ! diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$fresh" - 2>/dev/null) >/dev/null; then
     bad "$name: the tracked PDF's text differs from the fresh build; commit the rebuilt file:"
     diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$fresh" - 2>/dev/null) | head -20
@@ -344,9 +351,20 @@ check_tracked() {
   pdftoppm -png -r 150 "$committed" "$scratch/old" 2>/dev/null
   pdftoppm -png -r 150 "$fresh" "$scratch/new" 2>/dev/null
   pages=$(page_count "$fresh")
+  # pdftoppm pads a page number to the width of the last one, so a paper reaching ten pages writes
+  # old-01.png. compare prints its own failures on stdout, and a count read from one of those is
+  # empty: that aborts the arithmetic and, with it, every check after this one.
   for ((p = 1; p <= ${pages:-0}; p++)); do
-    differing=$(compare -metric AE "$scratch"/old-"$p".png "$scratch"/new-"$p".png null: 2>&1)
-    total=$((total + ${differing%%[!0-9]*}))
+    differing=$(compare -metric AE \
+      "$(printf '%s/old-%0*d.png' "$scratch" "${#pages}" "$p")" \
+      "$(printf '%s/new-%0*d.png' "$scratch" "${#pages}" "$p")" null: 2>&1)
+    digits=${differing%%[!0-9]*}
+    if [ -z "$digits" ]; then
+      rm -rf "$scratch"
+      bad "$name: page $p of the tracked PDF could not be compared, so it is unchecked: $differing"
+      return
+    fi
+    total=$((total + digits))
   done
   rm -rf "$scratch"
   if [ "$total" -eq 0 ]; then
@@ -774,7 +792,7 @@ self_test() {
   rm -f "$log"
 
   # A word in the table has no rule beside it, so the colour check must report one missing
-  out=$(check_rule seeded "$PAPER" 'Discount' '#1F476B')
+  out=$(check_rule seeded "$PAPER" 'Discount' "$ARK_BLUE")
   if grep -q 'FAIL.*off palette' <<<"$out"; then
     ok "self-test: a missing rule is caught"
   else
@@ -782,7 +800,7 @@ self_test() {
   fi
 
   # A word in the body carries the body's ink, so asking for the blue must report it unbranded
-  out=$(check_ink seeded "$PAPER" 'Discount' '#1F476B')
+  out=$(check_ink seeded "$PAPER" 'Discount' "$ARK_BLUE")
   if grep -q 'FAIL.*unbranded' <<<"$out"; then
     ok "self-test: an unbranded word is caught"
   else
@@ -860,14 +878,14 @@ else
   check_same_page tall-table "$TALL" 'Every case, one row each.' 'Case 1 A description'
   # The ten admonition kinds take four colours, so the example carries one of each and each is read
   # off the page. A kind whose rule went the wrong colour is invisible to every other check here.
-  check_rule paper "$PAPER" 'Admonitions' '#1F476B'
+  check_rule paper "$PAPER" 'Admonitions' "$ARK_BLUE"
   check_rule paper "$PAPER" 'Green' '#38B449'
   check_rule paper "$PAPER" 'Orange' '#FBAF3F'
   check_rule paper "$PAPER" 'Pink' '#ED2A7B'
   # Three elements MyST styles for itself, each branded through a different seam: a show rule for the
   # definition term, a wrapped subpar.grid for the panel label, and a left rule for the quotation
-  check_ink paper "$PAPER" 'Perfect' '#1F476B'
-  check_ink paper "$PAPER" '(a)' '#1F476B'
+  check_ink paper "$PAPER" 'Perfect' "$ARK_BLUE"
+  check_ink paper "$PAPER" '(a)' "$ARK_BLUE"
   check_rule paper "$PAPER" 'Prudence' '#A4A2A9'
   check_left_of tall-table "$TALL" 'Widecaption' 100
   check_left_of tall-table "$TALL" 'Widetablecaption' 100

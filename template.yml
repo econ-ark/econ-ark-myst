@@ -7,7 +7,6 @@ files:
   - template.typ
   - econark.typ
   - ark-subpar.typ
-  - myst-imports.typ
   - logo.png
 authors:
   - name: Alan Lujan

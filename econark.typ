@@ -5,10 +5,18 @@
 // Econ-ARK brand palette. The blue is the one econ-ark.org sets throughout its own stylesheet
 #let arkBlue = rgb("#1f476b");
 #let arkGrey = rgb("#676470");
+// The grey a rule takes when it marks without speaking: the footer, a quotation. theme.css holds
+// the same value under --ark-rule, where it also draws the table rules
+#let arkRule = arkGrey.lighten(40%);
 // The four logo curves, top to bottom, as the Econ-ARK design guidelines name them. The logo EPS
 // authors them in CMYK, 0/35/85/0, 0/95/20/0, 75/0/100/0 and 100/0/0/0, and these are that set
 // converted; kept to marks that echo the logo, such as the materials rules
 #let arkCurves = (rgb("#fbaf3f"), rgb("#ed2a7b"), rgb("#00adef"), rgb("#38b449"));
+
+// MyST writes myst-imports.typ, and glob-imports it over this file, only for a document that needs
+// a package. This default is what a document without one leaves standing, so template.typ can ask
+// whether the name arrived rather than whether a file was written.
+#let tablex = none
 // One family carries the whole paper. Fira Math is the OpenType math companion to Fira Sans, and
 // having it is what lets the body face be a sans: symbols in running text keep the voice of the
 // prose. The fallbacks are the four faces Typst bundles, all serif except the mono.
@@ -17,13 +25,17 @@
 #let mathFont = ("Fira Math", "New Computer Modern Math");
 #let monoFont = ("Fira Mono", "DejaVu Sans Mono");
 
+// The "Figure 1" or "Proposition 2" a caption and a theorem head both open with. One definition,
+// so a change of weight or colour reaches the figures and the fifteen prf: kinds together.
+#let numberLabel(it) = text(font: sansFont, weight: 500, fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]
+
 #let leftCaption(it) = context {
   set text(font: sansFont, size: 8.5pt)
   set align(left)
   set par(justify: false, first-line-indent: 0pt)
   // Fira Mono and Fira Sans share an x-height, so inline code takes the caption's own size
   show raw.where(block: false): set text(size: 1em)
-  text(weight: 500, fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]
+  numberLabel(it)
   h(6pt)
   it.body
 }
@@ -99,13 +111,11 @@
 
 // Wraps MyST's subpar.grid so a subfigure's (a) label matches the caption above it, in the sans at
 // Econ-ARK blue. ark-subpar.typ binds it; that file exists because the binding must be a module.
-#let arkSubparGrid(base) = if base != none {
-  base.grid.with(show-sub-caption: (num, it) => {
-    text(font: sansFont, weight: 500, fill: arkBlue, num)
-    h(0.4em)
-    it.body
-  })
-}
+#let arkSubparGrid(base) = base.grid.with(show-sub-caption: (num, it) => {
+  text(font: sansFont, weight: 500, fill: arkBlue, num)
+  h(0.4em)
+  it.body
+})
 
 // A "Label  content" run-in field, which the front matter sets its abstract, summary, keywords
 // and JEL codes as. One definition, so a change of label weight or colour reaches all of them.
@@ -302,7 +312,7 @@
   [#show figure.where(kind: kind): it => block(above: 1.2em, below: 1.2em, width: 100%, {
       set align(left)
       set par(first-line-indent: 0pt)
-      [#text(font: sansFont, weight: 500, fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]#note. #it.body]
+      [#numberLabel(it)#note. #it.body]
     })
     #figure(kind: kind, supplement: supplement, numbering: "1", outlined: false, statement)#if labelName != none { label(labelName) }]
 }
@@ -377,7 +387,7 @@
     },
     footer: block(
       width: 100%,
-      stroke: (top: 0.5pt + arkGrey.lighten(40%)),
+      stroke: (top: 0.5pt + arkRule),
       inset: (top: 8pt, right: 2pt),
       context [
         #set text(font: sansFont, size: 8pt, fill: arkGrey)
@@ -390,10 +400,15 @@
   )
 
   // Rules for text in footnotes go here, before the title block: a footnote picks up only rules set before it
-  show raw.where(block: true): set text(font: monoFont, size: 8pt)
-  // Typst reads ' after a digit as a prime, so "Table 1's" would print a prime. Restore the apostrophe,
-  // except in inline code, which a state marks because show rules cannot see their surroundings.
-  let inCode = state("ark-inline-code", false)
+
+  // Typst reads ' after a digit as a prime, so "Table 1's" would print a prime. Restore the
+  // apostrophe, except in code of either kind, which a state marks because a show rule cannot see
+  // its surroundings: a listing that lost its ASCII quote is source a reader cannot paste and run.
+  let inCode = state("ark-code", false)
+  show raw.where(block: true): it => {
+    set text(font: monoFont, size: 8pt)
+    inCode.update(true); it; inCode.update(false)
+  }
   // Inline code keeps Typst's 0.8em against a text face of the same x-height, so it reads a shade
   // smaller than its surroundings. An empty box after _ and . lets a long name wrap without
   // adding a character to copied text.
@@ -440,7 +455,7 @@
   show quote.where(block: true): it => block(
     width: 100%,
     inset: (left: 0.9em),
-    stroke: (left: 2pt + arkGrey.lighten(40%)),
+    stroke: (left: 2pt + arkRule),
     {
       it.body
       if it.attribution != none {
@@ -603,8 +618,9 @@
     // Typst holds back part of the region for the footnotes a page carries, and place(bottom) lands
     // on what is left, 43pt up the page for the two on page one. The room below counts none of that,
     // so it is discounted: undiscounted, a rail measuring 573pt into 576pt printed over the logo.
-    let railExtraFits = height(railBottomWith(railExtra)) <= railRoom * 0.9
-    let railBottom = railBottomWith(if railExtraFits { railExtra } else { () })
+    let railWithExtra = railBottomWith(railExtra)
+    let railExtraFits = height(railWithExtra) <= railRoom * 0.9
+    let railBottom = if railExtraFits { railWithExtra } else { railBottomWith(()) }
     // Key points sit under the logo, beside the title and abstract, unless they would run into the bottom of the rail
     let railKeyPoints = keypoints != none and keyPointsTop + height(keyPoints(keypoints)) + 3em.to-absolute() + height(railBottom) + 10pt <= page.height - 2in
 

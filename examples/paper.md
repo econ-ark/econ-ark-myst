@@ -141,7 +141,7 @@ Perfect foresight
 ```python
 from HARK.ConsumptionSaving.ConsIndShockModel import IndShockConsumerType
 
-agent = IndShockConsumerType()
+agent = IndShockConsumerType()  # the 1990's calibration of Table 1
 agent.solve()
 ```
 
