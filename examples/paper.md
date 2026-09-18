@@ -158,7 +158,10 @@ The first-order condition for $c_t$ in @eq-bellman sets $u'(c_t)$ equal to $\bet
 
 +++ {"part": "declaration"}
 
-The authors report no competing interests. The authors used a large language model to draft the
-example text of this template and reviewed every sentence before release.
+The authors report no competing interests.
+
+The authors used a large language model to draft the example text of this template, and reviewed
+every sentence before release. A journal asking for these as separate statements gets them as
+separate paragraphs, which is why this part carries two.
 
 +++

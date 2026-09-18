@@ -577,8 +577,7 @@ article.article h2#summary > a {
  * backmatter row. check-examples.sh fails if the class stops being written.
  */
 article.article .ark-part-declaration {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   width: 100%;
 }
 
@@ -595,14 +594,24 @@ article.article .ark-part-declaration::before {
   opacity: 0.9;
 }
 
+/*
+ * A grid rather than a row of flex items, because the part holds however many paragraphs the
+ * declarations need and each one is a child of this div. As flex items they became columns beside
+ * the label, touching, and each column read correctly on its own, which is what hid it.
+ */
 @media (min-width: 768px) {
   article.article .ark-part-declaration {
-    flex-direction: row;
+    grid-template-columns: 200px 1fr;
   }
 
   article.article .ark-part-declaration::before {
-    flex: none;
+    grid-column: 1;
+    grid-row: 1;
     width: 200px;
+  }
+
+  article.article .ark-part-declaration > * {
+    grid-column: 2;
   }
 }
 

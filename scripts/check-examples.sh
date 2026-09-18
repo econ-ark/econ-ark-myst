@@ -518,6 +518,14 @@ check_site() {
   else
     bad "$name: no ark-part-declaration under $dir, so the declarations show unlabelled"
   fi
+  # The label and the body share one grid, and every paragraph of the part is a child of it. When
+  # they were flex items instead, a second paragraph became a second column touching the first, and
+  # each column read correctly alone, which is what hid it. The example keeps two so the shape ships.
+  if grep -qP '<div class="ark-part-declaration"><p>[^<]*</p><p>' <<<"$html"; then
+    ok "$name: the declaration part still carries the two paragraphs its layout is sized for"
+  else
+    bad "$name: the declaration part under $dir holds one paragraph, so the multi-paragraph layout is untested"
+  fi
   # A definition list and a quotation are styled off the bare element, so the rules go inert the
   # moment the theme wraps either in something else, and the site drifts from the PDF unannounced
   if grep -q '<dt' <<<"$html" && grep -q '<blockquote' <<<"$html"; then
