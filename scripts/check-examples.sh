@@ -130,11 +130,11 @@ check_same_page() {
 check_warnings() {
   local name=$1 log=$2 locations ours theirs
   # A warning names its file on the line below it, as "┌─ path.typ:line:column"; a package path
-  # carries its own colons, so match the file suffix rather than splitting on them
+  # carries its own colons, so match the file suffix rather than splitting on them. awk counts
+  # them, because NF skips the blank line a here-string adds and grep -vc would count it.
   locations=$(grep -oE '─ .*\.typ:[0-9]+:[0-9]+' "$log" 2>/dev/null)
-  ours=$(grep -vc '@preview/' <<<"$locations" || true)
-  theirs=$(grep -c '@preview/' <<<"$locations" || true)
-  [ -n "$locations" ] || ours=0
+  read -r ours theirs < <(awk 'NF { if (index($0, "@preview/")) t++; else o++ }
+    END { print o + 0, t + 0 }' <<<"$locations")
   if [ "${ours:-0}" -eq 0 ]; then
     ok "$name: the build warns about no file of this template ($theirs from imported packages)"
   else
@@ -491,6 +491,14 @@ self_test() {
     ok "self-test: a package's own warnings pass"
   else
     bad "self-test: a package's own warnings failed the run"
+  fi
+  # A build that warned about nothing at all, which is the case the counting used to get wrong
+  : >"$log"
+  out=$(check_warnings seeded "$log")
+  if grep -q 'ok.*(0 from imported packages)' <<<"$out"; then
+    ok "self-test: a build with no warnings passes and counts none"
+  else
+    bad "self-test: a build with no warnings was miscounted: $out"
   fi
   rm -f "$log"
 
