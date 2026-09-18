@@ -29,7 +29,16 @@ jobs:
           node-version: 22
 
       - name: Install mystmd
-        run: npm install -g mystmd@1.10.1
+        run: |
+          npm install -g mystmd@1.10.1
+          npm install
+
+      # theme.css asks for faces that are not in the repository, so the deploy makes them.
+      # It runs after npm install because it takes Temml's stylesheet from node_modules.
+      - name: Build the webfonts
+        run: |
+          pip install --quiet fonttools brotli
+          scripts/fonts.sh webfonts
 
       - uses: actions/configure-pages@v5
 

@@ -12,6 +12,9 @@ project:
           name: Computational Economics Grant
   bibliography:
     - examples/main.bib
+  # Re-renders equations as MathML Core, which is what lets theme.css set them in Fira Math
+  plugins:
+    - plugins/fira-math.mjs
   # theme.css asks for these by relative path, and MyST copies them beside it
   static_files:
     - fonts

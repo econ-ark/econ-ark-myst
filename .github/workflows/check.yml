@@ -21,6 +21,7 @@ jobs:
       - name: Install mystmd and Typst
         run: |
           npm install -g mystmd@1.10.1
+          npm install
           curl -sL https://github.com/typst/typst/releases/download/v0.15.1/typst-x86_64-unknown-linux-musl.tar.xz \
             | sudo tar -xJ --strip-components=1 -C /usr/local/bin typst-x86_64-unknown-linux-musl/typst
           typst --version
@@ -31,17 +32,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils imagemagick unzip
-          mkdir -p ~/.local/share/fonts
-          curl -sL -o fira.zip https://github.com/mozilla/Fira/archive/refs/tags/4.202.zip
-          unzip -q -j fira.zip '*/ttf/FiraSans-Regular.ttf' '*/ttf/FiraSans-Italic.ttf' \
-            '*/ttf/FiraSans-Medium.ttf' '*/ttf/FiraSans-MediumItalic.ttf' \
-            '*/ttf/FiraSans-SemiBold.ttf' '*/ttf/FiraSans-SemiBoldItalic.ttf' \
-            '*/ttf/FiraSans-Bold.ttf' '*/ttf/FiraSans-BoldItalic.ttf' \
-            '*/ttf/FiraMono-Regular.ttf' '*/ttf/FiraMono-Medium.ttf' '*/ttf/FiraMono-Bold.ttf' \
-            -d ~/.local/share/fonts
-          curl -sL -o ~/.local/share/fonts/FiraMath-Regular.otf \
-            https://github.com/firamath/firamath/releases/download/v0.3.4/FiraMath-Regular.otf
-          fc-cache -f
+          pip install --quiet fonttools brotli
+          scripts/fonts.sh install
+          scripts/fonts.sh webfonts
           # Each family must be found, or the build falls back to a bundled font. This says nothing
           # about which file a weight resolves to: check-examples.sh counts the files per weight.
           test "$(typst fonts | grep -cE '^(Fira Sans|Fira Mono|Fira Math)$')" -eq 3

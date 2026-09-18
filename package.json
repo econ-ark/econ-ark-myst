@@ -1,0 +1,10 @@
+{
+  "name": "econ-ark-myst",
+  "private": true,
+  "description": "Dependencies of the site build. The Typst template needs none of this.",
+  "type": "module",
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "temml": "^0.13.5"
+  }
+}

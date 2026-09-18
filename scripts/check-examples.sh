@@ -260,6 +260,29 @@ check_site() {
   else
     bad "$name: no <article class=\"... article ...\"> under $dir, so every article.article rule is inert"
   fi
+  # The faces are built rather than tracked, so a site can be published complete in every other
+  # way and still fall back to the system sans, which no page of it would report
+  if [ "$(find "$dir" -name 'FiraSans-*.woff2' 2>/dev/null | wc -l)" -ge 4 ]; then
+    ok "$name: the site serves the faces theme.css asks for"
+  else
+    bad "$name: fewer than four FiraSans woff2 under $dir, so readers get the system sans"
+  fi
+  # Fira Math and Temml's stylesheet travel together: the font is what a browser lays the symbols
+  # out from, the stylesheet is what draws the parts of MathML that Chromium leaves undrawn
+  if find "$dir" -name 'FiraMath-Regular*.woff2' 2>/dev/null | grep -q . &&
+    find "$dir" -name 'temml*.css' 2>/dev/null | grep -q .; then
+    ok "$name: the site serves the math face and the stylesheet that completes it"
+  else
+    bad "$name: no FiraMath woff2 or no temml css under $dir, so equations fall back to a system math font"
+  fi
+  # The plugin is the only thing putting MathML on the page. Were it to stop loading the build
+  # would still succeed and every equation would quietly come back in KaTeX's Computer Modern,
+  # which is legible enough that nothing else here would notice.
+  if grep -q '<math' <<<"$html" && ! grep -q 'class="katex-html"' <<<"$html"; then
+    ok "$name: the equations reach the page as MathML, which is what can take Fira Math"
+  else
+    bad "$name: no <math> under $dir, or KaTeX markup still present, so equations are not in Fira Math"
+  fi
   # article-theme takes its downloads from the project, not from the paper's frontmatter, so a
   # paper that lists them still reaches a reader with no way to the PDF unless the project does too
   if find "$dir" -name 'paper-*.pdf' 2>/dev/null | grep -q .; then
@@ -442,11 +465,25 @@ self_test() {
   if grep -q 'FAIL.*unstyled' <<<"$out" && grep -q 'FAIL.*no banner' <<<"$out" &&
     grep -q 'FAIL.*rule is inert' <<<"$out" && grep -q 'FAIL.*four-colour rule is missing' <<<"$out" &&
     grep -q 'FAIL.*vanishes at night' <<<"$out" && grep -q "FAIL.*MyST's own mark" <<<"$out" &&
-    grep -q 'FAIL.*soften the theme' <<<"$out" && grep -q 'FAIL.*cannot reach the PDF' <<<"$out"; then
+    grep -q 'FAIL.*soften the theme' <<<"$out" && grep -q 'FAIL.*cannot reach the PDF' <<<"$out" &&
+    grep -q 'FAIL.*system sans' <<<"$out" && grep -q 'FAIL.*system math font' <<<"$out"; then
     ok "self-test: a site without the stylesheet, the banner, the logos or the classes it styles is caught"
   else
     bad "self-test: a site missing the stylesheet, the banner, the logos or its classes went undetected"
   fi
+
+  # The case the MathML check exists for: a site whose equations came out of KaTeX after all
+  local katexsite
+  katexsite=$(mktemp -d)
+  printf '<article class="article"><span class="katex"><span class="katex-html">v(m)</span></span></article>\n' \
+    >"$katexsite/index.html"
+  out=$(check_site seeded "$katexsite")
+  if grep -q 'FAIL.*not in Fira Math' <<<"$out"; then
+    ok "self-test: a site whose equations stayed in KaTeX is caught"
+  else
+    bad "self-test: a site whose equations stayed in KaTeX went undetected"
+  fi
+  rm -rf "$katexsite"
 
   # A theme that renamed the class would still serve the stylesheet, so the token check must be exact
   local scratchsite

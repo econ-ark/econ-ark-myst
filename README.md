@@ -33,7 +33,17 @@ grep '#let serifFont' _build/templates/typst/*/*/econark.typ
 ## Requirements
 
 - Typst 0.13 or newer (tested with 0.13.1 and 0.15.1). Typst 0.12 fails inside the `pubmatter` package.
-- Install the TrueType files from the [Fira](https://github.com/mozilla/Fira) release for the text and code, and [Fira Math](https://github.com/firamath/firamath) for the equations. One family sets the whole paper: Fira Sans for text and apparatus, Fira Mono for code, and Fira Math, its OpenType math companion, for everything between dollars. Without them the template still compiles with fonts bundled in the Typst binary, falling back to New Computer Modern for the text, DejaVu Sans Mono for code and New Computer Modern Math for equations. Typst's bundled faces are serif apart from the mono, so a paper built without Fira comes out in a serif.
+- Fonts, which this repository fetches rather than tracks. `scripts/fonts.sh` names the releases and is the only file that does, so the PDF and the site are set from one pinned source:
+
+  ```sh
+  scripts/fonts.sh install     # Fira Sans, Fira Mono and Fira Math, where Typst will find them
+  npm install                  # only for the site, see Equations on the site below
+  scripts/fonts.sh webfonts    # fonts/, the faces theme.css serves to a browser
+  ```
+
+  `install` is all a paper needs. `webfonts` matters to anyone publishing a site with `theme.css`; it subsets with fontTools, which it takes from the environment or, failing that, fetches through `uv`. CI and the Pages deploy run the same script. A release change therefore moves every path at once.
+
+  One family sets the whole paper: Fira Sans for text and apparatus, Fira Mono for code, and Fira Math, its OpenType math companion, for everything between dollars. Another release of either renders the same words to different line breaks, so a paper built against one stops matching its own tracked PDF. Without any of them the template still compiles with fonts bundled in the Typst binary, falling back to New Computer Modern for the text, DejaVu Sans Mono for code and New Computer Modern Math for equations. Typst's bundled faces are serif apart from the mono, so a paper built without Fira comes out in a serif.
 - Ask only for a weight that has a file. Fira Sans carries 400, 500, 600 and 700, and the template stays on those. Take one format and keep to it. The release carries the same faces as `ttf` and as `otf`, this repository builds from the `ttf`, and a machine holding both renders whichever it reaches first. A weight with no file of its own sits midway between two that have one. The order the machine happened to find those two in then decides which it uses.
 
 ## Frontmatter
@@ -283,6 +293,28 @@ project:
 ```
 
 The paper's own `downloads` still feed the PDF's materials block, where every entry has to be a web address. The two lists coexist. The paper carries absolute URLs for print. The project carries files for the site.
+
+### Equations on the site
+
+MyST renders math with KaTeX, which paints glyphs from its own Computer Modern faces at positions it has already computed. No stylesheet can put another typeface under that. The equations on a MyST site therefore arrive in a serif whatever the prose around them is set in. On a paper set in Fira that mismatch is hard to miss.
+
+`plugins/fira-math.mjs` re-renders each equation with [Temml](https://temml.org), which is KaTeX's parser with the HTML half removed and the MathML half repaired. What it emits is MathML Core, which a browser lays out itself from whatever font it is given, so the equations can take Fira Math along with everything else. Name it under the project and it runs:
+
+```yaml
+project:
+  plugins:
+    - plugins/fira-math.mjs
+```
+
+Three things have to be in place, and `scripts/fonts.sh webfonts` puts two of them there:
+
+- `npm install`, for Temml itself. This is the one part of the repository that needs node modules; the Typst template needs none.
+- `fonts/FiraMath-Regular.woff2`, which unlike the text faces is served whole. Its OpenType MATH table is what stretches a bracket around a sum. A subsetter asked for a range of characters is under no obligation to carry that table through.
+- `fonts/temml.css`, which `theme.css` imports first. Chromium implements none of the older MathML presentation attributes, so Temml writes CSS classes for what it cannot express and supplies the rules that read them. Without the import an `\underline` loses its rule and a `\widehat` its hat.
+
+An equation Temml cannot parse keeps the KaTeX it already had, so the failure is one equation in the wrong typeface rather than a broken page. Macros under `project.math` are passed through. A page-level `math:` block is not visible to a transform and falls back the same way.
+
+Two things still differ from the PDF. A binary operator inside a subscript, as in `m_{t+1}`, keeps its full spacing, because MathML Core does not tighten operator spacing at script level the way TeX does. The other is `\widehat` over a single symbol, which overstretches, where `\hat` is the right markup and sets correctly.
 
 ### Using this template from another repository
 

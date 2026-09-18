@@ -18,9 +18,26 @@
  */
 
 /*
+ * Chromium lays MathML out from the OpenType MATH table but implements none of the older
+ * presentation attributes, so Temml writes CSS classes for what it cannot express and ships the
+ * rules that read them. Without this an \underline loses its rule and a \widehat its hat. It has
+ * to lead the file, and it is first so that everything below can override it.
+ */
+@import url("fonts/temml.css");
+
+/*
  * The PDF's own typefaces, subset to Latin and served beside this file, so a reader sees the
  * faces the paper was set in instead of whichever serif their system happens to offer.
+ * Fira Math is the exception to the subsetting: see scripts/fonts.sh.
  */
+@font-face {
+  font-family: "Fira Math";
+  src: url("fonts/FiraMath-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @font-face {
   font-family: "Fira Sans";
   src: url("fonts/FiraSans-Regular.woff2") format("woff2");
@@ -100,6 +117,7 @@
   --ark-sans: "Fira Sans", "Helvetica Neue", Arial, sans-serif;
   --ark-serif: "Fira Sans", "Helvetica Neue", Arial, sans-serif;
   --ark-mono: "Fira Mono", ui-monospace, "DejaVu Sans Mono", monospace;
+  --ark-math: "Fira Math", math;
 }
 
 html.dark {
@@ -209,6 +227,18 @@ article.article {
   font-family: var(--ark-serif);
   font-size: 1.05rem;
   line-height: 1.58;
+  color: var(--ark-ink);
+}
+
+/*
+ * Equations, in the companion face to the body text, so a symbol reads the same in a sentence as
+ * it does on a line of its own. The plugin in plugins/fira-math.mjs is what puts MathML here for
+ * this to reach; an equation it could not parse stays as KaTeX markup, which this leaves alone.
+ * Temml sets its glyphs on the small side of the surrounding text, and the bump squares them up.
+ */
+article.article math {
+  font-family: var(--ark-math);
+  font-size: 1.08em;
   color: var(--ark-ink);
 }
 
