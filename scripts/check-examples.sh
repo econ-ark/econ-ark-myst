@@ -462,10 +462,10 @@ else
   git -C "$ROOT" show HEAD:examples/exports/paper.pdf >"$committed" 2>/dev/null
   check_tracked paper "$PAPER" "$committed"
   rm -f "$committed"
-  check_font paper "$PAPER" FiraSans-Medium-Identity-H
   # The suffix names the embedding, which follows the file format: the release's ttf gives a bare
-  # name here and its otf an Identity-H one. Two machines holding different files of the same face
-  # render the same text differently, which is how the ttf and the otf were mixed once already.
+  # name and its otf an Identity-H one. A machine holding both formats builds from a mixture, and
+  # the mixture renders differently from either, which is how these three came to disagree once.
+  check_font paper "$PAPER" FiraSans-Medium
   check_font paper "$PAPER" FiraSans-Italic
   check_font paper "$PAPER" FiraMath-Regular-Identity-H
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
