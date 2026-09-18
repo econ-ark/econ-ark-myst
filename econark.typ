@@ -520,9 +520,9 @@
   let repoUrl = if source != none { source } else { github }
   let materials = (
     if repoUrl != none {
-      // The slash is the break a reader expects. Boxing each part makes it the only one offered,
-      // since a hyphenated name otherwise breaks at a hyphen, which fills the line better and
-      // strands the tail. A box does not add a character to text copied out of the PDF.
+      // The slash is the break a reader expects; Typst otherwise prefers a hyphen inside the name,
+      // which fills the line better. Boxing each part makes the slash preferred, and a name too
+      // long for its column still breaks at its hyphens. A box leaves copied text unchanged.
       let repo = repoUrl.replace(regex("^https?://(www\.)?github\.com/"), "").trim("/")
       let broken = repo.split("/").map(part => box(part)).intersperse("/").join()
       ("Code", [#link(repoUrl, broken)#if code-license != none [ \ #materialNote[#link(code-license.url, code-license.id) license]]])
