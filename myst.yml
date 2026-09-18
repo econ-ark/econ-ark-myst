@@ -38,8 +38,11 @@ site:
   template: article-theme
   options:
     logo: logo.png
+    logo_dark: logo-dark.png
     logo_text: Econ-ARK
     logo_url: https://econ-ark.org
+    logo_alt: Econ-ARK
+    favicon: favicon.png
     style: theme.css
   nav:
     - title: Econ-ARK

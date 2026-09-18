@@ -5,8 +5,9 @@
 // Econ-ARK brand palette, from econ-ark.org assets/sass/_variables.scss
 #let arkBlue = rgb("#1f476b");
 #let arkGrey = rgb("#676470");
-// The four logo curves, top to bottom; kept to marks that echo the logo, such as the materials rules
-#let arkCurves = (rgb("#fcb040"), rgb("#ed217c"), rgb("#00aeef"), rgb("#39b54a"));
+// The four logo curves, top to bottom, as the Econ-ARK design guidelines name them; kept to
+// marks that echo the logo, such as the materials rules
+#let arkCurves = (rgb("#fbaf3f"), rgb("#ed2a7b"), rgb("#00adef"), rgb("#38b449"));
 // Preferred fonts first, then fonts bundled with Typst so the template always compiles
 #let sansFont = ("Roboto", "Libertinus Serif");
 #let serifFont = ("Libertinus Serif", "New Computer Modern");
