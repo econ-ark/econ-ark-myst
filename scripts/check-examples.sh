@@ -198,10 +198,21 @@ check_site() {
     bad "$name: no theme-*.css carrying the palette under $dir, so the site is unstyled"
   fi
   banner=$(find "$dir" -name 'banner-*.svg' 2>/dev/null | head -1)
-  if [ -n "$banner" ] && grep -q 'fcb040' "$banner"; then
+  if [ -n "$banner" ] && grep -q 'fbaf3f' "$banner"; then
     ok "$name: the site serves banner.svg"
   else
     bad "$name: no banner-*.svg under $dir, so the paper has no banner"
+  fi
+  # The night lockup is a separate file, so a site can serve the day one and still go dark-blind
+  if find "$dir" -name 'logo-dark-*.png' 2>/dev/null | grep -q .; then
+    ok "$name: the site serves the night logo"
+  else
+    bad "$name: no logo-dark-*.png under $dir, so the wordmark vanishes at night"
+  fi
+  if [ -s "$dir/favicon.ico" ]; then
+    ok "$name: the site serves the favicon"
+  else
+    bad "$name: no favicon.ico under $dir, so the tab carries MyST's own mark"
   fi
   html=$(cat "$dir"/index.html "$dir"/*/index.html 2>/dev/null)
   # The class list must hold "article" as a whole token, which "article-grid" alone does not give
@@ -209,6 +220,13 @@ check_site() {
     ok "$name: the paper carries the class the stylesheet styles"
   else
     bad "$name: no <article class=\"... article ...\"> under $dir, so every article.article rule is inert"
+  fi
+  # The softer page is painted over the theme's own white, which the theme writes as a utility
+  # class. A theme that renamed it would take its whites back and leave the page half soft.
+  if grep -qE 'class="[^"]*bg-white' <<<"$html"; then
+    ok "$name: the theme still paints its surfaces with the class the softer page overrides"
+  else
+    bad "$name: no bg-white class under $dir, so the rules that soften the theme's whites are inert"
   fi
   if grep -qE 'myst-fm-parts|id="skip-to-article"' <<<"$html"; then
     ok "$name: the front matter carries the anchor the four-colour rule hangs on"
@@ -342,10 +360,12 @@ self_test() {
 
   out=$(check_site seeded "$(mktemp -d)")
   if grep -q 'FAIL.*unstyled' <<<"$out" && grep -q 'FAIL.*no banner' <<<"$out" &&
-    grep -q 'FAIL.*rule is inert' <<<"$out" && grep -q 'FAIL.*four-colour rule is missing' <<<"$out"; then
-    ok "self-test: a site without the stylesheet, the banner or the classes it styles is caught"
+    grep -q 'FAIL.*rule is inert' <<<"$out" && grep -q 'FAIL.*four-colour rule is missing' <<<"$out" &&
+    grep -q 'FAIL.*vanishes at night' <<<"$out" && grep -q "FAIL.*MyST's own mark" <<<"$out" &&
+    grep -q 'FAIL.*soften the theme' <<<"$out"; then
+    ok "self-test: a site without the stylesheet, the banner, the logos or the classes it styles is caught"
   else
-    bad "self-test: a site missing the stylesheet, the banner or its classes went undetected"
+    bad "self-test: a site missing the stylesheet, the banner, the logos or its classes went undetected"
   fi
 
   # A theme that renamed the class would still serve the stylesheet, so the token check must be exact
