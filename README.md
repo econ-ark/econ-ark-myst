@@ -104,7 +104,7 @@ The materials block lists what exists for the paper beyond the PDF, in four colu
 | Code | `source` if set, otherwise `github`, shown as `owner/repo` with the code license under it. The two name the same thing often enough to share a slot, and `source` wins it |
 | Run online, or the `binder_label` option | `binder`, with a note that it starts in a few minutes |
 | REMARK | The `remark` option, with a note that the slug leads to econ-ark.org |
-| Download | Each entry of `downloads` with a web address, by its `title`. An entry whose address ends in `.bib` goes to "Cite as" as a BibTeX link instead. See The site for the second list a site needs |
+| Download | Each entry of `downloads` with a web address, by its `title`. Give the artifact its own name there, as in "PDF", "Slides", "BibTeX". The column already says Download, MyST already tells a site the format, and a title such as "Latest version" stops being true in the archive it is frozen into. An entry whose address ends in `.bib` goes to "Cite as" as a BibTeX link instead. See The site for the second list a site needs | Each entry of `downloads` with a web address, by its `title`. An entry whose address ends in `.bib` goes to "Cite as" as a BibTeX link instead. See The site for the second list a site needs |
 
 ```yaml
 binder: https://econ-ark.org/materials/LiqConstr?dashboard
