@@ -64,7 +64,7 @@ doc:
   - id: first_page
   - id: last_page
   - id: source
-    description: Where the work itself lives, linked in the materials block beside the code and the REMARK
+    description: Where the work itself lives, taking the Code column of the materials block in place of github when both are set
   - id: reviewers
     description: Reviewers, listed in the margin under the funding
   - id: editors

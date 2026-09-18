@@ -514,25 +514,33 @@
   let webDownloads = downloads.filter(d => d.url.starts-with(regex("https?://")))
   let bibtexUrl = webDownloads.find(d => d.url.ends-with(".bib"))
   let formats = webDownloads.filter(d => not d.url.ends-with(".bib"))
-  // In this order: running the paper, its code, its REMARK, the paper in other formats
+  // The code leads, being the column that outlives the rest: a binder link is the first to rot.
+  // Then running it, its REMARK, the paper in other formats. Four colours, so four slots: source
+  // and github name the same thing often enough that they share one, and source wins it.
+  let repoUrl = if source != none { source } else { github }
   let materials = (
+    if repoUrl != none {
+      // The slash is the break a reader expects. Boxing each part makes it the only one offered,
+      // since a hyphenated name otherwise breaks at a hyphen, which fills the line better and
+      // strands the tail. A box does not add a character to text copied out of the PDF.
+      let repo = repoUrl.replace(regex("^https?://(www\.)?github\.com/"), "").trim("/")
+      let broken = repo.split("/").map(part => box(part)).intersperse("/").join()
+      ("Code", [#link(repoUrl, broken)#if code-license != none [ \ #materialNote[#link(code-license.url, code-license.id) license]]])
+    },
     if binder != none {
       (binder-label, [#link(binder)[Launch] \ #materialNote[Starts in a few minutes]])
     },
-    if github != none {
-      let repo = github.replace(regex("^https?://(www\.)?github\.com/"), "").trim("/")
-      ("Code", [#link(github, repo)#if code-license != none [ \ #materialNote[#link(code-license.url, code-license.id) license]]])
-    },
     if remark != none {
-      ("REMARK", link("https://econ-ark.org/materials/" + remark, remark))
-    },
-    if source != none {
-      ("Source", link(source, source.replace(regex("^https?://(www\.)?"), "").trim("/")))
+      // The slug alone reads as a second code link, so the note names where it leads
+      ("REMARK", [#link("https://econ-ark.org/materials/" + remark, remark) \ #materialNote[on econ-ark.org]])
     },
     if formats.len() > 0 {
-      ("Also as", formats.map(d => link(d.url, d.title)).join(linebreak()))
+      ("Download", formats.map(d => link(d.url, d.title)).join(linebreak()))
     },
   ).filter(x => x != none)
+  // Four colours, four slots. Reaching five means a new material kind arrived without one being
+  // retired. Fail at build time; a fifth column would otherwise print under no rule.
+  assert(materials.len() <= 4, message: "the materials block holds four columns, one per logo colour, and " + str(materials.len()) + " materials were given")
 
   // The DOI follows the citation as a URL, as Chicago style asks; arXiv and Zenodo follow as short links
   let doiUrl = if doi != none { "https://doi.org/" + doi.replace(regex("^https?://(dx\.)?doi\.org/"), "") }

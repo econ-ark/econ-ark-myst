@@ -97,15 +97,14 @@ These are all the fields the template reads. It ignores the fields that serve a 
 
 The "Cite as" block appears once the paper has a `doi`, `arxiv` or `zenodo` link, since a draft without a persistent identifier changes under its readers. It gives a Chicago author-date entry, the style of the reference list, followed by the DOI as a URL, the arXiv identifier and a link to the Zenodo archive. The entry lists up to three authors and shortens more to the first author and "et al." MyST reads a suffix such as "Jr." as part of the family name. To cite such a name correctly, give the author's `name` as an object with `given`, `family` and `suffix`.
 
-The materials block lists what exists for the paper beyond the PDF, in up to five columns under rules in the four colours of the Econ-ARK logo. All four rules print however many columns a paper fills. A paper with no materials keeps the rules without the heading, as the line between its front matter and its text. The columns keep this order:
+The materials block lists what exists for the paper beyond the PDF, in four columns under rules in the four colours of the Econ-ARK logo. All four rules print however many columns a paper fills. Four is the limit, one slot per logo colour, and a paper that somehow reaches five fails its build, and the message gives the count. A paper with no materials keeps the rules without the heading, as the line between its front matter and its text. The columns keep this order:
 
 | Column | Source |
 |--------|--------|
+| Code | `source` if set, otherwise `github`, shown as `owner/repo` with the code license under it. The two name the same thing often enough to share a slot, and `source` wins it |
 | Run online, or the `binder_label` option | `binder`, with a note that it starts in a few minutes |
-| Code | `github`, shown as `owner/repo`, with the code license under it |
-| REMARK | The `remark` option |
-| Source | `source`, shown without its scheme. Give it when the repository that builds the paper is not the one `github` names |
-| Also as | Each entry of `downloads` with a web address, by its `title`. An entry whose address ends in `.bib` goes to "Cite as" as a BibTeX link instead. See The site for the second list a site needs |
+| REMARK | The `remark` option, with a note that the slug leads to econ-ark.org |
+| Download | Each entry of `downloads` with a web address, by its `title`. An entry whose address ends in `.bib` goes to "Cite as" as a BibTeX link instead. See The site for the second list a site needs |
 
 ```yaml
 binder: https://econ-ark.org/materials/LiqConstr?dashboard
