@@ -8,19 +8,20 @@
 // The four logo curves, top to bottom, as the Econ-ARK design guidelines name them; kept to
 // marks that echo the logo, such as the materials rules
 #let arkCurves = (rgb("#fbaf3f"), rgb("#ed2a7b"), rgb("#00adef"), rgb("#38b449"));
-// Preferred fonts first, then fonts bundled with Typst so the template always compiles
-#let sansFont = ("Roboto", "Libertinus Serif");
-#let serifFont = ("Libertinus Serif", "New Computer Modern");
-#let mathFont = ("Libertinus Math", "New Computer Modern Math");
-// Libertinus Mono pairs with the serif body; DejaVu Sans Mono is bundled in the Typst binary
-#let monoFont = ("Libertinus Mono", "DejaVu Sans Mono");
+// One family carries the whole paper. Fira Math is the OpenType math companion to Fira Sans, and
+// having it is what lets the body face be a sans: symbols in running text keep the voice of the
+// prose. The fallbacks are the four faces Typst bundles, all serif except the mono.
+#let sansFont = ("Fira Sans", "New Computer Modern");
+#let serifFont = ("Fira Sans", "New Computer Modern");
+#let mathFont = ("Fira Math", "New Computer Modern Math");
+#let monoFont = ("Fira Mono", "DejaVu Sans Mono");
 
 #let leftCaption(it) = context {
   set text(font: sansFont, size: 8.5pt)
   set align(left)
   set par(justify: false, first-line-indent: 0pt)
-  // Inline code's 0.8em of 1.24em gives 0.99em, which sets Libertinus Mono's x-height at 0.9 of Roboto's
-  show raw.where(block: false): set text(size: 1.24em)
+  // Fira Mono and Fira Sans share an x-height, so inline code takes the caption's own size
+  show raw.where(block: false): set text(size: 1em)
   text(weight: 500, fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]
   h(6pt)
   it.body
@@ -200,9 +201,9 @@
 // Theorem-like blocks from MyST prf: directives, set in flow the way economics papers set them.
 // Replaces MyST's own proof(), which floats each block to the top of the page inside a tinted box.
 #let italicKinds = ("theorem", "lemma", "proposition", "corollary", "conjecture", "claim")
-// pubmatter sets the authors in "semibold", a weight Roboto does not carry, so it resolves to
-// Medium or Bold by whichever file the machine found first. This is its title block with the
-// authors pinned to the weight the rest of the template asks for.
+// pubmatter sets the authors in "semibold", which resolves by discovery order wherever the text
+// face carries no file at that weight. This is its title block with the authors pinned to the
+// weight the rest of the template asks for.
 #let titleBlock(fm) = pubmatter.with-theme(_ => {
   pubmatter.show-title(fm)
   pubmatter.show-authors(fm, weight: 500)
@@ -328,9 +329,9 @@
   // Typst reads ' after a digit as a prime, so "Table 1's" would print a prime. Restore the apostrophe,
   // except in inline code, which a state marks because show rules cannot see their surroundings.
   let inCode = state("ark-inline-code", false)
-  // Inline code keeps Typst's 0.8em, which sets Libertinus Mono's x-height at 0.9 of Libertinus Serif's;
-  // captions raise it for Roboto's taller x-height. An empty box after _ and . lets a long name wrap
-  // without adding a character to copied text.
+  // Inline code keeps Typst's 0.8em against a text face of the same x-height, so it reads a shade
+  // smaller than its surroundings. An empty box after _ and . lets a long name wrap without
+  // adding a character to copied text.
   show raw.where(block: false): it => {
     set text(font: monoFont)
     show regex("[_.]"): s => [#s#box()]

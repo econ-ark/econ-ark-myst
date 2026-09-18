@@ -167,9 +167,9 @@ check_rule() {
   fi
 }
 
-# Roboto ships no SemiBold, so asking for one leaves Medium and Bold exactly 100 units away, and
-# Typst breaks that tie by the order it found the files in, which is the filesystem's. Reading the
-# embedded fonts catches a re-resolution, which otherwise surfaces as an unexplained text diff.
+# A weight that no installed file carries sits between two that do, and Typst breaks that tie by
+# the order it found the files in, which is the filesystem's. Reading the embedded fonts catches
+# that re-resolution, which otherwise surfaces as an unexplained text diff.
 check_font() {
   local name=$1 pdf=$2 font=$3
   if pdffonts "$pdf" 2>/dev/null | awk 'NR>2 { print $1 }' | sed 's/^[A-Z]*+//' | grep -qx "$font"; then
@@ -364,8 +364,8 @@ self_test() {
   # The same words at another weight: the text check reads them as equal, so only the pages differ
   local weights
   weights=$(mktemp -d)
-  printf '#set text(font: "Roboto", weight: 500)\nSame words either way.\n' >"$weights/light.typ"
-  printf '#set text(font: "Roboto", weight: 700)\nSame words either way.\n' >"$weights/heavy.typ"
+  printf '#set text(font: "Fira Sans", weight: 500)\nSame words either way.\n' >"$weights/light.typ"
+  printf '#set text(font: "Fira Sans", weight: 700)\nSame words either way.\n' >"$weights/heavy.typ"
   if typst compile "$weights/light.typ" "$weights/light.pdf" >/dev/null 2>&1 &&
     typst compile "$weights/heavy.typ" "$weights/heavy.pdf" >/dev/null 2>&1; then
     out=$(check_tracked seeded "$weights/heavy.pdf" "$weights/light.pdf")
@@ -379,8 +379,8 @@ self_test() {
   fi
   rm -rf "$weights"
 
-  # Roboto-SemiBold is the file the old weight asked for and no release of Roboto carries
-  out=$(check_font seeded "$PAPER" Roboto-SemiBold)
+  # Fira has no Black, so it stands for any weight that resolved to a file the template lacks
+  out=$(check_font seeded "$PAPER" FiraSans-Black)
   if grep -q 'FAIL.*not embedded' <<<"$out"; then
     ok "self-test: a weight that resolved to another font file is caught"
   else
@@ -462,7 +462,7 @@ else
   git -C "$ROOT" show HEAD:examples/exports/paper.pdf >"$committed" 2>/dev/null
   check_tracked paper "$PAPER" "$committed"
   rm -f "$committed"
-  check_font paper "$PAPER" Roboto-Medium
+  check_font paper "$PAPER" FiraSans-Medium-Identity-H
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree

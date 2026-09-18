@@ -12,6 +12,9 @@ project:
           name: Computational Economics Grant
   bibliography:
     - examples/main.bib
+  # theme.css asks for these by relative path, and MyST copies them beside it
+  static_files:
+    - fonts
   # article-theme reads its downloads panel from the project, not from the paper's own
   # frontmatter, so a paper that lists downloads still needs them named here to reach the site
   downloads:

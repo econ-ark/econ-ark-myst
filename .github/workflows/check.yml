@@ -26,26 +26,31 @@ jobs:
           typst --version
 
       # Without these fonts the template falls back to bundled ones, which changes line breaks.
-      # Libertinus Serif needs no install: Typst bundles it, along with DejaVu Sans Mono.
+      # Every weight the template asks for has a file here, so none resolves by discovery order.
       - name: Install fonts and poppler
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils imagemagick unzip
           mkdir -p ~/.local/share/fonts
-          curl -sL -o roboto.zip https://github.com/googlefonts/roboto-3-classic/releases/download/v3.012/Roboto_v3.012.zip
-          unzip -q -j roboto.zip 'unhinted/static/Roboto-*.ttf' -d ~/.local/share/fonts
-          curl -sL -o libertinus.zip https://github.com/alerque/libertinus/releases/download/v7.051/Libertinus-7.051.zip
-          unzip -q -j libertinus.zip '*/LibertinusMath-Regular.otf' '*/LibertinusMono-Regular.otf' -d ~/.local/share/fonts
+          curl -sL -o fira.zip https://github.com/mozilla/Fira/archive/refs/tags/4.202.zip
+          unzip -q -j fira.zip '*/otf/FiraSans-Regular.otf' '*/otf/FiraSans-Italic.otf' \
+            '*/otf/FiraSans-Medium.otf' '*/otf/FiraSans-MediumItalic.otf' \
+            '*/otf/FiraSans-SemiBold.otf' '*/otf/FiraSans-SemiBoldItalic.otf' \
+            '*/otf/FiraSans-Bold.otf' '*/otf/FiraSans-BoldItalic.otf' \
+            '*/otf/FiraMono-Regular.otf' '*/otf/FiraMono-Medium.otf' '*/otf/FiraMono-Bold.otf' \
+            -d ~/.local/share/fonts
+          curl -sL -o ~/.local/share/fonts/FiraMath-Regular.otf \
+            https://github.com/firamath/firamath/releases/download/v0.3.4/FiraMath-Regular.otf
           fc-cache -f
           # Each family must be found, or the build falls back to a bundled font and the tracked PDF changes
-          test "$(typst fonts | grep -cE '^(Roboto|Libertinus Math|Libertinus Mono)$')" -eq 3
+          test "$(typst fonts | grep -cE '^(Fira Sans|Fira Mono|Fira Math)$')" -eq 3
 
       - name: Report which font files Typst can see
         run: |
           echo '--- files whose family is one of ours'
-          fc-list : file family | grep -iE 'roboto|libertinus' | sort
+          fc-list : file family | grep -iE 'fira' | sort
           echo '--- what Typst resolves'
-          typst fonts --variants | grep -iA4 -E '^(Roboto|Libertinus)'
+          typst fonts --variants | grep -iA4 -E '^Fira'
 
       - name: Self-test the checks
         run: |

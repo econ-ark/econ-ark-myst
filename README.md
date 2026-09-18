@@ -21,7 +21,8 @@ MyST clones the template from that URL each time it builds.
 ## Requirements
 
 - Typst 0.13 or newer (tested with 0.13.1 and 0.15.1). Typst 0.12 fails inside the `pubmatter` package.
-- Install [Roboto](https://github.com/googlefonts/roboto-3-classic) for headings, and Libertinus Math for equations and Libertinus Mono for code, both in the [Libertinus](https://github.com/alerque/libertinus) release. Without them the template still compiles with fonts bundled in the Typst binary. Headings fall back to Libertinus Serif, equations to New Computer Modern Math and code to DejaVu Sans Mono.
+- Install the [Fira](https://github.com/mozilla/Fira) release for the text and code, and [Fira Math](https://github.com/firamath/firamath) for the equations. One family sets the whole paper: Fira Sans for text and apparatus, Fira Mono for code, and Fira Math, its OpenType math companion, for everything between dollars. Without them the template still compiles with fonts bundled in the Typst binary, falling back to New Computer Modern Sans, DejaVu Sans Mono and New Computer Modern Math.
+- Ask only for a weight that has a file. Fira Sans carries 400, 500, 600 and 700, and the template stays on those. A weight with no file of its own sits midway between two that have one. The order the machine happened to find those two in then decides which it uses.
 
 ## Frontmatter
 
@@ -307,7 +308,15 @@ project:
 
 `logo.png` is the mark the PDF prints in its margin, and book-theme shows the same file in the site's navigation. article-theme leaves that place empty beside a paper. The stylesheet carries its own copy of the mark and sets it over the title. The wordmark is black. At night both marks rest on a white plate.
 
-A reader sees Libertinus Serif, Roboto and Libertinus Mono only when those fonts are installed on their machine. Without them the stylesheet falls back to Georgia, the system sans and the system mono, and the hierarchy survives. To serve the fonts yourself, list the files under `static_files` and add an `@font-face` block to a stylesheet of your own.
+The stylesheet serves the fonts itself. `fonts/` holds Fira Sans and Fira Mono subset to Latin as woff2, about 125KB for the seven faces, and `theme.css` declares an `@font-face` for each. A site copies them over by naming the directory under the project's `static_files`, which is what this repository's own `myst.yml` does:
+
+```yaml
+project:
+  static_files:
+    - fonts
+```
+
+A site that skips them still reads correctly, since the stack falls back to the system sans, but it will not be set in the faces the PDF uses.
 
 The site's navigation, sidebar and search keep the theme's own typeface, which the theme sizes its columns for.
 
@@ -317,7 +326,7 @@ The site's navigation, sidebar and search keep the theme's own typeface, which t
 |---------|-------|------------|
 | `[Section %s](#label)` prints "Section ??" | MyST resolves `%s` to nothing for headings in a single-article export, even with `numbering: headings: true` ([mystmd#3035](https://github.com/jupyter-book/mystmd/pull/3035)) | Refer to sections by name with `@label` or `[](#label)`, which print the section title |
 | A table that breaks across pages has no rule at the foot of each page before the last | The table package MyST uses draws rules only at fixed rows | The header, with its rules, repeats on each page, and the last page ends with the bottom rule |
-| The same sources give a PDF whose lines break differently on another machine | The requested font weight falls midway between the two nearest installed files, and Typst breaks that tie by the order it found them in, which is the filesystem's. Roboto has Medium and Bold but no SemiBold, so a request for semibold resolved to Medium here and Bold on CI | Ask for a weight a file actually carries, as the template now does with 500. `pdffonts` on both PDFs names the file each one embedded |
+| The same sources give a PDF whose lines break differently on another machine | The requested font weight falls midway between the two nearest installed files, and Typst breaks that tie by the order it found them in, which is the filesystem's. A family with Medium and Bold but no SemiBold puts a request for semibold exactly between them | Ask for a weight a file actually carries, as the template now does with 500. `pdffonts` on both PDFs names the file each one embedded |
 | A bibliography title reads "Stock Prices, News, In Markets" | Typst's title casing capitalizes a small word after a comma. The template lowercases And, Or, Nor, But, Of, The and For there, and leaves In, To and An, which can be first names | Write the word in braces in the `.bib` file, as in `{in}` |
 | A long table without a caption prints `state("tablex_tablex_header_pages__...") did not converge` | The table package MyST uses repeats the header on each page and needs more layout passes than Typst allows | Ignore the warning, because the table still breaks across pages with its header repeated |
 | A short table or figure leaves white space at the foot of a page | A table or figure that fits on one page moves whole to the next page. One taller than a page breaks across pages | Move the paragraph that introduces it, or split the table |
