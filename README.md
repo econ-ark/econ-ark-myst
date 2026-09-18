@@ -306,9 +306,19 @@ project:
     - plugins/fira-math.mjs
 ```
 
+Another repository does not need any of this checked out. `plugins/fira-math.bundle.mjs` is the same transform with Temml and its other dependency compiled in, so it loads from a URL with nothing installed:
+
+```yaml
+project:
+  plugins:
+    - https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/plugins/fira-math.bundle.mjs
+```
+
+The bundle exists because MyST writes a fetched plugin into `_build/cache/`, where a bare `import temml` has no `node_modules` to resolve against. The build then reports `ERR_MODULE_NOT_FOUND` and every equation reverts to KaTeX. `npm run build:plugin` regenerates the bundle from the source file. The versions it inlines are pinned exactly, which is what lets a check rebuild the bundle and compare bytes. A bundle left behind by an edit to the source fails the run.
+
 Three things have to be in place, and `scripts/fonts.sh webfonts` puts two of them there:
 
-- `npm install`, for Temml itself. This is the one part of the repository that needs node modules; the Typst template needs none.
+- `npm install`, for Temml itself. Building the site *here* needs it. A repository that loads the bundle skips this step.
 - `fonts/FiraMath-Regular.woff2`, which unlike the text faces is served whole. Its OpenType MATH table is what stretches a bracket around a sum. A subsetter asked for a range of characters is under no obligation to carry that table through.
 - `fonts/temml.css`, which `theme.css` imports first. Chromium implements none of the older MathML presentation attributes, so Temml writes CSS classes for what it cannot express and supplies the rules that read them. Without the import an `\underline` loses its rule and a `\widehat` its hat.
 

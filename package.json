@@ -3,8 +3,15 @@
   "private": true,
   "description": "Dependencies of the site build. The Typst template needs none of this.",
   "type": "module",
+  "scripts": {
+    "build:plugin": "esbuild plugins/fira-math.mjs --bundle --format=esm --platform=node --outfile=plugins/fira-math.bundle.mjs"
+  },
+  "comment": "Exact versions, not ranges: these are bundled into plugins/fira-math.bundle.mjs, which a check compares byte for byte against a fresh build.",
   "dependencies": {
-    "js-yaml": "^4.1.0",
-    "temml": "^0.13.5"
+    "js-yaml": "4.3.2",
+    "temml": "0.13.5"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
   }
 }

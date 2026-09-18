@@ -225,6 +225,26 @@ check_tracked() {
   fi
 }
 
+# The bundle is what another repository loads over the network, and the site here builds from the
+# source file instead, so the bundle can fall behind without anything failing. Every dependency it
+# inlines is pinned exactly, which is what lets this compare bytes.
+check_bundle() {
+  local name=$1 bundle=$2 fresh
+  fresh=$(mktemp)
+  if ! (cd "$ROOT" && npx --no-install esbuild plugins/fira-math.mjs --bundle --format=esm \
+    --platform=node --outfile="$fresh" --allow-overwrite) >/dev/null 2>&1; then
+    bad "$name: esbuild did not run, so the published bundle went unchecked"
+    rm -f "$fresh"
+    return
+  fi
+  if cmp -s "$bundle" "$fresh"; then
+    ok "$name: the committed bundle is what the plugin source produces"
+  else
+    bad "$name: $bundle differs from a fresh build, so the published plugin is stale"
+  fi
+  rm -f "$fresh"
+}
+
 # The site half is an artifact too: the stylesheet and the banner must reach the built site, and
 # the two themes must keep writing the classes the stylesheet reaches the paper through. A theme
 # that renamed them would serve the stylesheet and ignore it.
@@ -472,6 +492,18 @@ self_test() {
     bad "self-test: a site missing the stylesheet, the banner, the logos or its classes went undetected"
   fi
 
+  # A bundle left behind by an edit to the plugin source, which is the way this one goes wrong
+  local stale
+  stale=$(mktemp)
+  printf 'export default { name: "stale" };\n' >"$stale"
+  out=$(check_bundle seeded "$stale")
+  if grep -q 'FAIL.*is stale' <<<"$out"; then
+    ok "self-test: a bundle that no longer matches the plugin source is caught"
+  else
+    bad "self-test: a bundle that no longer matches the plugin source went undetected"
+  fi
+  rm -f "$stale"
+
   # The case the MathML check exists for: a site whose equations came out of KaTeX after all
   local katexsite
   katexsite=$(mktemp -d)
@@ -537,6 +569,7 @@ else
   check_weight_files fonts "$variants" "Fira Mono" Normal 400
   check_weight_files fonts "$variants" "Fira Math" Normal 400
   check_font paper "$PAPER" FiraMath-Regular-Identity-H
+  check_bundle plugin "$ROOT/plugins/fira-math.bundle.mjs"
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
