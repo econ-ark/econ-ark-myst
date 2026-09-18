@@ -35,9 +35,6 @@ jobs:
           pip install --quiet fonttools brotli
           scripts/fonts.sh install
           scripts/fonts.sh webfonts
-          # Each family must be found, or the build falls back to a bundled font. This says nothing
-          # about which file a weight resolves to: check-examples.sh counts the files per weight.
-          test "$(typst fonts | grep -cE '^(Fira Sans|Fira Mono|Fira Math)$')" -eq 3
 
       - name: Report which font files Typst can see
         run: |

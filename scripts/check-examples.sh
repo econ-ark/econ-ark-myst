@@ -169,6 +169,17 @@ check_rule() {
   fi
 }
 
+# Before asking which file serves a weight, ask whether the family is there at all. A missing one
+# is not a tie: Typst falls back to a bundled face, and the text rewraps.
+check_family() {
+  local name=$1 listing=$2 family=$3
+  if grep -qxF "$family" <<<"$listing"; then
+    ok "$name: Typst finds $family"
+  else
+    bad "$name: Typst does not find $family, so the build falls back to a bundled face"
+  fi
+}
+
 # Counting family names proves nothing: a machine carrying the whole Fira family reports one name
 # over twenty files. What decides a build is how many files offer the weight being asked for, since
 # two offering the same one leaves the choice to whichever the machine reached first.
@@ -440,6 +451,14 @@ self_test() {
   fi
   rm -rf "$weights"
 
+  # A machine that never had Fira Math installed, which is what scripts/fonts.sh install prevents
+  out=$(check_family seeded "$(printf 'Fira Sans\nFira Mono\nDejaVu Sans Mono\n')" "Fira Math")
+  if grep -q 'FAIL.*does not find Fira Math' <<<"$out"; then
+    ok "self-test: a missing font family is caught"
+  else
+    bad "self-test: a missing font family went undetected"
+  fi
+
   # A font directory holding the release twice, which is what a mixed ttf and otf install looks like
   out=$(check_weight_files seeded "$(printf 'Fira Sans\n  |- /a/FiraSans-Medium.ttf\n      Style: Normal, Weight: 500, Stretch: 100%%\n  |- /b/FiraSans-Medium.otf\n      Style: Normal, Weight: 500, Stretch: 100%%\n')" "Fira Sans" Normal 500)
   if grep -q 'FAIL.*2 files offer' <<<"$out"; then
@@ -564,6 +583,10 @@ else
   check_font paper "$PAPER" FiraSans-Italic
   # The weights the template asks for, each of which must come from exactly one file
   variants=$(typst fonts --variants 2>/dev/null)
+  families=$(typst fonts 2>/dev/null)
+  for family in "Fira Sans" "Fira Mono" "Fira Math"; do
+    check_family fonts "$families" "$family"
+  done
   for weight in 400 500 700; do
     check_weight_files fonts "$variants" "Fira Sans" Normal "$weight"
     check_weight_files fonts "$variants" "Fira Sans" Italic "$weight"
