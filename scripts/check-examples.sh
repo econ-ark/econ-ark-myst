@@ -169,6 +169,20 @@ check_rule() {
   fi
 }
 
+# fonts.sh fetches Temml's stylesheet from a release tag and package.json pins the library the
+# plugin bundles. They render the same markup, so a build where they disagree styles MathML with
+# a sheet from one version and lays it out with another.
+check_temml_pin() {
+  local name=$1 script=$2 pkg=$3 tag version
+  tag=$(sed -nE 's/^TEMML_TAG=v?(.+)$/\1/p' "$script")
+  version=$(jq -r '.dependencies.temml // empty' "$pkg" 2>/dev/null)
+  if [ -n "$tag" ] && [ "$tag" = "$version" ]; then
+    ok "$name: fonts.sh and package.json both pin Temml $tag"
+  else
+    bad "$name: fonts.sh pins Temml '${tag:-none}' and package.json '${version:-none}'"
+  fi
+}
+
 # Before asking which file serves a weight, ask whether the family is there at all. A missing one
 # is not a tie: Typst falls back to a bundled face, and the text rewraps.
 check_family() {
@@ -258,6 +272,30 @@ check_bundle() {
   rm -f "$fresh"
 }
 
+# A stylesheet naming a file the site does not serve fails silently: the browser drops that face
+# and paints the next one down. Temml's own sheet asks for a script-capital woff2 by name, which is
+# how this repository shipped a dangling reference until a consumer building from it noticed.
+check_css_urls() {
+  local name=$1 dir=$2 sheet url target missing=0 seen=0
+  while IFS= read -r sheet; do
+    while IFS= read -r url; do
+      [ -n "$url" ] || continue
+      # A fragment is an id in the same document, and %23 is how one reads inside a data URI
+      case "$url" in data:*|http:*|https:*|/*|'#'*|%23*) continue ;; esac
+      seen=$((seen + 1))
+      target="$(dirname "$sheet")/${url%%[?#]*}"
+      [ -f "$target" ] || { bad "$name: $sheet asks for $url, which the site does not serve"; missing=1; }
+      # A data URI carries its own url() inside it, so drop those before looking for real ones
+    done < <(sed -E 's/url\("data:[^"]*"\)//g; s/url\(data:[^)]*\)//g' "$sheet" |
+      sed -nE "s/.*url\((['\"]?)([^'\")]+)\1\).*/\2/p")
+  done < <(find "$dir" -name 'myst-theme.css' -o -path '*/fonts/*.css' 2>/dev/null)
+  if [ "$missing" -eq 0 ] && [ "$seen" -gt 0 ]; then
+    ok "$name: every url() in the served stylesheets resolves ($seen references)"
+  elif [ "$seen" -eq 0 ]; then
+    bad "$name: no url() found in any stylesheet under $dir, so this check proved nothing"
+  fi
+}
+
 # The site half is an artifact too: the stylesheet and the banner must reach the built site, and
 # the two themes must keep writing the classes the stylesheet reaches the paper through. A theme
 # that renamed them would serve the stylesheet and ignore it.
@@ -330,6 +368,7 @@ check_site() {
   else
     bad "$name: no bg-white class under $dir, so the rules that soften the theme's whites are inert"
   fi
+  check_css_urls "$name" "$dir"
   if grep -qE 'myst-fm-parts|id="skip-to-article"' <<<"$html"; then
     ok "$name: the front matter carries the anchor the four-colour rule hangs on"
   else
@@ -450,6 +489,33 @@ self_test() {
     bad "self-test: could not compile the two weights that seed the render check"
   fi
   rm -rf "$weights"
+
+  # The exact shape of the bug this repository shipped: a stylesheet naming a font beside it that
+  # the site never serves. Temml's sheet does this, which is why fonts.sh now fetches both.
+  local cssdir
+  cssdir=$(mktemp -d)
+  printf '@font-face { src: url("Temml.woff2") format("woff2"); }\n' >"$cssdir/myst-theme.css"
+  out=$(check_css_urls seeded "$cssdir")
+  if grep -q 'FAIL.*does not serve' <<<"$out"; then
+    ok "self-test: a stylesheet asking for a file the site lacks is caught"
+  else
+    bad "self-test: a stylesheet asking for a file the site lacks went undetected"
+  fi
+  : >"$cssdir/Temml.woff2"
+  out=$(check_css_urls seeded "$cssdir")
+  if grep -q 'ok.*resolves' <<<"$out"; then
+    ok "self-test: a stylesheet whose files are all served passes"
+  else
+    bad "self-test: a stylesheet whose files are all served was reported missing"
+  fi
+  rm -rf "$cssdir"
+
+  out=$(check_temml_pin seeded "$ROOT/scripts/fonts.sh" /dev/null)
+  if grep -q "FAIL.*package.json 'none'" <<<"$out"; then
+    ok "self-test: Temml pins that disagree are caught"
+  else
+    bad "self-test: Temml pins that disagree went undetected"
+  fi
 
   # A machine that never had Fira Math installed, which is what scripts/fonts.sh install prevents
   out=$(check_family seeded "$(printf 'Fira Sans\nFira Mono\nDejaVu Sans Mono\n')" "Fira Math")
@@ -603,6 +669,7 @@ else
   check_weight_files fonts "$variants" "Fira Math" Normal 400
   check_font paper "$PAPER" FiraMath-Regular-Identity-H
   check_bundle plugin "$ROOT/plugins/fira-math.bundle.mjs"
+  check_temml_pin pins "$ROOT/scripts/fonts.sh" "$ROOT/package.json"
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
