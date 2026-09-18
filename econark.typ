@@ -21,7 +21,7 @@
   set par(justify: false, first-line-indent: 0pt)
   // Inline code's 0.8em of 1.24em gives 0.99em, which sets Libertinus Mono's x-height at 0.9 of Roboto's
   show raw.where(block: false): set text(size: 1.24em)
-  text(weight: "semibold", fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]
+  text(weight: 500, fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]
   h(6pt)
   it.body
 }
@@ -97,7 +97,7 @@
 
 // A small labelled block in the margin rail
 #let railItem(title, content) = {
-  text(size: 7.5pt, fill: arkBlue, weight: "semibold", title)
+  text(size: 7.5pt, fill: arkBlue, weight: 500, title)
   linebreak()
   text(size: 7.5pt, content)
 }
@@ -109,7 +109,7 @@
   set text(font: sansFont, size: 8pt)
   set par(first-line-indent: 0pt, justify: false, leading: 0.45em, spacing: 0.45em)
   if groups.len() > 0 {
-    text(size: 8.5pt, fill: arkBlue, weight: "semibold", "Materials")
+    text(size: 8.5pt, fill: arkBlue, weight: 500, "Materials")
     v(5pt, weak: true)
   }
   grid(
@@ -134,7 +134,7 @@
   set par(first-line-indent: 0pt, justify: false, leading: 0.5em, spacing: 0.7em)
   set list(marker: text(fill: arkBlue, sym.bullet), indent: 0pt, body-indent: 0.5em, spacing: 0.8em)
   // Label half a point under the text, matching the rail labels and, under the abstract, the keyword labels
-  text(size: size - 0.5pt, fill: arkBlue, weight: "semibold", "Key points")
+  text(size: size - 0.5pt, fill: arkBlue, weight: 500, "Key points")
   v(0.6em, weak: true)
   body
 }
@@ -211,7 +211,7 @@
   {
     set par(first-line-indent: 0pt)
     if heading != none {
-      block(below: 0.5em, text(font: sansFont, size: 9pt, weight: "semibold", fill: color, heading))
+      block(below: 0.5em, text(font: sansFont, size: 9pt, weight: 500, fill: color, heading))
     }
     body
   },
@@ -233,7 +233,7 @@
   [#show figure.where(kind: kind): it => block(above: 1.2em, below: 1.2em, width: 100%, {
       set align(left)
       set par(first-line-indent: 0pt)
-      [#text(font: sansFont, weight: "semibold", fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]#note. #it.body]
+      [#text(font: sansFont, weight: 500, fill: arkBlue)[#it.supplement #it.counter.display(it.numbering)]#note. #it.body]
     })
     #figure(kind: kind, supplement: supplement, numbering: "1", outlined: false, statement)#if labelName != none { label(labelName) }]
 }
@@ -364,10 +364,10 @@
     }
     set par(first-line-indent: 0pt, justify: false)
     if it.level == 1 {
-      set text(font: sansFont, size: 13pt, weight: "semibold", fill: arkBlue)
+      set text(font: sansFont, size: 13pt, weight: 500, fill: arkBlue)
       block(above: 1.8em, below: 0.9em, sticky: true, number + it.body)
     } else if it.level == 2 {
-      set text(font: sansFont, size: 11pt, weight: "semibold")
+      set text(font: sansFont, size: 11pt, weight: 500)
       block(above: 1.4em, below: 0.7em, sticky: true, number + it.body)
     } else {
       set text(style: "italic")
@@ -466,7 +466,7 @@
     set text(font: sansFont, size: 7.5pt)
     set par(first-line-indent: 0pt, justify: false, leading: 0.5em, spacing: 0.6em)
     if (kind != none) {
-      text(11pt, fill: arkBlue, weight: "semibold", kind)
+      text(11pt, fill: arkBlue, weight: 500, kind)
       parbreak()
     }
     // MyST fills a missing date with the build date, so an undated paper shows the day it was built
@@ -500,7 +500,7 @@
         set text(size: 10pt)
         if ("abstracts" in fm) {
           for abs in fm.abstracts {
-            text(font: sansFont, weight: "semibold", fill: arkBlue, size: 9.5pt, abs.title)
+            text(font: sansFont, weight: 500, fill: arkBlue, size: 9.5pt, abs.title)
             h(0.7em)
             abs.content
             parbreak()
@@ -509,7 +509,7 @@
         // The summary part: the non-technical summary some discussion paper series ask for
         if summary != none {
           v(0.5em)
-          text(font: sansFont, weight: "semibold", fill: arkBlue, size: 9.5pt, "Non-technical summary")
+          text(font: sansFont, weight: 500, fill: arkBlue, size: 9.5pt, "Non-technical summary")
           h(0.7em)
           summary
           parbreak()
@@ -518,13 +518,13 @@
         set par(justify: false, spacing: 0.65em)
         if ("keywords" in fm and fm.keywords.len() > 0) {
           v(0.5em)
-          text(font: sansFont, weight: "semibold", fill: arkBlue, size: 8.5pt, "Keywords")
+          text(font: sansFont, weight: 500, fill: arkBlue, size: 8.5pt, "Keywords")
           h(0.7em)
           fm.keywords.join(", ")
           parbreak()
         }
         if (jel.len() > 0) {
-          text(font: sansFont, weight: "semibold", fill: arkBlue, size: 8.5pt, "JEL codes")
+          text(font: sansFont, weight: 500, fill: arkBlue, size: 8.5pt, "JEL codes")
           h(0.7em)
           jel.join(", ")
         }

@@ -167,6 +167,18 @@ check_rule() {
   fi
 }
 
+# Roboto ships no SemiBold, so asking for one leaves Medium and Bold exactly 100 units away, and
+# Typst breaks that tie by the order it found the files in, which is the filesystem's. Reading the
+# embedded fonts catches a re-resolution, which otherwise surfaces as an unexplained text diff.
+check_font() {
+  local name=$1 pdf=$2 font=$3
+  if pdffonts "$pdf" 2>/dev/null | awk 'NR>2 { print $1 }' | sed 's/^[A-Z]*+//' | grep -qx "$font"; then
+    ok "$name: the PDF embeds $font"
+  else
+    bad "$name: $font is not embedded in the PDF, so a weight resolved to another file"
+  fi
+}
+
 # The tracked PDF must be what the current sources produce. Text that differs is a stale file,
 # whatever machine built it; bytes that differ on a pinned toolchain are stale too, which is why
 # CI takes the stricter reading and a contributor with another font build only gets a note.
@@ -331,6 +343,14 @@ self_test() {
     bad "self-test: a stale tracked PDF went undetected"
   fi
 
+  # Roboto-SemiBold is the file the old weight asked for and no release of Roboto carries
+  out=$(check_font seeded "$PAPER" Roboto-SemiBold)
+  if grep -q 'FAIL.*not embedded' <<<"$out"; then
+    ok "self-test: a weight that resolved to another font file is caught"
+  else
+    bad "self-test: a weight that resolved to another font file went undetected"
+  fi
+
   # A log carrying a warning about a file of this template, beside the packages' own noise
   local log
   log=$(mktemp)
@@ -383,7 +403,7 @@ self_test() {
   rm -rf "$scratchsite"
 }
 
-for tool in myst pdftotext pdfinfo pdftoppm convert; do
+for tool in myst pdftotext pdfinfo pdffonts pdftoppm convert; do
   command -v "$tool" >/dev/null || { echo "missing required tool: $tool"; exit 2; }
 done
 
@@ -406,6 +426,7 @@ else
   git -C "$ROOT" show HEAD:examples/exports/paper.pdf >"$committed" 2>/dev/null
   check_tracked paper "$PAPER" "$committed"
   rm -f "$committed"
+  check_font paper "$PAPER" Roboto-Medium
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
