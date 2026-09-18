@@ -230,15 +230,9 @@
 [# endif #]
 
 [# if parts.declaration #]
-#heading(numbering: none)[Declaration of competing interest]
+#heading(numbering: none)[Declarations]
 
 [-parts.declaration-]
-[# endif #]
-
-[# if parts.ai_declaration #]
-#heading(numbering: none)[Declaration of generative AI use]
-
-[-parts.ai_declaration-]
 [# endif #]
 
 [# if doc.bibtex #]

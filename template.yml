@@ -106,10 +106,9 @@ parts:
   - id: data_availability
     description: Data availability statement, shown unnumbered after the acknowledgments.
   - id: declaration
-    description: Declaration of competing interest, shown unnumbered after the data availability statement.
-  - id: ai_declaration
     description: >
-      Declaration of generative AI use, shown unnumbered immediately before the references.
-      Same part name as the elsarticle-myst template; supply only the statement text.
+      Declarations, shown unnumbered after the data availability statement and before the
+      references. One block for competing interests, generative AI use and anything else a
+      working paper has to state; a journal submission uses that journal's own template.
   - id: title_note
     description: Footnote attached to the title, such as a funding or presentation note; author notes follow it.

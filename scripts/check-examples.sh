@@ -26,7 +26,7 @@ ANCHORS=(
   '2.1.1 Sources of the parameters'
   'Proposition 1 (Concavity)'
   'Admonitions take a rule in the palette'
-  'Declaration of generative AI use'
+  'Declarations'
   'Carroll 1997'
   'References'
   'The Quarterly Journal of Economics 112 (1): 1'

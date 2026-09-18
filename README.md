@@ -172,8 +172,7 @@ Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib 
 | `keypoints` | Three or four short bullet points, at most 80 words, in the margin under the logo. When the margin cannot hold them above its lower notes, they move under the abstract | Above the page, as "Key Points" |
 | `acknowledgments` | First unnumbered section of the back matter (`acknowledgements` and `acknowledgement` also work) | Below the page |
 | `data_availability` | Unnumbered section after the acknowledgments | Below the page |
-| `declaration` | Unnumbered "Declaration of competing interest" after the data availability statement | In the text, where the block is written |
-| `ai_declaration` | Unnumbered "Declaration of generative AI use", immediately before the references. Same part name as [elsarticle-myst](https://github.com/alanlujan91/elsarticle-myst) | In the text, where the block is written |
+| `declaration` | Unnumbered "Declarations" after the data availability statement and before the references. One block for competing interests, generative AI use and whatever else the paper states | In the text, where the block is written |
 | `title_note` | Starred footnote on the title, placed before any author notes | In the text, where the block is written |
 
 A part the template does not list, such as `dedication` or `epigraph`, stays in the text of the PDF as an unlabeled paragraph.
