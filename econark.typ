@@ -200,8 +200,18 @@
 // Theorem-like blocks from MyST prf: directives, set in flow the way economics papers set them.
 // Replaces MyST's own proof(), which floats each block to the top of the page inside a tinted box.
 #let italicKinds = ("theorem", "lemma", "proposition", "corollary", "conjecture", "claim")
+// pubmatter sets the authors in "semibold", a weight Roboto does not carry, so it resolves to
+// Medium or Bold by whichever file the machine found first. This is its title block with the
+// authors pinned to the weight the rest of the template asks for.
+#let titleBlock(fm) = pubmatter.with-theme(_ => {
+  pubmatter.show-title(fm)
+  pubmatter.show-authors(fm, weight: 500)
+  pubmatter.show-affiliations(fm)
+})
+
 // Admonitions, which MyST otherwise draws as a filled box in a colour outside the palette.
 // A rule in the palette carries them instead, with the label in the same colour.
+
 #let arkAdmonition(body, heading: none, color: arkBlue) = block(
   width: 100%,
   above: 1.2em,
@@ -391,9 +401,9 @@
     if notes.len() > 0 {
       let fm-title = fm
       fm-title.title = [#fm.title#footnote(numbering: "*", notes.join(" "))]
-      pubmatter.show-title-block(fm-title)
+      titleBlock(fm-title)
     } else {
-      pubmatter.show-title-block(fm)
+      titleBlock(fm)
     }
   }
   counter(footnote).update(0)

@@ -179,22 +179,33 @@ check_font() {
   fi
 }
 
-# The tracked PDF must be what the current sources produce. Text that differs is a stale file,
-# whatever machine built it; bytes that differ on a pinned toolchain are stale too, which is why
-# CI takes the stricter reading and a contributor with another font build only gets a note.
+# The tracked PDF must be what the current sources produce, and what it produces is pages, so the
+# pages are what gets compared. Text alone misses a weight or a colour that changed; bytes alone
+# over-reach, since a subset tag and an XMP instance id can differ between two identical renders.
 check_tracked() {
-  local name=$1 fresh=$2 committed=$3
-  if diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$fresh" - 2>/dev/null) >/dev/null; then
-    if cmp -s "$committed" "$fresh"; then
-      ok "$name: the tracked PDF is what the sources produce"
-    elif [ -n "${CI:-}" ]; then
-      bad "$name: the tracked PDF differs from the fresh build in bytes; commit the rebuilt file"
-    else
-      ok "$name: the tracked PDF differs in bytes only, the text is unchanged (usually a different font file version)"
-    fi
-  else
+  local name=$1 fresh=$2 committed=$3 scratch pages p differing total=0
+  if ! diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$fresh" - 2>/dev/null) >/dev/null; then
     bad "$name: the tracked PDF's text differs from the fresh build; commit the rebuilt file:"
     diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$fresh" - 2>/dev/null) | head -20
+    return
+  fi
+  if cmp -s "$committed" "$fresh"; then
+    ok "$name: the tracked PDF is byte for byte what the sources produce"
+    return
+  fi
+  scratch=$(mktemp -d)
+  pdftoppm -png -r 150 "$committed" "$scratch/old" 2>/dev/null
+  pdftoppm -png -r 150 "$fresh" "$scratch/new" 2>/dev/null
+  pages=$(pdfinfo "$fresh" 2>/dev/null | awk '/^Pages:/ {print $2}')
+  for ((p = 1; p <= ${pages:-0}; p++)); do
+    differing=$(compare -metric AE "$scratch"/old-"$p".png "$scratch"/new-"$p".png null: 2>&1)
+    total=$((total + ${differing%%[!0-9]*}))
+  done
+  rm -rf "$scratch"
+  if [ "$total" -eq 0 ]; then
+    ok "$name: the tracked PDF renders identically to the fresh build (${pages:-0} pages, bytes differ)"
+  else
+    bad "$name: the tracked PDF renders differently from the fresh build ($total pixels); commit the rebuilt file"
   fi
 }
 
@@ -342,6 +353,24 @@ self_test() {
   else
     bad "self-test: a stale tracked PDF went undetected"
   fi
+
+  # The same words at another weight: the text check reads them as equal, so only the pages differ
+  local weights
+  weights=$(mktemp -d)
+  printf '#set text(font: "Roboto", weight: 500)\nSame words either way.\n' >"$weights/light.typ"
+  printf '#set text(font: "Roboto", weight: 700)\nSame words either way.\n' >"$weights/heavy.typ"
+  if typst compile "$weights/light.typ" "$weights/light.pdf" >/dev/null 2>&1 &&
+    typst compile "$weights/heavy.typ" "$weights/heavy.pdf" >/dev/null 2>&1; then
+    out=$(check_tracked seeded "$weights/heavy.pdf" "$weights/light.pdf")
+    if grep -q 'FAIL.*renders differently' <<<"$out"; then
+      ok "self-test: a PDF whose text matches but whose pages differ is caught"
+    else
+      bad "self-test: a PDF whose text matches but whose pages differ went undetected"
+    fi
+  else
+    bad "self-test: could not compile the two weights that seed the render check"
+  fi
+  rm -rf "$weights"
 
   # Roboto-SemiBold is the file the old weight asked for and no release of Roboto carries
   out=$(check_font seeded "$PAPER" Roboto-SemiBold)

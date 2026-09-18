@@ -311,7 +311,7 @@ The site's navigation, sidebar and search keep the theme's own typeface, which t
 
 ## Example
 
-`examples/paper.md` exercises every field above, `examples/minimal.md` uses as few as possible, and `examples/tall-table.md` holds a table taller than a page. The project's `myst.yml` is at the root of the repository, beside the template it exports with. Run the build there. Its output, `examples/exports/paper.pdf`, is tracked. The PDF carries no creation timestamp, so rebuilding an unchanged example leaves it byte-identical.
+`examples/paper.md` exercises every field above, `examples/minimal.md` uses as few as possible, and `examples/tall-table.md` holds a table taller than a page. The project's `myst.yml` is at the root of the repository, beside the template it exports with. Run the build there. Its output, `examples/exports/paper.pdf`, is tracked. The PDF carries no creation timestamp, so rebuilding an unchanged example on the same machine leaves it byte-identical. Across machines the checks compare the rendered pages, since a font subset tag and an XMP instance id can differ between two builds that draw the same thing.
 
 ```bash
 myst build --typst
@@ -321,7 +321,7 @@ myst build --typst
 
 ## Checks
 
-`scripts/check-examples.sh` rebuilds the examples and reads what they produced. It fails when a PDF was not written, when a literal `??` marks an unresolved reference, when text from a template feature is missing, when the PDF carries a creation timestamp, when the tall table stays on one page and runs off its foot, when a caption is orphaned from its table, when the tracked PDF no longer matches what the sources produce, when either theme's site is missing the stylesheet, the banner or the classes the stylesheet reaches the paper through, when an admonition's rule is off the palette, and when Typst warns about a file of this template rather than an imported package. `myst build` exits 0 in all of these cases. `--self-test` seeds each defect and confirms the check catches it. CI runs both on every push with the same Typst, mystmd and fonts used for the tracked PDF.
+`scripts/check-examples.sh` rebuilds the examples and reads what they produced. It fails when a PDF was not written, when a literal `??` marks an unresolved reference, when text from a template feature is missing, when the PDF carries a creation timestamp, when the tall table stays on one page and runs off its foot, when a caption is orphaned from its table, when the tracked PDF's text or rendered pages no longer match what the sources produce, when a font weight resolved to a file the template did not ask for, when either theme's site is missing the stylesheet, the banner, a logo, the favicon or the classes the stylesheet reaches the paper through, when an admonition's rule is off the palette, and when Typst warns about a file of this template rather than an imported package. `myst build` exits 0 in all of these cases. `--self-test` seeds each defect and confirms the check catches it. CI runs both on every push with the same Typst, mystmd and fonts used for the tracked PDF.
 
 ## License
 
