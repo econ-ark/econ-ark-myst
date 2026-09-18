@@ -16,7 +16,13 @@ exports:
 
 Then run `myst build --typst`.
 
-MyST clones the template from that URL each time it builds.
+MyST clones the template from that URL once and keeps the clone under `_build/templates/typst`. It reuses that copy on every later build without asking the URL what it holds now. A paper therefore goes on building against the version it first downloaded. When this template changes, run:
+
+```sh
+myst clean --templates -y
+```
+
+A build against a stale clone looks exactly like a good one: `myst build` exits 0, writes a well-formed PDF, and typesets it in whatever the old copy said. `--force` rebuilds the paper without refreshing the clone. `pdffonts` on the export is the quickest way to tell which version produced it.
 
 ## Requirements
 
@@ -327,6 +333,7 @@ The site's navigation, sidebar and search keep the theme's own typeface, which t
 | `[Section %s](#label)` prints "Section ??" | MyST resolves `%s` to nothing for headings in a single-article export, even with `numbering: headings: true` ([mystmd#3035](https://github.com/jupyter-book/mystmd/pull/3035)) | Refer to sections by name with `@label` or `[](#label)`, which print the section title |
 | A table that breaks across pages has no rule at the foot of each page before the last | The table package MyST uses draws rules only at fixed rows | The header, with its rules, repeats on each page, and the last page ends with the bottom rule |
 | The same sources give a PDF whose lines break differently on another machine | The requested font weight falls midway between the two nearest installed files, and Typst breaks that tie by the order it found them in, which is the filesystem's. A family with Medium and Bold but no SemiBold puts a request for semibold exactly between them | Ask for a weight a file actually carries, as the template now does with 500. `pdffonts` on both PDFs names the file each one embedded |
+| A paper built against this template's URL shows none of a change that is on main | MyST keeps its clone of the template under `_build/templates/typst` and reuses it without re-fetching. The build takes the copy downloaded first. `--force` rebuilds the paper without refreshing the clone | `myst clean --templates -y`, then build. `pdffonts` on the export names the faces, which tells you which version of the template produced it |
 | A bibliography title reads "Stock Prices, News, In Markets" | Typst's title casing capitalizes a small word after a comma. The template lowercases And, Or, Nor, But, Of, The and For there, and leaves In, To and An, which can be first names | Write the word in braces in the `.bib` file, as in `{in}` |
 | A long table without a caption prints `state("tablex_tablex_header_pages__...") did not converge` | The table package MyST uses repeats the header on each page and needs more layout passes than Typst allows | Ignore the warning, because the table still breaks across pages with its header repeated |
 | A short table or figure leaves white space at the foot of a page | A table or figure that fits on one page moves whole to the next page. One taller than a page breaks across pages | Move the paragraph that introduces it, or split the table |
