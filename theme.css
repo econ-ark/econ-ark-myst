@@ -517,6 +517,20 @@ article.article .myst-backmatter-title,
  * with Tailwind colours of their own, so the rules below are what put them in the house palette.
  * article-theme carries no landing renderers, which is why the landing site is on book-theme.
  */
+/*
+ * The banner across the head of the landing page. article-theme paints a project banner behind the
+ * article header; book-theme draws none, so the landing carries it as an image and crops it here
+ * to a band. Without the cap a 1600x445 file stands nearly 400px tall at full width.
+ */
+article.article img.ark-banner {
+  max-height: 15rem;
+  width: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+  margin: 0 0 1.5rem;
+  border-radius: 0;
+}
+
 .myst-landing-block h1,
 .myst-landing-block h2 {
   font-family: var(--ark-sans);

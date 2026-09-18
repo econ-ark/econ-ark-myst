@@ -4,6 +4,7 @@ version: 1
 # demo at ../myst.yml stays on article-theme. Everything it is dressed in comes from one level up.
 project:
   title: Econ-ARK
+  banner: ../banner.svg
   # The equations in the blocks below are set in Fira Math by the same plugin the paper uses
   plugins:
     - ../plugins/fira-math.mjs

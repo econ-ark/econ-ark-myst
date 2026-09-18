@@ -3,6 +3,13 @@ title: Econ-ARK
 description: A Typst template and website theme for Econ-ARK working papers and REMARKs
 ---
 
++++
+
+:::{image} ../banner.svg
+:alt: Econ-ARK
+:class: col-screen ark-banner
+:::
+
 +++ { "kind": "centered" }
 
 Econ-ARK
