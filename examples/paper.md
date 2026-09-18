@@ -103,7 +103,19 @@ See @Carroll1997 for the argument under constant relative risk aversion.
 :::
 
 :::{note}
-Admonitions take a rule in the palette rather than the filled box MyST draws by default.
+Admonitions take a rule in the palette rather than the filled box MyST draws by default. Econ-ARK blue carries this kind and `important`.
+:::
+
+:::{tip}
+Green carries `tip`, `hint` and `seealso`.
+:::
+
+:::{warning}
+Orange carries `attention`, `caution` and this kind.
+:::
+
+:::{danger}
+Pink carries this kind and `error`.
 :::
 
 ```python

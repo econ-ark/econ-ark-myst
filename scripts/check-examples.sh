@@ -761,7 +761,12 @@ else
   check_pdf tall-table "$TALL" 'Case 35' 'Text after the table'
   check_breaks tall-table "$TALL" 'Case 1 A description' 'Case 35 A description'
   check_same_page tall-table "$TALL" 'Every case, one row each.' 'Case 1 A description'
+  # The ten admonition kinds take four colours, so the example carries one of each and each is read
+  # off the page. A kind whose rule went the wrong colour is invisible to every other check here.
   check_rule paper "$PAPER" 'Admonitions' '#1F476B'
+  check_rule paper "$PAPER" 'Green' '#38B449'
+  check_rule paper "$PAPER" 'Orange' '#FBAF3F'
+  check_rule paper "$PAPER" 'Pink' '#ED2A7B'
   check_left_of tall-table "$TALL" 'Widecaption' 100
   check_left_of tall-table "$TALL" 'Widetablecaption' 100
   committed=$(mktemp)
