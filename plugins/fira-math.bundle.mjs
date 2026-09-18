@@ -15799,19 +15799,34 @@ var temml$1 = {
 
 // plugins/fira-math.mjs
 var macroCache;
+var asMacros = (math2) => Object.fromEntries(
+  Object.entries(math2 ?? {}).map(([key, value]) => [key, typeof value === "string" ? value : value?.macro])
+);
 function projectMacros(file) {
   if (macroCache) return macroCache;
   const config = path.resolve("myst.yml");
   try {
-    const math2 = yaml.load(fs.readFileSync(config, "utf8"))?.project?.math ?? {};
-    macroCache = Object.fromEntries(
-      Object.entries(math2).map(([key, value]) => [key, typeof value === "string" ? value : value?.macro])
-    );
+    macroCache = asMacros(yaml.load(fs.readFileSync(config, "utf8"))?.project?.math);
   } catch (error) {
     file.message(`fira-math: no macros read from ${config} (${error.message})`, void 0, "fira-math");
     macroCache = {};
   }
   return macroCache;
+}
+var pageCache = /* @__PURE__ */ new Map();
+function pageMacros(file) {
+  const source = file?.path;
+  if (!source) return {};
+  if (pageCache.has(source)) return pageCache.get(source);
+  let macros2 = {};
+  try {
+    const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(fs.readFileSync(source, "utf8"));
+    macros2 = asMacros(yaml.load(frontmatter?.[1] ?? "")?.math);
+  } catch (error) {
+    file.message(`fira-math: no macros read from ${source} (${error.message})`, void 0, "fira-math");
+  }
+  pageCache.set(source, macros2);
+  return macros2;
 }
 var firaMathTransform = {
   name: "fira-math",
@@ -15821,7 +15836,7 @@ var firaMathTransform = {
   // keeps its KaTeX, which costs that one equation its typeface and nothing else.
   stage: "document",
   plugin: (_opts, utils) => (tree, file) => {
-    const macros2 = projectMacros(file);
+    const macros2 = { ...projectMacros(file), ...pageMacros(file) };
     let replaced = 0;
     let kept = 0;
     for (const node of utils.selectAll("math,inlineMath", tree)) {

@@ -35,6 +35,10 @@ ANCHORS=(
   'Admonitions take a rule in the palette'
   'Declarations'
   'Carroll 1997'
+  # A grouped citation, which Chicago collapses to one author, and a reference to a figure, the one
+  # target kind the ?? check never had an instance of
+  'Carroll 1997; 2006'
+  'Figure 1 shows it at that calibration'
   'References'
   'The Quarterly Journal of Economics 112 (1): 1'
   'zenodo.0000000'

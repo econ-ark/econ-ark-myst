@@ -12,19 +12,42 @@ import temml from 'temml';
 // and says so: an equation missing its macro comes back in KaTeX and looks like a dead plugin.
 let macroCache;
 
+// A macro is written either as a string or as an object carrying it under `macro`
+const asMacros = (math) =>
+  Object.fromEntries(
+    Object.entries(math ?? {}).map(([key, value]) => [key, typeof value === 'string' ? value : value?.macro]),
+  );
+
 function projectMacros(file) {
   if (macroCache) return macroCache;
   const config = path.resolve('myst.yml');
   try {
-    const math = yaml.load(fs.readFileSync(config, 'utf8'))?.project?.math ?? {};
-    macroCache = Object.fromEntries(
-      Object.entries(math).map(([key, value]) => [key, typeof value === 'string' ? value : value?.macro]),
-    );
+    macroCache = asMacros(yaml.load(fs.readFileSync(config, 'utf8'))?.project?.math);
   } catch (error) {
     file.message(`fira-math: no macros read from ${config} (${error.message})`, undefined, 'fira-math');
     macroCache = {};
   }
   return macroCache;
+}
+
+// A page may define its own macros, which MyST layers over the project's, and those leave no trace
+// on the node either. Read them from the page source, cached per file, so a paper that keeps its
+// notation local to itself gets the same treatment as one that declares it project-wide.
+const pageCache = new Map();
+
+function pageMacros(file) {
+  const source = file?.path;
+  if (!source) return {};
+  if (pageCache.has(source)) return pageCache.get(source);
+  let macros = {};
+  try {
+    const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(fs.readFileSync(source, 'utf8'));
+    macros = asMacros(yaml.load(frontmatter?.[1] ?? '')?.math);
+  } catch (error) {
+    file.message(`fira-math: no macros read from ${source} (${error.message})`, undefined, 'fira-math');
+  }
+  pageCache.set(source, macros);
+  return macros;
 }
 
 const firaMathTransform = {
@@ -35,7 +58,7 @@ const firaMathTransform = {
   // keeps its KaTeX, which costs that one equation its typeface and nothing else.
   stage: 'document',
   plugin: (_opts, utils) => (tree, file) => {
-    const macros = projectMacros(file);
+    const macros = { ...projectMacros(file), ...pageMacros(file) };
     let replaced = 0;
     let kept = 0;
     for (const node of utils.selectAll('math,inlineMath', tree)) {

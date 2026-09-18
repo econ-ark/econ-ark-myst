@@ -86,7 +86,7 @@ Code on a site built from here is read, never run. MyST spells in-page execution
 | `license` | Margin, with a Creative Commons badge and a copyright line. With `license: {content: CC-BY-4.0, code: MIT}`, the code license shows under the code link in the materials block | Omitted |
 | `copyright` | Replaces the author names in the margin's copyright line. Text that already carries "©" or starts with "Copyright" is printed as written | "Copyright © year" and the authors' family names |
 | `funding` | Each statement, then each award as "name (id)", in the margin rail under the correspondence. Write `funding` as a list, because mystmd 1.10.1 stops with `funding?.forEach is not a function` on a single funding object | Omitted |
-| `numbering` | `headings: false` removes the section numbers, including the appendix letters | Sections are numbered |
+| `numbering` | `headings: false` removes the section numbers, including the appendix letters. That is the only key of the object the PDF reads: the `figure`, `table` and `equation` sub-keys, and per-level `heading_2` and below, reach a MyST site and leave the PDF numbering it in the template's own scheme | Sections are numbered |
 | `binder`, `github`, `downloads`, `source` | Materials block under the abstract, described below | With none of these and no `remark` option, the four-colour rule alone ends the front matter |
 | `reviewers`, `editors` | Margin, under the funding. MyST holds one pool of people and gives these as references into it, which the template resolves back to names | Omitted |
 | `description` | Nothing | The page's meta description and its `og:description`, which is what a shared link quotes |
@@ -140,7 +140,7 @@ Floating a figure only when the rest of the page is too short for it, as LaTeX's
 
 With `figure_placement: auto` in the export block, a figure or table that fits on a page floats to the top or bottom of a page, as LaTeX floats do, and the text fills the space it would have left. `top` and `bottom` choose one end. Page one takes floats only at the bottom, below the title. A table taller than a page, a panel inside a figure with several panels, and a `fullwidth` figure never float on their own.
 
-The option sets the placement for every figure in the export. MyST's `figure` and `table` directives carry no placement of their own, so to place one figure differently, call `placeNextFigure` in a raw Typst block just before it, like LaTeX's `[t]` or `[b]` on a single figure:
+The option sets the placement for every figure in the export. MyST's `figure` and `table` directives do not carry a placement of their own, so to place one figure differently, call `placeNextFigure` in a raw Typst block just before it, like LaTeX's `[t]` or `[b]` on a single figure:
 
 ```text
 :::{raw:typst}
@@ -359,13 +359,13 @@ Three things have to be in place, and `scripts/fonts.sh webfonts` puts two of th
 - `fonts/FiraMath-Regular.woff2`, which unlike the text faces is served whole. Its OpenType MATH table is what stretches a bracket around a sum. A subsetter asked for a range of characters is under no obligation to carry that table through.
 - `fonts/temml.css`, which `theme.css` imports first. Chromium implements none of the older MathML presentation attributes, so Temml writes CSS classes for what it cannot express and supplies the rules that read them. Without the import an `\underline` loses its rule and a `\widehat` its hat.
 
-An equation Temml cannot parse keeps the KaTeX it already had, so the failure is one equation in the wrong typeface rather than a broken page. Macros under `project.math` are passed through. A page-level `math:` block is not visible to a transform and falls back the same way.
+An equation Temml cannot parse keeps the KaTeX it already had, so the failure is one equation in the wrong typeface rather than a broken page. Macros are passed through from both places they can be written, `project.math` in `myst.yml` and a `math:` block in a page's own frontmatter, the page's winning where a name appears in both. Neither reaches a transform through the node. The plugin reads them from the two files instead.
 
 Two things still differ from the PDF. A binary operator inside a subscript, as in `m_{t+1}`, keeps its full spacing, because MathML Core does not tighten operator spacing at script level the way TeX does. The other is `\widehat` over a single symbol, which overstretches, where `\hat` is the right markup and sets correctly.
 
 ### The parts the site has no slot for
 
-MyST knows seven parts. The site theme reserves backmatter slots for two of them, acknowledgments and data availability. Every other part renders as a bare paragraph where the author wrote it, with no heading and nothing in the DOM to hang one on, so a `declaration` part arrives indistinguishable from the last paragraph of the paper. Reaching it by position would mean labelling whatever preceded the backmatter, which in a paper carrying no declarations is the closing paragraph of the body.
+MyST knows seven parts. The site theme reserves backmatter slots for two of them, acknowledgments and data availability. Every other part renders as a bare paragraph where the author wrote it, with no heading and nothing in the DOM to hang one on, so a `declaration` part arrives indistinguishable from the last paragraph of the paper. Reaching it by position would mean labelling whatever preceded the backmatter, which in a paper that does not declare anything is the closing paragraph of the body.
 
 `plugins/part-wrapper.mjs` wraps such a part in a class instead, and `theme.css` marks it through that class. Declarations take a heading laid out to match the backmatter rows beside them:
 
@@ -469,12 +469,11 @@ The site's navigation, sidebar and search keep the theme's own typeface, which t
 | A paper built against this template's URL shows none of a change that is on main | MyST keeps its clone of the template under `_build/templates/typst` and reuses it without re-fetching. The build takes the copy downloaded first. Its export comes out identical to the last one, which reads as a build that did nothing. `--force` rebuilds the paper without refreshing the clone | `myst clean --templates -y`, then build. `pdffonts` on the export lists the faces, which tells you which version of the template produced it |
 | A bibliography title reads "Stock Prices, News, In Markets" | Typst's title casing capitalizes a small word after a comma. The template lowercases And, Or, Nor, But, Of, The and For there, and leaves In, To and An, which can be first names | Write the word in braces in the `.bib` file, as in `{in}` |
 | A long table without a caption prints `state("tablex_tablex_header_pages__...") did not converge` | The table package MyST uses repeats the header on each page and needs more layout passes than Typst allows | Ignore the warning, because the table still breaks across pages with its header repeated |
-| A document using a macro from `project.math` fails its Typst export, with `file not found (searched at _build/temp/*/myst-imports.typ)` | MyST writes `#import "myst-imports.typ"` into the generated Typst for any document that uses a frontmatter macro. That file never reaches the export directory alongside this template. Failure is per document: a project stays green until one of them uses a macro | Write the expansion out in the document. The site takes either form, since `plugins/fira-math.mjs` reads `project.math` itself |
 | A short table or figure leaves white space at the foot of a page | A table or figure that fits on one page moves whole to the next page. One taller than a page breaks across pages | Move the paragraph that introduces it, or split the table |
 
 ## Example
 
-`examples/paper.md` exercises every field above, `examples/minimal.md` uses as few as possible, and `examples/tall-table.md` holds a table taller than a page. The project's `myst.yml` is at the root of the repository, beside the template it exports with. Run the build there. Its output, `examples/exports/paper.pdf`, is tracked. The PDF carries no creation timestamp, so rebuilding an unchanged example on the same machine leaves it byte-identical. Across machines the checks compare the rendered pages, since a font subset tag and an XMP instance id can differ between two builds that draw the same thing.
+`examples/paper.md` exercises every field above, `examples/minimal.md` uses as few as possible, and `examples/tall-table.md` holds a table taller than a page. The project's `myst.yml` is at the root of the repository, beside the template it exports with. Run the build there. Its output, `examples/exports/paper.pdf`, is tracked. The PDF does not carry a creation timestamp, so rebuilding an unchanged example on the same machine leaves it byte-identical. Across machines the checks compare the rendered pages, since a font subset tag and an XMP instance id can differ between two builds that draw the same thing.
 
 ```bash
 myst build --typst

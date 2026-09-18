@@ -57,7 +57,7 @@ All code needed to reproduce the results is in the repository linked in the marg
 
 # Introduction
 
-Precautionary saving arises when income risk interacts with a convex marginal utility [@Carroll1997]. The endogenous grid method [@Carroll2006] makes such models cheap to solve, because it replaces root finding with an inversion of the Euler equation.[^egm] Households hold a buffer of wealth against bad income draws. The size of that buffer depends on patience, the return on saving and the degree of risk.
+Precautionary saving arises when income risk interacts with a convex marginal utility [@Carroll1997]. The endogenous grid method [@Carroll2006] makes such models cheap to solve, because it replaces root finding with an inversion of the Euler equation.[^egm] Households hold a buffer of wealth against bad income draws [@Carroll1997; @Carroll2006]. The size of that buffer depends on patience, the return on saving and the degree of risk.
 
 [^egm]: The method inverts the first-order condition on a grid of end-of-period assets rather than solving it on a grid of market resources. `IndShockConsumerType` applies it to Section 2's model.
 
@@ -91,7 +91,7 @@ Both the discount factor and the interest factor follow @Carroll1997, while we s
 
 # Results
 
-@tbl-calibration lists the parameters used in the solution, which come from the 1990's literature. @prop-concave describes the shape of the solution.
+@tbl-calibration lists the parameters used in the solution, which come from the 1990's literature. @prop-concave describes the shape of the solution, and @fig-solution shows it at that calibration.
 
 :::{prf:proposition} Concavity
 :label: prop-concave
