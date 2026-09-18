@@ -16,7 +16,7 @@ exports:
 
 Then run `myst build --typst`.
 
-While the repository is private, MyST cannot download it and the URL above fails with a 404. Clone the repository and give `template:` the path to the clone instead.
+MyST clones the template from that URL each time it builds.
 
 ## Requirements
 
