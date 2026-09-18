@@ -50,6 +50,8 @@ PRIME=$(printf '\342\200\262')
 fail=0
 ok()  { printf 'ok    %s\n' "$*"; }
 bad() { printf 'FAIL  %s\n' "$*"; fail=1; }
+# Empty rather than zero when the file is not a PDF, so a caller's loop runs no iterations
+page_count() { pdfinfo "$1" 2>/dev/null | awk '/^Pages:/ {print $2}'; }
 
 check_text() {
   local name=$1 text=$2 a
@@ -93,7 +95,7 @@ check_pdf() {
 # An unbreakable one overflows the page foot, where its rows still extract as text, so a text search misses it.
 check_breaks() {
   local name=$1 pdf=$2 first=$3 last=$4 pages p text pfirst="" plast=""
-  pages=$(pdfinfo "$pdf" 2>/dev/null | awk '/^Pages:/ {print $2}')
+  pages=$(page_count "$pdf")
   for ((p = 1; p <= ${pages:-0}; p++)); do
     text=$(pdftotext -layout -f "$p" -l "$p" "$pdf" - 2>/dev/null | tr -s "[:space:]" " ")
     grep -qF -- "$first" <<<"$text" && [ -z "$pfirst" ] && pfirst=$p
@@ -109,7 +111,7 @@ check_breaks() {
 # A caption above a table that breaks must stay on the page where the table's first row is
 check_same_page() {
   local name=$1 pdf=$2 caption=$3 row=$4 pages p text pcap="" prow=""
-  pages=$(pdfinfo "$pdf" 2>/dev/null | awk '/^Pages:/ {print $2}')
+  pages=$(page_count "$pdf")
   for ((p = 1; p <= ${pages:-0}; p++)); do
     text=$(pdftotext -layout -f "$p" -l "$p" "$pdf" - 2>/dev/null | tr -s "[:space:]" " ")
     [ -z "$pcap" ] && grep -qF -- "$caption" <<<"$text" && pcap=$p
@@ -212,7 +214,7 @@ check_tracked() {
   scratch=$(mktemp -d)
   pdftoppm -png -r 150 "$committed" "$scratch/old" 2>/dev/null
   pdftoppm -png -r 150 "$fresh" "$scratch/new" 2>/dev/null
-  pages=$(pdfinfo "$fresh" 2>/dev/null | awk '/^Pages:/ {print $2}')
+  pages=$(page_count "$fresh")
   for ((p = 1; p <= ${pages:-0}; p++)); do
     differing=$(compare -metric AE "$scratch"/old-"$p".png "$scratch"/new-"$p".png null: 2>&1)
     total=$((total + ${differing%%[!0-9]*}))
@@ -574,7 +576,10 @@ else
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
   other=$(mktemp -d)
-  tar -c --exclude=_build --exclude=.git -C "$ROOT" . | tar -x -C "$other"
+  # node_modules is linked rather than copied: the plugin has to resolve from the copy or its
+  # equations come back as KaTeX, but copying it spends a tenth of a second on every run
+  tar -c --exclude=_build --exclude=.git --exclude=./node_modules -C "$ROOT" . | tar -x -C "$other"
+  ln -s "$ROOT/node_modules" "$other/node_modules"
   if grep -q 'template: article-theme' "$other/myst.yml"; then
     sed -i 's/template: article-theme/template: book-theme/' "$other/myst.yml"
     othername="book-theme"

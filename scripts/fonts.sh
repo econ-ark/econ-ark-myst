@@ -35,6 +35,11 @@ WEB_FACES=(
 # Latin, the punctuation an economics paper sets, and the arrows and minus a caption may carry
 SUBSET='U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD'
 
+fetch_firamath() {
+  curl -sL -o "$1/FiraMath-Regular.otf" \
+    "https://github.com/firamath/firamath/releases/download/$FIRAMATH_TAG/FiraMath-Regular.otf"
+}
+
 fetch_fira() {
   local dest=$1 face
   curl -sL -o "$dest/fira.zip" "https://github.com/mozilla/Fira/archive/refs/tags/$FIRA_TAG.zip"
@@ -48,8 +53,7 @@ case "${1:-}" in
   install)
     mkdir -p "$FONTDIR"
     fetch_fira "$FONTDIR"
-    curl -sL -o "$FONTDIR/FiraMath-Regular.otf" \
-      "https://github.com/firamath/firamath/releases/download/$FIRAMATH_TAG/FiraMath-Regular.otf"
+    fetch_firamath "$FONTDIR"
     command -v fc-cache >/dev/null && fc-cache -f >/dev/null
     echo "installed Fira $FIRA_TAG and Fira Math $FIRAMATH_TAG into $FONTDIR"
     ;;
@@ -86,8 +90,7 @@ if "MATH" not in TTFont(sys.argv[2]):
     done
     # Fira Math goes over whole: its OpenType MATH table is what stretches a bracket around a sum,
     # and a subsetter asked for a character range is under no obligation to carry it through.
-    curl -sL -o "$scratch/FiraMath-Regular.otf" \
-      "https://github.com/firamath/firamath/releases/download/$FIRAMATH_TAG/FiraMath-Regular.otf"
+    fetch_firamath "$scratch"
     towoff2 "$scratch/FiraMath-Regular.otf" "$ROOT/fonts/FiraMath-Regular.woff2"
     # Temml writes MathML that Chromium does not lay out unaided, and ships the CSS that fixes it
     cp "$ROOT/node_modules/temml/dist/Temml-Local.css" "$ROOT/fonts/temml.css"

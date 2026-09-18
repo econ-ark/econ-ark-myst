@@ -146,6 +146,16 @@
 // Authors as an author-date citation names them: "Carroll", "Carroll and Lujan", "Carroll et al."
 #let shortAuthors(authors) = if authors.len() == 0 { none } else if authors.len() == 1 { familyName(authors.first()) } else if authors.len() == 2 { authors.map(familyName).join(" and ") } else { familyName(authors.first()) + " et al." }
 
+// A field the author wrote without a full stop still has to read as a sentence where it is set
+#let closeSentence(s) = if s.ends-with(regex("[.?!]")) { s } else { s + "." }
+
+// The wide left margin carries the rail, so the text column is the page less both margins.
+// Every width measured against that column reads it from here, which is what makes a change
+// to the margins in the set page call below take effect everywhere at once.
+#let marginLeft = 25%
+#let marginRight = 1.35in
+#let textColumn() = page.width - page.width * marginLeft - marginRight
+
 // Copyright line and license terms for the margin. The copyright field replaces the generated holder,
 // and is printed as written when it already carries a copyright sign.
 #let copyrightNotice(authors, year, copyright, license) = {
@@ -156,8 +166,7 @@
   } else {
     ("Copyright ©", year, copyright).filter(x => x != none).map(str).join(" ")
   }
-  let close(s) = if s.ends-with(regex("[.?!]")) { s } else { s + "." }
-  [#close(holder) ]
+  [#closeSentence(holder) ]
   if license != none {
     // pubmatter's wording, so existing papers read the same
     let terms = (
@@ -185,10 +194,9 @@
   } else {
     inverted(authors.first()) + ", et al"
   }
-  let close(s) = if s.ends-with(regex("[.?!]")) { s } else { s + "." }
-  [#close(names) ]
+  [#closeSentence(names) ]
   if year != none [#year. ]
-  ["#close(title)"]
+  ["#closeSentence(title)"]
   if venue != none {
     [ #emph(venue)]
     if volume != none [ #volume]
@@ -305,7 +313,7 @@
   state("THEME").update(theme)
   set page(
     paper: paper-size,
-    margin: (left: 25%, right: 1.35in, top: 1in, bottom: 1in),
+    margin: (left: marginLeft, right: marginRight, top: 1in, bottom: 1in),
     header: {
       set text(font: sansFont, size: 8pt, fill: arkGrey)
       pubmatter.show-page-header(fm)
@@ -397,7 +405,7 @@
   // Title block, with the title note and author notes as a starred footnote on the title
   {
     set par(first-line-indent: 0pt, justify: false)
-    let fundingNote = funding.filter(f => f != "").map(f => if f.ends-with(regex("[.?!]")) { f } else { f + "." }).join(" ")
+    let fundingNote = funding.filter(f => f != "").map(closeSentence).join(" ")
     let notes = (if title-note != none { (title-note,) } else { () }) + (if fundingNote != none { (fundingNote,) } else { () }) + frontmatter.authors.filter(a => "note" in a).map(a => [#a.name: #a.note])
     if notes.len() > 0 {
       let fm-title = fm
@@ -489,8 +497,8 @@
   }
 
   context {
-    // The rail is 27% of the text column, which is the page less its 25% left and 1.35in right margins
-    let railWidth = (page.width * 0.75 - 1.35in) * 0.27
+    // The rail is 27% of the text column
+    let railWidth = textColumn() * 0.27
     let height(it) = measure(block(width: railWidth, it)).height
     let keyPointsTop = height(venueLogo) + 2.4em.to-absolute()
     // Key points sit under the logo, beside the title and abstract, unless they would run into the bottom of the rail
@@ -584,7 +592,7 @@
   show figure: it => if it.placement == none and it.kind in ("figure", "table", "code", image, table, raw) {
     context {
       let wide = nextFigureWide.get() and figureDepth.get() == 0
-      let columnWidth = (page.width * 0.75 - 1.35in) * (if wide { 1.33 } else { 1 })
+      let columnWidth = textColumn() * (if wide { 1.33 } else { 1 })
       let height = measure(block(width: columnWidth, it)).height
       let fits = height <= page.height - 2in - 3em.to-absolute()
       let whole = block(above: 1.4em, below: 1.4em, breakable: not fits, nested(it))

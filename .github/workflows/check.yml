@@ -46,13 +46,13 @@ jobs:
           echo '--- what Typst resolves'
           typst fonts --variants | grep -iA4 -E '^Fira'
 
-      - name: Self-test the checks
-        run: |
-          myst build --typst
-          scripts/check-examples.sh --self-test
-
+      # This builds the examples; the self-test below reads the PDFs it leaves behind rather than
+      # compiling its own, which is why it runs second
       - name: Build and check the examples
         run: scripts/check-examples.sh
+
+      - name: Self-test the checks
+        run: scripts/check-examples.sh --self-test
 
       # The tracked PDF has to reproduce here, so when it does not, keep what this runner built
       - name: Keep the PDF this runner built

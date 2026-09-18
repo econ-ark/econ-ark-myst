@@ -1,46 +1,41 @@
-// Sets the site's equations in Fira Math, so a reader sees the same face between dollars that the
-// PDF uses and that the prose around it is set in.
-//
-// MyST renders math with KaTeX, which paints glyphs from its own Computer Modern faces at fixed
-// positions. A typeface cannot be swapped underneath that: the positions are baked in. The MathML
-// KaTeX also emits is the part a browser lays out itself, and therefore the part that can take any
-// font with an OpenType MATH table. That MathML is not usable as it stands, because KaTeX writes
-// mathvariant="double-struck" for \mathbb, and MathML Core dropped every mathvariant value except
-// normal, so Chromium has never rendered it: the E of an expectation arrives as a plain upright E.
-//
-// Temml is KaTeX's parser with the HTML half removed and the MathML half fixed. It writes the
-// Mathematical Alphanumeric Symbols directly, so \mathbb{E} is U+1D53C and survives.
-//
-// This runs at stage 'document', which myst-cli applies immediately after its own math transform,
-// so node.html holds finished KaTeX output and node.value the TeX that produced it. An equation
-// Temml cannot parse keeps the KaTeX it already had, which costs that one equation its typeface
-// and nothing else.
+// Re-renders each equation as MathML Core so theme.css can set it in Fira Math.
+// Why KaTeX's own MathML will not do, and what a reader has to install: README, "Equations on
+// the site". The ordering this depends on is asserted at the transform below.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import temml from 'temml';
 
-// MyST hands frontmatter macros to KaTeX itself and leaves no trace of them on the node, so read
-// the project's own. A page-level `math:` block is not visible here and falls back to KaTeX.
-function projectMacros() {
+// MyST leaves no trace of frontmatter macros on the node, so read the project's own, once for the
+// whole build. A config this cannot read yields the same empty set as a project with no macros,
+// and says so: an equation missing its macro comes back in KaTeX and looks like a dead plugin.
+let macroCache;
+
+function projectMacros(file) {
+  if (macroCache) return macroCache;
+  const config = path.resolve('myst.yml');
   try {
-    const config = yaml.load(fs.readFileSync(path.resolve('myst.yml'), 'utf8'));
-    const math = config?.project?.math ?? {};
-    return Object.fromEntries(
+    const math = yaml.load(fs.readFileSync(config, 'utf8'))?.project?.math ?? {};
+    macroCache = Object.fromEntries(
       Object.entries(math).map(([key, value]) => [key, typeof value === 'string' ? value : value?.macro]),
     );
-  } catch {
-    return {};
+  } catch (error) {
+    file.message(`fira-math: no macros read from ${config} (${error.message})`, undefined, 'fira-math');
+    macroCache = {};
   }
+  return macroCache;
 }
 
 const firaMathTransform = {
   name: 'fira-math',
   doc: 'Re-renders each equation as MathML Core so the site can set it in Fira Math',
+  // myst-cli applies a document-stage transform straight after its own math transform, so node.html
+  // already holds finished KaTeX and node.value the TeX behind it. An equation Temml cannot parse
+  // keeps its KaTeX, which costs that one equation its typeface and nothing else.
   stage: 'document',
   plugin: (_opts, utils) => (tree, file) => {
-    const macros = projectMacros();
+    const macros = projectMacros(file);
     let replaced = 0;
     let kept = 0;
     for (const node of utils.selectAll('math,inlineMath', tree)) {

@@ -15798,23 +15798,30 @@ var temml$1 = {
 };
 
 // plugins/fira-math.mjs
-function projectMacros() {
+var macroCache;
+function projectMacros(file) {
+  if (macroCache) return macroCache;
+  const config = path.resolve("myst.yml");
   try {
-    const config = yaml.load(fs.readFileSync(path.resolve("myst.yml"), "utf8"));
-    const math2 = config?.project?.math ?? {};
-    return Object.fromEntries(
+    const math2 = yaml.load(fs.readFileSync(config, "utf8"))?.project?.math ?? {};
+    macroCache = Object.fromEntries(
       Object.entries(math2).map(([key, value]) => [key, typeof value === "string" ? value : value?.macro])
     );
-  } catch {
-    return {};
+  } catch (error) {
+    file.message(`fira-math: no macros read from ${config} (${error.message})`, void 0, "fira-math");
+    macroCache = {};
   }
+  return macroCache;
 }
 var firaMathTransform = {
   name: "fira-math",
   doc: "Re-renders each equation as MathML Core so the site can set it in Fira Math",
+  // myst-cli applies a document-stage transform straight after its own math transform, so node.html
+  // already holds finished KaTeX and node.value the TeX behind it. An equation Temml cannot parse
+  // keeps its KaTeX, which costs that one equation its typeface and nothing else.
   stage: "document",
   plugin: (_opts, utils) => (tree, file) => {
-    const macros2 = projectMacros();
+    const macros2 = projectMacros(file);
     let replaced = 0;
     let kept = 0;
     for (const node of utils.selectAll("math,inlineMath", tree)) {

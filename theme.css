@@ -18,17 +18,15 @@
  */
 
 /*
- * Chromium lays MathML out from the OpenType MATH table but implements none of the older
- * presentation attributes, so Temml writes CSS classes for what it cannot express and ships the
- * rules that read them. Without this an \underline loses its rule and a \widehat its hat. It has
- * to lead the file, and it is first so that everything below can override it.
+ * Temml's own rules, which draw the MathML parts Chromium leaves undrawn: without them an
+ * \underline loses its rule. First, so everything below overrides it; an @import must lead anyway.
  */
 @import url("fonts/temml.css");
 
 /*
- * The PDF's own typefaces, subset to Latin and served beside this file, so a reader sees the
- * faces the paper was set in instead of whichever serif their system happens to offer.
- * Fira Math is the exception to the subsetting: see scripts/fonts.sh.
+ * The PDF's own typefaces, subset to Latin and served beside this file (Fira Math whole: see
+ * scripts/fonts.sh). Ask only for a weight declared here, as econark.typ does: CSS answers an
+ * undeclared weight with a neighbour, so 600 would silently get Bold. Emphasis is 500, bold 700.
  */
 @font-face {
   font-family: "Fira Math";
@@ -104,10 +102,9 @@
   --ark-curve-2: #ed2a7b;
   --ark-curve-3: #00adef;
   --ark-curve-4: #38b449;
-  /* Paper, then the fills that have to stay visible on it. A screen is not a page: pure
-     white glares under a lit room, so the page takes the brand blue at the top of its
-     lightness range, and the fills step down far enough to keep the same separation the
-     PDF has between its white paper and its tint. */
+  /* Paper, then the fills that stay visible on it. Pure white glares in a lit room, so the
+     page takes the brand blue at the top of its lightness range and the fills step down far
+     enough to hold the separation the PDF has between its white paper and its tint. */
   --ark-paper: #f5f7f9;
   /* The same colour as channels, for the surfaces the themes paint at partial opacity */
   --ark-paper-rgb: 245 247 249;
@@ -129,11 +126,9 @@ html.dark {
 }
 
 /*
- * Both themes paint their surfaces white, as the page, as the header bars and title card at
- * four fifths opacity, and as the outline panel at nineteen twentieths. Softening the page
- * alone would leave those floating above it, so each one is caught here at the class the
- * theme writes it with. A theme that renamed them would take its whites back, which is why
- * the checks watch for the class.
+ * Both themes paint their surfaces white: the page, the header bars and title card at four
+ * fifths opacity, the outline panel at nineteen twentieths. Softening the page alone leaves those
+ * floating above it, so each is caught at its class, and the checks watch that the class survives.
  */
 html:not(.dark) body,
 html:not(.dark) .bg-white,
@@ -155,11 +150,9 @@ html:not(.dark) .myst-search-bar {
 }
 
 /*
- * article-theme shows no site logo beside a paper, so the paper carries the mark the PDF
- * prints at the top of its margin. The mark is the wide website lockup at 528px, carried in
- * this file so that a site needs no second copy of it and no file can go missing, and it
- * stands over the title rather than out in the margin, where the theme leaves too little
- * room at most widths. At night the same lockup returns with a white wordmark.
+ * article-theme shows no site logo beside a paper, so the paper carries the mark the PDF prints
+ * at the top of its margin: the wide lockup at 528px, embedded here so no file can go missing,
+ * standing over the title because the margin is too narrow at most widths. White wordmark at night.
  */
 .myst-article-header-fm::before {
   content: "";
@@ -218,10 +211,9 @@ html.dark .myst-article-header-fm::before {
 }
 
 /*
- * Reading text. Text, tables, equations and code share the theme's column, as they share
- * the text block of the PDF. Fira Sans has a tall x-height, so it reads larger than its size
- * suggests, and 1.05rem sets the line of that column near the 80 characters the paper holds.
- * A sans also needs less leading than the serif this replaced.
+ * Reading text. Text, tables, equations and code share the theme's column, as they share the
+ * text block of the PDF. Fira Sans reads large for its size, so 1.05rem sets that column near
+ * the 80 characters the paper holds; a sans also needs less leading than the serif it replaced.
  */
 article.article {
   font-family: var(--ark-serif);
@@ -231,10 +223,9 @@ article.article {
 }
 
 /*
- * Equations, in the companion face to the body text, so a symbol reads the same in a sentence as
- * it does on a line of its own. The plugin in plugins/fira-math.mjs is what puts MathML here for
- * this to reach; an equation it could not parse stays as KaTeX markup, which this leaves alone.
- * Temml sets its glyphs on the small side of the surrounding text, and the bump squares them up.
+ * Equations, in the companion face to the body text. Only MathML reaches this, which is what
+ * plugins/fira-math.mjs produces; an equation it could not parse stays KaTeX and is left alone.
+ * Temml sets on the small side of the surrounding text, hence the bump.
  */
 article.article math {
   font-family: var(--ark-math);
@@ -269,7 +260,7 @@ article.article cite a {
 /* Title block */
 .myst-fm-block-title {
   font-family: var(--ark-sans);
-  font-weight: 600;
+  font-weight: 500;
   font-size: clamp(2rem, 1.2rem + 2.2vw, 2.8rem);
   line-height: 1.1;
   letter-spacing: -0.015em;
@@ -309,7 +300,7 @@ article.article cite a {
 article.article .myst-abstract-title {
   font-family: var(--ark-sans);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ark-blue);
   margin-bottom: 0.4rem;
 }
@@ -325,15 +316,14 @@ article.article .myst-abstract-box li::marker {
 }
 
 /*
- * Section headings, which MyST sets one level down from the markdown: a first-level
- * heading in the paper is an h2 here. Sans and blue, then sans and black, then italic
- * serif, as in the PDF. The :has() picks out headings written in the text, leaving the
- * theme's own h2 headings for the parts and the back matter alone.
+ * Section headings, which MyST sets one level down from the markdown: a first-level heading in
+ * the paper is an h2 here. Sans and blue, then sans and black, then italic serif, as in the PDF.
+ * The :has() picks out headings written in the text, leaving the theme's own parts alone.
  */
 article.article h2:has(> .heading-text) {
   font-family: var(--ark-sans);
   font-size: 1.4rem;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.25;
   color: var(--ark-blue);
   margin-top: 2.2em;
@@ -342,7 +332,7 @@ article.article h2:has(> .heading-text) {
 article.article h3:has(> .heading-text) {
   font-family: var(--ark-sans);
   font-size: 1.12rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ark-ink);
   margin-top: 1.8em;
 }
@@ -366,7 +356,7 @@ article.article figcaption {
 
 article.article figcaption a[href^="#"] {
   color: var(--ark-blue);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* Tables: horizontal rules only, a heavy rule top and bottom and a light one under the header */
@@ -380,7 +370,7 @@ article.article figure table {
 }
 
 article.article figure table th {
-  font-weight: 600;
+  font-weight: 500;
   text-align: left;
   vertical-align: bottom;
   color: var(--ark-ink);
@@ -445,7 +435,7 @@ article.article .myst-proof-body > :first-child {
 article.article .myst-proof-title {
   font-family: var(--ark-sans);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ark-blue);
 }
 
@@ -487,7 +477,7 @@ aside.myst-admonition .myst-admonition-header-icon {
   padding-bottom: 0;
   font-family: var(--ark-sans);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--ark-admonition);
 }
 
