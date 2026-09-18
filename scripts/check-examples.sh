@@ -167,6 +167,22 @@ check_rule() {
   fi
 }
 
+# Counting family names proves nothing: a machine carrying the whole Fira family reports one name
+# over twenty files. What decides a build is how many files offer the weight being asked for, since
+# two offering the same one leaves the choice to whichever the machine reached first.
+check_weight_files() {
+  local name=$1 variants=$2 family=$3 style=$4 weight=$5 n
+  n=$(awk -v fam="$family" -v want="Style: $style, Weight: $weight," '
+    /^[A-Za-z]/ { infam = ($0 == fam) }
+    infam && index($0, want) { n++ }
+    END { print n + 0 }' <<<"$variants")
+  if [ "$n" -eq 1 ]; then
+    ok "$name: one file offers $family $style $weight"
+  else
+    bad "$name: $n files offer $family $style $weight, so the build picks by discovery order"
+  fi
+}
+
 # A weight that no installed file carries sits between two that do, and Typst breaks that tie by
 # the order it found the files in, which is the filesystem's. Reading the embedded fonts catches
 # that re-resolution, which otherwise surfaces as an unexplained text diff.
@@ -379,6 +395,14 @@ self_test() {
   fi
   rm -rf "$weights"
 
+  # A font directory holding the release twice, which is what a mixed ttf and otf install looks like
+  out=$(check_weight_files seeded "$(printf 'Fira Sans\n  |- /a/FiraSans-Medium.ttf\n      Style: Normal, Weight: 500, Stretch: 100%%\n  |- /b/FiraSans-Medium.otf\n      Style: Normal, Weight: 500, Stretch: 100%%\n')" "Fira Sans" Normal 500)
+  if grep -q 'FAIL.*2 files offer' <<<"$out"; then
+    ok "self-test: two files offering one weight is caught"
+  else
+    bad "self-test: two files offering one weight went undetected"
+  fi
+
   # Fira has no Black, so it stands for any weight that resolved to a file the template lacks
   out=$(check_font seeded "$PAPER" FiraSans-Black)
   if grep -q 'FAIL.*not embedded' <<<"$out"; then
@@ -467,6 +491,14 @@ else
   # the mixture renders differently from either, which is how these three came to disagree once.
   check_font paper "$PAPER" FiraSans-Medium
   check_font paper "$PAPER" FiraSans-Italic
+  # The weights the template asks for, each of which must come from exactly one file
+  variants=$(typst fonts --variants 2>/dev/null)
+  for weight in 400 500 700; do
+    check_weight_files fonts "$variants" "Fira Sans" Normal "$weight"
+    check_weight_files fonts "$variants" "Fira Sans" Italic "$weight"
+  done
+  check_weight_files fonts "$variants" "Fira Mono" Normal 400
+  check_weight_files fonts "$variants" "Fira Math" Normal 400
   check_font paper "$PAPER" FiraMath-Regular-Identity-H
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
