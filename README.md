@@ -248,13 +248,42 @@ site:
   template: article-theme
   options:
     logo: logo.png
+    logo_dark: logo-dark.png
     logo_text: Econ-ARK
+    logo_url: https://econ-ark.org
+    logo_alt: Econ-ARK
+    favicon: favicon.png
     style: theme.css
 ```
 
-Paths are relative to the `myst.yml` that holds them. This repository keeps its own at the root, beside the template and the stylesheet.
+`logo.png` is the wide website lockup, and `logo-dark.png` is the same lockup with a white wordmark, which the themes swap in at night. `favicon.png` is the four curves alone on the brand blue, because the wordmark is illegible at 16 pixels. Paths are relative to the `myst.yml` that holds them. This repository keeps its own at the root, beside the template and the stylesheet.
 
-When a paper points `template:` at this repository's URL, MyST copies the Typst side alone, because `template.yml` lists `template.typ`, `econark.typ` and `logo.png`. Copy `theme.css`, `banner.svg` and `logo.png` by hand, from a checkout of this repository into the paper's own.
+### Using this template from another repository
+
+The PDF side works over the network. Point an export at this repository's URL and MyST clones it:
+
+```yaml
+exports:
+  - format: typst
+    template: https://github.com/econ-ark/econ-ark-myst.git
+```
+
+The site side does need copying. Every site option that names a file, `style`, `logo`, `logo_dark` and `favicon`, is resolved against the local directory, and a URL there fails with `ENOENT`. A site that wants this look copies the files it needs into its own repository:
+
+| Copy | To get |
+|------|--------|
+| `theme.css` | The whole look: palette, typefaces, tables, admonitions, the four-curve rule, and the Econ-ARK mark over the title. The mark is embedded in the file, so nothing else has to come with it |
+| `logo.png`, `logo-dark.png` | The lockup in the site header, day and night |
+| `favicon.png` | The browser tab |
+| `banner.svg` | The default banner behind an article-theme title card |
+
+`theme.css` alone is enough for the typography and the palette. The other four are the site chrome. To refresh them later:
+
+```sh
+for f in theme.css logo.png logo-dark.png favicon.png banner.svg; do
+  curl -sLO "https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/$f"
+done
+```
 
 `banner.svg` is a default banner for a paper that wants one: the brand blue behind four consumption functions that rise towards their asymptotes, in the colours and the order of the logo curves, each carrying the kink the logo draws. article-theme lays its title card over the middle of a banner. The curves run out below the card and off the right edge, where the card leaves the field open. Set it for every page under `project:`, or for one page in its own frontmatter:
 
