@@ -4,6 +4,9 @@ version: 1
 # demo at ../myst.yml stays on article-theme. Everything it is dressed in comes from one level up.
 project:
   title: Econ-ARK
+  # Only book-theme carries landing blocks, and it paints no banner the way article-theme does.
+  # This still earns its place: it is what fills og:image, the card a shared link renders. The
+  # banner a reader sees is the image at the top of index.md.
   banner: ../banner.svg
   # The equations in the blocks below are set in Fira Math by the same plugin the paper uses
   plugins:
