@@ -40,6 +40,13 @@ jobs:
           # Each family must be found, or the build falls back to a bundled font and the tracked PDF changes
           test "$(typst fonts | grep -cE '^(Roboto|Libertinus Math|Libertinus Mono)$')" -eq 3
 
+      - name: Report which font files Typst can see
+        run: |
+          echo '--- files whose family is one of ours'
+          fc-list : file family | grep -iE 'roboto|libertinus' | sort
+          echo '--- what Typst resolves'
+          typst fonts --variants | grep -iA4 -E '^(Roboto|Libertinus)'
+
       - name: Self-test the checks
         run: |
           myst build --typst
@@ -47,3 +54,11 @@ jobs:
 
       - name: Build and check the examples
         run: scripts/check-examples.sh
+
+      # The tracked PDF has to reproduce here, so when it does not, keep what this runner built
+      - name: Keep the PDF this runner built
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-built-on-the-runner
+          path: examples/exports/paper.pdf
