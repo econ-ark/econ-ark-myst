@@ -57,14 +57,6 @@ We thank the Econ-ARK community for comments.
 
 All code needed to reproduce the results is in the repository linked in the margin.
 
-+++ {"part": "declaration"}
-
-The authors report no competing interests.
-
-+++ {"part": "ai_declaration"}
-
-The authors used a large language model to draft the example text of this template and reviewed every sentence before release.
-
 +++ {"part": "title_note"}
 
 Prepared for the Econ-ARK template documentation.
@@ -139,3 +131,11 @@ agent.solve()
 # Derivation of the Euler equation
 
 The first-order condition for $c_t$ in @eq-bellman sets $u'(c_t)$ equal to $\beta R \, \mathbb{E}_t[v'(m_{t+1})]$. The envelope condition gives $v'(m_t) = u'(c_t)$, and substituting it yields the Euler equation.
+
++++ {"part": "declaration"}
+
+The authors report no competing interests.
+
++++ {"part": "ai_declaration"}
+
+The authors used a large language model to draft the example text of this template and reviewed every sentence before release.

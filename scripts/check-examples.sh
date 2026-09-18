@@ -37,7 +37,7 @@ ANCHORS=(
   'Cite as'
   'Working paper'
   'arXiv:2609.00000'
-  'Non-technical summary'
+  'Summary'
   'MIT license'
   'Econ-ARK Working Papers 1 (3)'
   'Department of Economics, Johns Hopkins'
@@ -403,6 +403,13 @@ check_site() {
   else
     bad "$name: no bg-white class under $dir, so the rules that soften the theme's whites are inert"
   fi
+  # theme.css relabels the summary part by hanging on an id the theme writes. A rename upstream
+  # would leave the rule inert and the site back to "Plain Language Summary", with nothing said.
+  if grep -q 'id="summary"' <<<"$html"; then
+    ok "$name: the summary part still carries the id theme.css relabels it through"
+  else
+    bad "$name: no id=\"summary\" under $dir, so the site says Plain Language Summary again"
+  fi
   check_css_urls "$name" "$dir"
   if grep -qE 'myst-fm-parts|id="skip-to-article"' <<<"$html"; then
     ok "$name: the front matter carries the anchor the four-colour rule hangs on"
@@ -641,7 +648,8 @@ self_test() {
     grep -q 'FAIL.*rule is inert' <<<"$out" && grep -q 'FAIL.*four-colour rule is missing' <<<"$out" &&
     grep -q 'FAIL.*vanishes at night' <<<"$out" && grep -q "FAIL.*MyST's own mark" <<<"$out" &&
     grep -q 'FAIL.*soften the theme' <<<"$out" && grep -q 'FAIL.*cannot reach the PDF' <<<"$out" &&
-    grep -q 'FAIL.*system sans' <<<"$out" && grep -q 'FAIL.*system math font' <<<"$out"; then
+    grep -q 'FAIL.*system sans' <<<"$out" && grep -q 'FAIL.*system math font' <<<"$out" &&
+    grep -q 'FAIL.*Plain Language Summary again' <<<"$out"; then
     ok "self-test: a site without the stylesheet, the banner, the logos or the classes it styles is caught"
   else
     bad "self-test: a site missing the stylesheet, the banner, the logos or its classes went undetected"

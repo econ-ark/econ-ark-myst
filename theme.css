@@ -513,6 +513,24 @@ article.article .myst-backmatter-title,
 }
 
 /*
+ * MyST's `summary` part. The theme hardcodes "Plain Language Summary", which, like the PDF's old
+ * "Non-technical", tells a reader they are the one needing it simplified. Both halves say
+ * "Summary". check-examples.sh fails if the id this hangs on stops being written.
+ */
+article.article h2#summary {
+  font-size: 0;
+}
+
+article.article h2#summary::before {
+  content: "Summary";
+  font-size: 1rem;
+}
+
+article.article h2#summary > a {
+  font-size: 1rem;
+}
+
+/*
  * Landing pages, which book-theme renders from `+++ { "kind": ... }` blocks. The blocks arrive
  * with Tailwind colours of their own, so the rules below are what put them in the house palette.
  * article-theme carries no landing renderers, which is why the landing site is on book-theme.

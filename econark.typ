@@ -84,7 +84,7 @@
   // A plain cell fills one grid slot and a cellx fills its colspan times its rowspan; hlinex and vlinex count zero
   let slots = args.pos().map(item => if type(item) != dictionary { 1 } else if item.at("tablex-dict-type", default: none) == "cell" { item.at("colspan", default: 1) * item.at("rowspan", default: 1) } else { 0 }).sum(default: 0)
   let rows = if ncols != none and ncols > 0 { calc.ceil(slots / ncols) }
-  let style = (map-cells: tableCells(9pt), auto-vlines: false) + named
+  let style = arkTableStyle + named
   style.insert("map-hlines", tableRules(header-rows: named.at("header-rows", default: 1), rows: rows))
   // A widened table fills the wide width, as a wide figure does: the label column keeps its width, the rest share it
   context {
@@ -94,6 +94,14 @@
     }
     base(..wideStyle, ..args.pos())
   }
+}
+
+// A "Label  content" run-in field, which the front matter sets its abstract, summary, keywords
+// and JEL codes as. One definition, so a change of label weight or colour reaches all of them.
+#let labeledField(label, content, size: 8.5pt) = {
+  text(font: sansFont, weight: 500, fill: arkBlue, size: size, label)
+  h(0.7em)
+  content
 }
 
 // A small labelled block in the margin rail
@@ -155,6 +163,13 @@
 #let marginLeft = 25%
 #let marginRight = 1.35in
 #let textColumn() = page.width - page.width * marginLeft - marginRight
+// The rail is in the left margin, offset from the text column and narrower than it. Both the
+// placed boxes and the height measured for them read these, so the rail moves as one piece.
+#let railOffset = -33%
+#let railFraction = 0.27
+#let railWidthPercent = railFraction * 100%
+// The gap above and below a figure, which every placement path sets alike
+#let figureSpacing = 1.4em
 
 // Copyright line and license terms for the margin. The copyright field replaces the generated holder,
 // and is printed as written when it already carries a copyright sign.
@@ -234,6 +249,22 @@
     }
     body
   },
+)
+
+// Which curve each of MyST's ten admonition kinds takes. Blue for the neutral ones, green for
+// the helpful, orange for the wary and pink for the severe. The palette belongs beside the
+// palette; template.typ only renames these to the bindings MyST looks up.
+#let arkAdmonitions = (
+  note: arkAdmonition.with(heading: [Note], color: arkBlue),
+  important: arkAdmonition.with(heading: [Important], color: arkBlue),
+  tip: arkAdmonition.with(heading: [Tip], color: arkCurves.at(3)),
+  hint: arkAdmonition.with(heading: [Hint], color: arkCurves.at(3)),
+  seealso: arkAdmonition.with(heading: [See Also], color: arkCurves.at(3)),
+  attention: arkAdmonition.with(heading: [Attention], color: arkCurves.at(0)),
+  caution: arkAdmonition.with(heading: [Caution], color: arkCurves.at(0)),
+  warning: arkAdmonition.with(heading: [Warning], color: arkCurves.at(0)),
+  danger: arkAdmonition.with(heading: [Danger], color: arkCurves.at(1)),
+  error: arkAdmonition.with(heading: [Error], color: arkCurves.at(1)),
 )
 
 // color and float take the arguments MyST's own proof() accepts and ignore them: a theorem here is
@@ -399,7 +430,7 @@
     top,
     dx: -33%,
     float: false,
-    box(width: 27%, link(venueUrl, venueLogo)),
+    box(width: railWidthPercent, link(venueUrl, venueLogo)),
   )
 
   // Title block, with the title note and author notes as a starred footnote on the title
@@ -447,12 +478,14 @@
     if bibtexUrl != none { link(bibtexUrl.url, "BibTeX") },
   ).filter(x => x != none)
   let pages = if page-start != none and last-page != none { str(page-start) + "-" + str(last-page) }
+  // The citation and the copyright line date the paper the same way, from the one date it has
+  let year = if type(fm.date) == datetime { fm.date.year() }
 
   let rail = (
     // Shown once the paper has a persistent identifier, which marks it as ready to cite
     if doiUrl != none or otherVersions.len() > 0 {
       railItem("Cite as", {
-        citation(frontmatter.authors, if type(fm.date) == datetime { fm.date.year() }, frontmatter.title, frontmatter.at("venue", default: none), volume, issue, pages)
+        citation(frontmatter.authors, year, frontmatter.title, frontmatter.at("venue", default: none), volume, issue, pages)
         // A new line for each link, so a long URL breaks once rather than mid-sentence
         for version in (if doiUrl != none { (link(doiUrl),) } else { () }) + otherVersions {
           linebreak()
@@ -465,7 +498,6 @@
     },
     {
       let license = frontmatter.at("license", default: none)
-      let year = if type(fm.date) == datetime { fm.date.year() }
       let notice = {
         set par(justify: false)
         set text(size: 6.5pt, fill: arkGrey)
@@ -497,16 +529,15 @@
   }
 
   context {
-    // The rail is 27% of the text column
-    let railWidth = textColumn() * 0.27
+    let railWidth = textColumn() * railFraction
     let height(it) = measure(block(width: railWidth, it)).height
     let keyPointsTop = height(venueLogo) + 2.4em.to-absolute()
     // Key points sit under the logo, beside the title and abstract, unless they would run into the bottom of the rail
     let railKeyPoints = keypoints != none and keyPointsTop + height(keyPoints(keypoints)) + 3em.to-absolute() + height(railBottom) + 10pt <= page.height - 2in
 
-    place(left + bottom, dx: -33%, dy: -10pt, box(width: 27%, railBottom))
+    place(left + bottom, dx: railOffset, dy: -10pt, box(width: railWidthPercent, railBottom))
     if railKeyPoints {
-      place(top, dx: -33%, dy: keyPointsTop, box(width: 27%, keyPoints(keypoints)))
+      place(top, dx: railOffset, dy: keyPointsTop, box(width: railWidthPercent, keyPoints(keypoints)))
     }
 
     // Abstract, keywords and JEL codes, set as a run-in paragraph in the economics convention,
@@ -519,33 +550,27 @@
         set text(size: 10pt)
         if ("abstracts" in fm) {
           for abs in fm.abstracts {
-            text(font: sansFont, weight: 500, fill: arkBlue, size: 9.5pt, abs.title)
-            h(0.7em)
-            abs.content
+            labeledField(abs.title, abs.content, size: 9.5pt)
             parbreak()
           }
         }
-        // The summary part: the non-technical summary some discussion paper series ask for
+        // MyST's `summary` part. Plainly "Summary": both "Plain Language" and "Non-technical"
+        // tell the reader they are the ones needing it simplified. theme.css relabels the site,
+        // whose theme hardcodes "Plain Language Summary", so one name serves both halves.
         if summary != none {
           v(0.5em)
-          text(font: sansFont, weight: 500, fill: arkBlue, size: 9.5pt, "Non-technical summary")
-          h(0.7em)
-          summary
+          labeledField("Summary", summary, size: 9.5pt)
           parbreak()
         }
         set text(size: 9pt)
         set par(justify: false, spacing: 0.65em)
         if ("keywords" in fm and fm.keywords.len() > 0) {
           v(0.5em)
-          text(font: sansFont, weight: 500, fill: arkBlue, size: 8.5pt, "Keywords")
-          h(0.7em)
-          fm.keywords.join(", ")
+          labeledField("Keywords", fm.keywords.join(", "))
           parbreak()
         }
         if (jel.len() > 0) {
-          text(font: sansFont, weight: 500, fill: arkBlue, size: 8.5pt, "JEL codes")
-          h(0.7em)
-          jel.join(", ")
+          labeledField("JEL codes", jel.join(", "))
         }
         if mainKeyPoints {
           v(1.1em, weak: true)
@@ -567,14 +592,13 @@
     block(sticky: true, fill: arkBlue.lighten(95%), width: 100%, inset: 9pt, radius: 2pt, it)
   }
   show figure.caption: leftCaption
-  // MyST emits the string kind; a native table() in a raw typst block gets the function kind
-  show figure.where(kind: "table"): set figure.caption(position: top)
-  show figure.where(kind: table): set figure.caption(position: top)
+  // MyST emits the string kind; a native table() in a raw typst block gets the function kind.
+  // Naming both once keeps a new table setting from having to be written twice.
+  let tableKind = figure.where(kind: "table").or(figure.where(kind: table))
+  show tableKind: set figure.caption(position: top)
   // Justified text stretches a short cell and hyphenation splits its words
-  show figure.where(kind: "table"): set par(justify: false)
-  show figure.where(kind: table): set par(justify: false)
-  show figure.where(kind: "table"): set text(hyphenate: false)
-  show figure.where(kind: table): set text(hyphenate: false)
+  show tableKind: set par(justify: false)
+  show tableKind: set text(hyphenate: false)
   // Articles in a multi-article export are #include'd files that see MyST's empty tableStyle,
   // so tablex draws a full grid there. Drop its vertical rules and lighten the rest; lines
   // drawn with an explicit stroke, as the template's tableStyle does, keep that stroke.
@@ -586,7 +610,7 @@
   }
   // Figures are breakable, and the rule below wraps each figure that fits a page in an unbreakable block,
   // whose explicit argument takes precedence over MyST's `show figure: set block(breakable: ...)`.
-  show figure: set block(above: 1.4em, below: 1.4em, breakable: true)
+  show figure: set block(above: figureSpacing, below: figureSpacing, breakable: true)
   // A figure that fits moves whole, or floats under figure_placement (bottom only on page one, below the title);
   // a taller one breaks across pages. Theorem-like figures stay breakable, since a proof may span pages.
   show figure: it => if it.placement == none and it.kind in ("figure", "table", "code", image, table, raw) {
@@ -595,20 +619,20 @@
       let columnWidth = textColumn() * (if wide { 1.33 } else { 1 })
       let height = measure(block(width: columnWidth, it)).height
       let fits = height <= page.height - 2in - 3em.to-absolute()
-      let whole = block(above: 1.4em, below: 1.4em, breakable: not fits, nested(it))
+      let whole = block(above: figureSpacing, below: figureSpacing, breakable: not fits, nested(it))
       let mode = nextFigurePlacement.get()
       if mode == none { mode = figure-placement }
       // Page one floats only to the bottom, since a top float would land above the title
-      let floatTo(end) = place(if here().page() == 1 { bottom } else { end }, float: true, clearance: 1.4em, whole)
+      let floatTo(end) = place(if here().page() == 1 { bottom } else { end }, float: true, clearance: figureSpacing, whole)
       // Placement never reads the page position: a choice made from the space left on the page moves the text
       // before the figure, and eight figures placed that way failed to converge and misnumbered
       if wide and fits {
         // In the flow unless a placement mode floats it; fullwidth keeps page one's float at column width
-        if mode == "none" { block(above: 1.4em, below: 1.4em, breakable: false, fullwidth(float: false, it)) } else { fullwidth(it) }
+        if mode == "none" { block(above: figureSpacing, below: figureSpacing, breakable: false, fullwidth(float: false, it)) } else { fullwidth(it) }
       } else if not fits {
         // Like LaTeX's \needspace: an empty unbreakable block moves to the next page when the caption, header and
         // first rows would not fit, and the negative space returns the table to where that block starts
-        block(breakable: false, height: 10em, above: 1.4em, below: 0pt)
+        block(breakable: false, height: 10em, above: figureSpacing, below: 0pt)
         v(-10em)
         whole
       } else if mode == "none" or figureDepth.get() > 0 {

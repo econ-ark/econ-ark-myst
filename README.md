@@ -249,7 +249,7 @@ An export with `articles:` renders each article as a separate Typst file, which 
 
 If you keep `articles:`, MyST restarts figure and table numbers in each article while the PDF numbers them continuously, so references and captions disagree. Set `numbering: {figure: {continue: true}, table: {continue: true}}` in the frontmatter of every article after the first.
 
-Every article of an `articles:` export, the first included, is a separate file that draws MyST tables with every grid line. To give them the template's rules, start each article that has a table with a block that rebinds MyST's table function for the rest of the file:
+Every article of an `articles:` export, the first included, is a separate file that sees an empty `tableStyle`. Its tables come out with a rule between every row and no bold header, since only the booktabs rules and the header depend on that style. To restore them, start each article that has a table with a block that rebinds MyST's table function for the rest of the file:
 
 ```text
 :::{raw:typst}
