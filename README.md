@@ -326,6 +326,28 @@ An equation Temml cannot parse keeps the KaTeX it already had, so the failure is
 
 Two things still differ from the PDF. A binary operator inside a subscript, as in `m_{t+1}`, keeps its full spacing, because MathML Core does not tighten operator spacing at script level the way TeX does. The other is `\widehat` over a single symbol, which overstretches, where `\hat` is the right markup and sets correctly.
 
+### The landing page
+
+`landing/` is a second MyST project holding the page at the root of the published site, with the two theme demos under `/article` and `/book`. It takes its stylesheet, logos, fonts and math plugin from one level up, so the whole site is dressed from the same `theme.css`.
+
+It runs on book-theme because that is the only theme carrying the landing-page block renderers, which come from `@myst-theme/landing-pages`. Blocks are plain MyST, with no plugin or directive:
+
+````markdown
++++ { "kind": "split-image" }
+
+An eyebrow line
+
+## A heading
+
+![alt text](../thumbnail.png)
+
+Body text.
+````
+
+The kinds are `centered`, `split-image`, `justified` and `logo-cloud`. Everything up to the first heading becomes the eyebrow and the title. The rest is the body, where `split-image` needs an image and `logo-cloud` needs a grid. Lacking one, the theme prints an "Invalid block" panel into the page and still exits 0, which is what `check_landing` watches for. `theme.css` puts the blocks in the house palette, since they arrive carrying Tailwind colours of their own.
+
+Two things to know when linking between the three sites. MyST joins `BASE_URL` to a link by concatenation, so write `/article/` rather than `article/` or `./article/`. The `nav` list rejects a root-absolute path outright, which leaves cross-site links to the page itself.
+
 ### Using this template from another repository
 
 The PDF side works over the network. Point an export at this repository's URL and MyST clones it:

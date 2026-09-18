@@ -33,8 +33,7 @@ jobs:
           npm install -g mystmd@1.10.1
           npm install
 
-      # theme.css asks for faces that are not in the repository, so the deploy makes them.
-      # It runs after npm install because it takes Temml's stylesheet from node_modules.
+      # theme.css asks for faces that are not in the repository, so the deploy makes them
       - name: Build the webfonts
         run: |
           pip install --quiet fonttools brotli
@@ -42,15 +41,34 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
-      # The site is served from a subpath, so the assets have to be written with it
-      - name: Build the site
+      # Three sites from one stylesheet: the landing page at the root, the paper under each theme.
+      # An asset href carries the sub-path it is served from, so each build sets its own BASE_URL.
+      # The book build copies the tree and swaps the template, as check-examples.sh does.
+      - name: Build the three sites
         env:
-          BASE_URL: /${{ github.event.repository.name }}
-        run: myst build --html
+          REPO: /${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          mkdir -p pages
+
+          BASE_URL=$REPO/article myst build --html
+          cp -r _build/html pages/article
+
+          other=$(mktemp -d)
+          tar -c --exclude=_build --exclude=.git --exclude=./node_modules --exclude=./pages . |
+            tar -x -C "$other"
+          ln -s "$PWD/node_modules" "$other/node_modules"
+          sed -i 's/template: article-theme/template: book-theme/' "$other/myst.yml"
+          (cd "$other" && BASE_URL=$REPO/book myst build --html)
+          cp -r "$other/_build/html" pages/book
+
+          # book-theme is the only one carrying the landing-page block renderers
+          (cd landing && BASE_URL=$REPO myst build --html)
+          cp -r landing/_build/html/. pages/
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _build/html
+          path: pages
 
       - id: deployment
         uses: actions/deploy-pages@v4

@@ -296,6 +296,19 @@ check_css_urls() {
   fi
 }
 
+# A block whose kind no renderer claims still builds: the theme prints its own "Invalid block"
+# panel into the page and exits 0. article-theme claims none of these kinds at all, so a landing
+# page built under the wrong theme comes out as plain headings and paragraphs.
+check_landing() {
+  local name=$1 dir=$2 blocks
+  blocks=$(grep -o 'myst-landing-block' "$dir/index.html" 2>/dev/null | wc -l)
+  if [ "$blocks" -ge 3 ] && ! grep -q 'Invalid block' "$dir/index.html" 2>/dev/null; then
+    ok "$name: the landing page renders $blocks blocks, none of them invalid"
+  else
+    bad "$name: $blocks landing blocks under $dir, or one the theme rejected"
+  fi
+}
+
 # The site half is an artifact too: the stylesheet and the banner must reach the built site, and
 # the two themes must keep writing the classes the stylesheet reaches the paper through. A theme
 # that renamed them would serve the stylesheet and ignore it.
@@ -517,6 +530,19 @@ self_test() {
     bad "self-test: Temml pins that disagree went undetected"
   fi
 
+  # A landing page built under a theme that claims none of the block kinds, which is what
+  # article-theme does: the blocks come out as ordinary headings with no wrapper at all
+  local land
+  land=$(mktemp -d)
+  printf '<div class="myst-landing-block">one</div>\n<p>Invalid block</p>\n' >"$land/index.html"
+  out=$(check_landing seeded "$land")
+  if grep -q 'FAIL.*landing blocks under' <<<"$out"; then
+    ok "self-test: a landing page whose blocks the theme rejected is caught"
+  else
+    bad "self-test: a landing page whose blocks the theme rejected went undetected"
+  fi
+  rm -rf "$land"
+
   # A machine that never had Fira Math installed, which is what scripts/fonts.sh install prevents
   out=$(check_family seeded "$(printf 'Fira Sans\nFira Mono\nDejaVu Sans Mono\n')" "Fira Math")
   if grep -q 'FAIL.*does not find Fira Math' <<<"$out"; then
@@ -688,6 +714,22 @@ else
   (cd "$other" && myst build --html) >/dev/null 2>&1
   check_site "site ($othername)" "$other/_build/html"
   rm -rf "$other"
+  # The landing page carries no paper, so check_site's banner, equation and download checks do not
+  # apply to it. What it shares with the two demos is the stylesheet, the faces and the palette.
+  (cd "$ROOT/landing" && myst build --html) >/dev/null 2>&1
+  landdir="$ROOT/landing/_build/html"
+  check_landing landing "$landdir"
+  check_css_urls landing "$landdir"
+  if [ "$(find "$landdir" -name 'FiraSans-*.woff2' 2>/dev/null | wc -l)" -ge 4 ]; then
+    ok "landing: the site serves the faces theme.css asks for"
+  else
+    bad "landing: fewer than four FiraSans woff2 under $landdir, so readers get the system sans"
+  fi
+  if grep -q 'ark-blue' "$landdir"/myst-theme.css 2>/dev/null; then
+    ok "landing: the site serves theme.css"
+  else
+    bad "landing: no palette in $landdir/myst-theme.css, so the landing page is undressed"
+  fi
 fi
 
 exit $fail

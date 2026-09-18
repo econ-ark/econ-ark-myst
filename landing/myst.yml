@@ -1,0 +1,30 @@
+version: 1
+# The site that sits above the two theme demos. It is its own MyST project so that it can take
+# book-theme, which is the only theme carrying the landing-page block renderers, while the paper
+# demo at ../myst.yml stays on article-theme. Everything it is dressed in comes from one level up.
+project:
+  title: Econ-ARK
+  # The equations in the blocks below are set in Fira Math by the same plugin the paper uses
+  plugins:
+    - ../plugins/fira-math.mjs
+  static_files:
+    - ../fonts
+  toc:
+    - file: index.md
+site:
+  template: book-theme
+  options:
+    logo: ../logo.png
+    logo_dark: ../logo-dark.png
+    logo_text: Econ-ARK
+    logo_url: https://econ-ark.org
+    logo_alt: Econ-ARK
+    favicon: ../favicon.png
+    style: ../theme.css
+  # The two demos are separate MyST projects, so nav cannot reach them without naming the host.
+  # The buttons in the hero link them relatively, which works locally and under the Pages prefix.
+  nav:
+    - title: Econ-ARK
+      url: https://econ-ark.org
+    - title: GitHub
+      url: https://github.com/econ-ark/econ-ark-myst

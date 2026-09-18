@@ -511,3 +511,54 @@ article.article .myst-backmatter-title,
 .myst-bibliography hr {
   border-color: var(--ark-rule);
 }
+
+/*
+ * Landing pages, which book-theme renders from `+++ { "kind": ... }` blocks. The blocks arrive
+ * with Tailwind colours of their own, so the rules below are what put them in the house palette.
+ * article-theme carries no landing renderers, which is why the landing site is on book-theme.
+ */
+.myst-landing-block h1,
+.myst-landing-block h2 {
+  font-family: var(--ark-sans);
+  color: var(--ark-blue);
+  letter-spacing: -0.01em;
+}
+
+/* The eyebrow above a heading, which the block sets from the paragraph before it */
+.myst-landing-centered-subtitle,
+.myst-landing-split-img-subtitle {
+  font-family: var(--ark-sans);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--ark-grey);
+}
+
+/*
+ * The split panel ships as bg-stone-900, and the reading colour set on article.article lands
+ * inside it, which leaves near-black text on a near-black ground. Both are set here instead.
+ */
+.myst-landing-split-img {
+  background: var(--ark-blue);
+}
+
+.myst-landing-split-img-content,
+.myst-landing-split-img-content h1,
+.myst-landing-split-img-content h2,
+.myst-landing-split-img-content p {
+  color: var(--ark-paper);
+}
+
+.myst-landing-split-img-subtitle {
+  color: var(--ark-curve-3);
+}
+
+.myst-landing-split-img-content a {
+  color: var(--ark-curve-3);
+}
+
+/* The links that stand in for the buttons, since mystmd attaches no class to a link */
+.myst-landing-block a {
+  font-weight: 500;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
