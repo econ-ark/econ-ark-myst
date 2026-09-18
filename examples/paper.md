@@ -45,7 +45,7 @@ For everyone who waited for the solver to converge.
 
 All models are wrong, but some are useful. George Box
 
-+++ {"part": "acknowledgement"}
++++ {"part": "acknowledgments"}
 
 We thank the Econ-ARK community for comments.
 

@@ -11,4 +11,4 @@ exports:
 
 # Section
 
-A document with no abstract, email, keywords, acknowledgements or template options.
+A document with no abstract, email, keywords, acknowledgments or template options.

@@ -50,11 +50,17 @@ grep '#let serifFont' _build/templates/typst/*/*/econark.typ
 
 Two sources set the palette. econ-ark.org uses `#1f476b` throughout its own stylesheet, which the template takes for headings, labels and rules. The four logo curves are authored in CMYK inside the Econ-ARK logo EPS: 0/35/85/0 orange, 0/95/20/0 pink, 75/0/100/0 green, 100/0/0/0 cyan. `econark.typ` and `theme.css` carry that set converted to RGB. Read them from the EPS if you ever need them again, because the site's stylesheet holds none of the four and its raster logo rounds them.
 
-Econ-ARK draws its logo in two lockups. The horizontal one sets the wordmark on a single line at 4:1, with the curves tucked between "Econ" and "ARK". It survives wherever height is short, which is why the site header and the landing header both take it, and why `logo.png` is that lockup. Its partially stacked companion runs 2:1, curves sweeping well above the wordmark, wanting vertical room to work: covers, posters, slides, heroes. Getting a stacked asset here means rendering one from the EPS.
+Econ-ARK draws its logo in two lockups.
+
+The horizontal one sets the wordmark on a single line at 4:1, with the curves tucked between "Econ" and "ARK". It survives wherever height is short, which is why the site header and the landing header both take it, and why `logo.png` is that lockup.
+
+Its partially stacked companion runs 2:1, curves sweeping well above the wordmark, wanting vertical room to work: covers, posters, slides, heroes. Getting a stacked asset here means rendering one from the EPS.
 
 The margin rail of the PDF takes the horizontal lockup too. That is the one place the stacked one would suit. `econark.typ` measures the key points from the foot of the logo, so a lockup twice as tall would push them out of the margin more often than happens now.
 
 A site built from here carries one OpenGraph tag, `og:title`, which leaves a shared link with a bare preview. Setting `thumbnail` in `myst.yml` adds `og:image`. A paper wanting a preview card should point it at a raster around 1200x630. MyST writes that image as both a png and a webp and puts the webp in the tag, which X reads and some other unfurlers refuse. The `social` key is carried into the page data and article-theme draws nothing from it, so a Twitter handle set there reaches no reader.
+
+Code on a site built from here is read, never run. MyST spells in-page execution `thebe`, which `jupyter` is an alias for, and it wants a kernel to reach, a Binder or a JupyterHub. This template configures none, and offers `binder` instead, which is a link that sends the reader to run the notebook elsewhere. A repository wanting live cells sets `thebe` under its own project.
 
 ## Frontmatter
 
@@ -76,7 +82,7 @@ A site built from here carries one OpenGraph tag, `og:title`, which leaves a sha
 | `keywords` | Under the abstract | Omitted |
 | `tags` | JEL codes under the keywords. The [Econometric Society template](https://github.com/alanlujan91/econsoc_template) reads the same field, so one manuscript builds with both | Omitted |
 | `doi`, `arxiv`, `zenodo` | "Cite as" block in the margin, described below | No "Cite as" block |
-| `volume`, `issue`, `last_page` | Added to the "Cite as" entry. The volume and issue also follow the venue in the footer, as in "Econ-ARK Working Papers 1 (3)" | Left out of the entry and the footer |
+| `volume`, `issue`, `last_page` | Added to the "Cite as" entry. The volume and issue also follow the venue in the footer, as in "Econ-ARK Working Papers 1 (3)" | The site reads `volume.title` where the PDF reads `volume.number`, so write both; a volume given only as a number leaves "Volume" standing in the header with nothing after it |
 | `license` | Margin, with a Creative Commons badge and a copyright line. With `license: {content: CC-BY-4.0, code: MIT}`, the code license shows under the code link in the materials block | Omitted |
 | `copyright` | Replaces the author names in the margin's copyright line. Text that already carries "©" or starts with "Copyright" is printed as written | "Copyright © year" and the authors' family names |
 | `funding` | Each statement, then each award as "name (id)", in the margin rail under the correspondence. Write `funding` as a list, because mystmd 1.10.1 stops with `funding?.forEach is not a function` on a single funding object | Omitted |
@@ -98,7 +104,7 @@ The materials block lists what exists for the paper beyond the PDF, in up to fou
 | Run online, or the `binder_label` option | `binder`, with a note that it starts in a few minutes |
 | Code | `github`, shown as `owner/repo`, with the code license under it |
 | REMARK | The `remark` option |
-| Also as | Each entry of `downloads` with a web address, by its `title`. An entry whose address ends in `.bib` goes to "Cite as" as a BibTeX link instead |
+| Also as | Each entry of `downloads` with a web address, by its `title`. An entry whose address ends in `.bib` goes to "Cite as" as a BibTeX link instead. See The site for the second list a site needs |
 
 ```yaml
 binder: https://econ-ark.org/materials/LiqConstr?dashboard
@@ -184,9 +190,11 @@ Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib 
 | `keypoints` | Three or four short bullet points, at most 80 words, in the margin under the logo. When the margin cannot hold them above its lower notes, they move under the abstract | Above the page, as "Key Points" |
 | `dedication` | Centred and italic above the abstract | Centred and italic where the block is written |
 | `epigraph` | Set in from the right above the abstract, smaller than the text; write the attribution into it | Set in from the right where the block is written |
-| `declaration` | First unnumbered section of the back matter. One block for competing interests, generative AI use and whatever else the paper states | Where the block is written, above the back matter, under a "Declarations" heading `theme.css` supplies |
-| `acknowledgments` | Unnumbered section after the declarations (`acknowledgements` and `acknowledgement` also work) | Below the page |
+| `declaration` | First unnumbered section of the back matter. One block for competing interests, generative AI use and whatever else the paper states | Where the block is written, above the back matter, under a "Declarations" heading |
+| `acknowledgments` | Unnumbered section after the declarations | Below the page |
 | `data_availability` | Unnumbered section after the acknowledgments | Below the page |
+
+Three of those site behaviours are not the theme's. `declaration`, `dedication` and `epigraph` reach a page as bare paragraphs, and what marks them is `plugins/part-wrapper.mjs` with `theme.css`, described under The parts the site has no slot for. A site built without that plugin shows all three as body text.
 
 A part the template does not list stays in the text of the PDF as an unlabeled paragraph.
 
@@ -239,7 +247,7 @@ MyST does not know labels defined inside raw Typst, and `@tbl-wide` in the text 
 
 `fullwidth` spans the margin rail and the text column and floats the figure to the top or bottom of the page. On page one the margin holds the logo and notes, so a figure anchored there floats to the bottom of the page at column width. A float can land above an in-flow table that the text introduces earlier.
 
-`fullwidth(float: false, ...)` keeps the figure in the text flow, directly after the sentence that introduces it, as LaTeX `[h]` does. A figure that does not fit the rest of the page moves whole to the next page and leaves white space. Use it from page two on, because on page one the wide figure would run over the margin notes.
+`fullwidth(float: false, ...)` keeps the figure in the text flow, directly after the sentence that introduces it, as LaTeX `[h]` does. It keeps the default placement described under Figure placement. Use it from page two on, because on page one the wide figure would run over the margin notes.
 
 ## Appendices
 
@@ -430,7 +438,7 @@ project:
   banner: banner.svg
 ```
 
-`logo.png` is the mark the PDF prints in its margin, and book-theme shows the same file in the site's navigation. article-theme leaves that place empty beside a paper. The stylesheet carries its own copy of the mark and sets it over the title. The wordmark is black. At night both marks rest on a white plate.
+book-theme shows `logo.png` in the site's navigation, where article-theme leaves that place empty beside a paper. The stylesheet carries its own copy of the mark and sets it over the title. The wordmark is black. At night both marks rest on a white plate.
 
 The stylesheet serves the fonts itself. `fonts/` holds Fira Sans and Fira Mono subset to Latin as woff2, about 125KB for the seven faces, and `theme.css` declares an `@font-face` for each. A site copies them over by naming the directory under the project's `static_files`, which is what this repository's own `myst.yml` does:
 

@@ -231,6 +231,21 @@ check_documented_config() {
   fi
 }
 
+# MyST accepts a pile of aliases for its part and frontmatter names, and a file mixing them with
+# the canonical names reads as though the two named different things. The examples and the configs
+# keep to what PAGE_KNOWN_PARTS and the frontmatter schema call them.
+check_no_aliases() {
+  local name=$1 hits
+  shift
+  hits=$(grep -nE '"(ack|acknowledgement|acknowledgements|acknowledgment|availability|dataAvailability|data-availability|quote|plain_language_summary|plain-language-summary|plainLanguageSummary|lay_summary|lay-summary|keyPoints|key_points|key-points)"|^[[:space:]]*(author|reviewer|editor|contributor|affiliation|export|download|part|identifier|socials|image):' "$@" 2>/dev/null)
+  if [ -z "$hits" ]; then
+    ok "$name: the examples and configs name every part and field as MyST does"
+  else
+    bad "$name: MyST aliases used where the canonical name belongs:"
+    head -5 <<<"$hits"
+  fi
+}
+
 # Before asking which file serves a weight, ask whether the family is there at all. A missing one
 # is not a tie: Typst falls back to a bundled face, and the text rewraps.
 check_family() {
@@ -774,6 +789,7 @@ else
   check_bundle plugin "$ROOT/plugins/fira-math.bundle.mjs"
   check_temml_pin pins "$ROOT/scripts/fonts.sh" "$ROOT/package.json"
   check_documented_config docs "$ROOT/README.md" "$ROOT/myst.yml"
+  check_no_aliases docs "$ROOT/myst.yml" "$ROOT/landing/myst.yml" "$ROOT"/examples/*.md
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
