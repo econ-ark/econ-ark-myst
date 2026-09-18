@@ -188,8 +188,8 @@ Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib 
 | `abstract` | Run-in abstract under the title | Above the page |
 | `summary` | Run-in "Summary" after the abstract | Above the page, where `theme.css` relabels the theme's "Plain Language Summary" to "Summary" |
 | `keypoints` | Three or four short bullet points, at most 80 words, in the margin under the logo. When the margin cannot hold them above its lower notes, they move under the abstract | Above the page, as "Key Points" |
-| `dedication` | Centred and italic above the abstract | Centred and italic where the block is written |
-| `epigraph` | Set in from the right above the abstract, smaller than the text; write the attribution into it | Set in from the right where the block is written |
+| `dedication` | Centred and italic after the front matter, before the first heading | Centred and italic, in the same place |
+| `epigraph` | Set in from the right after the dedication, smaller than the text; write the attribution into it | Set in from the right, in the same place |
 | `declaration` | First unnumbered section of the back matter. One block for competing interests, generative AI use and whatever else the paper states | Where the block is written, above the back matter, under a "Declarations" heading |
 | `acknowledgments` | Unnumbered section after the declarations | Below the page |
 | `data_availability` | Unnumbered section after the acknowledgments | Below the page |
@@ -220,7 +220,7 @@ The theme takes a volume from `volume.title`. One given only as `number` comes o
 
 ## Theorems and proofs
 
-MyST `prf:` directives (`prf:theorem`, `prf:proposition`, `prf:lemma`, `prf:definition`, `prf:assumption`, `prf:proof` and the rest) are set in the flow of the text: a bold label and number, the optional title in parentheses, then the statement. Theorems, propositions, lemmas, corollaries, conjectures and claims are italic. Definitions, assumptions and remarks are upright. A proof ends with a square. Each kind is numbered separately, and `@label` gives "Proposition 1".
+MyST `prf:` directives (`prf:theorem`, `prf:proposition`, `prf:lemma`, `prf:definition`, `prf:assumption`, `prf:proof` and the rest) are set in the flow of the text: a bold label and number, the optional title in parentheses, then the statement. MyST offers fifteen kinds and the template carries all of them, splitting them the way `amsthm` does. Its plain style is italic, which takes `theorem`, `proposition`, `lemma`, `corollary`, `conjecture` and `criterion`. Its definition and remark styles are upright, which takes `definition`, `assumption`, `axiom`, `property`, `example`, `algorithm`, `observation` and `remark`. A proof ends with a square. Each kind is numbered separately, and `@label` gives "Proposition 1".
 
 ## Admonitions
 

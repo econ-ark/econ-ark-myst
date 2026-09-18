@@ -224,7 +224,10 @@
 
 // Theorem-like blocks from MyST prf: directives, set in flow the way economics papers set them.
 // Replaces MyST's own proof(), which floats each block to the top of the page inside a tinted box.
-#let italicKinds = ("theorem", "lemma", "proposition", "corollary", "conjecture", "claim")
+
+// amsthm's plain style, which italicises its statement, less the kinds MyST has no directive for.
+// Its definition and remark styles both set upright, which is what every other kind gets here.
+#let italicKinds = ("theorem", "lemma", "proposition", "corollary", "conjecture", "criterion")
 // pubmatter sets the authors in "semibold", which resolves by discovery order wherever the text
 // face carries no file at that weight. This is its title block with the authors pinned to the
 // weight the rest of the template asks for.
@@ -494,7 +497,10 @@
   // The citation and the copyright line date the paper the same way, from the one date it has
   let year = if type(fm.date) == datetime { fm.date.year() }
 
-  let rail = (
+  // The rail in two groups. The first and last are what a reader of the paper needs beside it; the
+  // middle one moves under the abstract when the column cannot hold everything, the way key points
+  // do, since a rail placed from the bottom would otherwise grow up over the logo.
+  let railHead = (
     // Shown once the paper has a persistent identifier, which marks it as ready to cite
     if doiUrl != none or otherVersions.len() > 0 {
       railItem("Cite as", {
@@ -509,17 +515,19 @@
     if corresponding != none and "email" in corresponding {
       railItem("Correspondence", [#corresponding.name\ #link("mailto:" + corresponding.email, corresponding.email)])
     },
-    // People who worked on the paper without authoring it. MyST carries them and a site theme
-    // shows neither, so the rail is where a reader meets them
+  ).filter(x => x != none)
+
+  // People who worked on the paper without authoring it, and the money behind it. MyST carries all
+  // three and a site theme shows none of them, so the rail is where a reader meets them.
+  let fundingStatements = funding.filter(f => f != "").map(closeSentence)
+  let railExtra = (
     ..(("Reviewers", reviewers), ("Editors", editors)).map(((label, names)) => {
-      if names.len() > 0 { railItem(label, names.join(linebreak())) }
+      if names.len() > 0 { (label, names.join(linebreak()), names.join(", ")) }
     }),
-    // Funding is a fact about the paper, so the rail carries it beside the rest of what the
-    // project declares
-    {
-      let statements = funding.filter(f => f != "").map(closeSentence)
-      if statements.len() > 0 { railItem("Funding", statements.join(" ")) }
-    },
+    if fundingStatements.len() > 0 { ("Funding", fundingStatements.join(" "), fundingStatements.join(" ")) },
+  ).filter(x => x != none)
+
+  let railTail = (
     {
       let license = frontmatter.at("license", default: none)
       let notice = {
@@ -536,7 +544,7 @@
   ).filter(x => x != none)
 
   // Margin rail, bottom: what kind of paper this is, then the information a reader acts on
-  let railBottom = {
+  let railBottomWith(extras) = {
     // Rail size set here so line spacing scales with the small type
     set text(font: sansFont, size: 7.5pt)
     set par(first-line-indent: 0pt, justify: false, leading: 0.5em, spacing: 0.6em)
@@ -549,13 +557,21 @@
       text(size: 7.5pt, fill: arkGrey, fm.date.display("[month repr:long] [day padding:none], [year]"))
     }
     v(1.6em)
-    grid(columns: 1, row-gutter: 1.6em, ..rail)
+    grid(columns: 1, row-gutter: 1.6em, ..(railHead + extras.map(((label, railBody, _)) => railItem(label, railBody)) + railTail))
   }
 
   context {
     let railWidth = textColumn() * railFraction
     let height(it) = measure(block(width: railWidth, it)).height
     let keyPointsTop = height(venueLogo) + 2.4em.to-absolute()
+    // The rail is placed from the bottom, so anything it cannot hold grows up over the logo. Give
+    // the reviewers, editors and funding to the front matter instead when they do not fit under it.
+    let railRoom = page.height - 2in - keyPointsTop - 1em.to-absolute() - 10pt
+    // The placed rail ends some 43pt above the foot of the page rather than at it, for a reason not
+    // yet found, so the room measured here overstates what it has and the discount covers it.
+    // Without that, a rail measuring 573pt into 576pt passed and printed its first line on the logo.
+    let railExtraFits = height(railBottomWith(railExtra)) <= railRoom * 0.9
+    let railBottom = railBottomWith(if railExtraFits { railExtra } else { () })
     // Key points sit under the logo, beside the title and abstract, unless they would run into the bottom of the rail
     let railKeyPoints = keypoints != none and keyPointsTop + height(keyPoints(keypoints)) + 3em.to-absolute() + height(railBottom) + 10pt <= page.height - 2in
 
@@ -572,20 +588,6 @@
       block(above: 1.4em, below: 2em, inset: (x: 1.5em), {
         set par(first-line-indent: 0pt)
         set text(size: 10pt)
-        // A dedication is centred on a line of its own, as a book sets one; an epigraph follows
-        // it as a quotation set in from the right. Both are read before the abstract
-        if dedication != none {
-          align(center, text(style: "italic", dedication))
-          v(0.9em)
-        }
-        if epigraph != none {
-          align(right, block(width: 72%, {
-            set par(justify: false)
-            set text(size: 9pt, style: "italic")
-            epigraph
-          }))
-          v(0.9em)
-        }
         if ("abstracts" in fm) {
           for abs in fm.abstracts {
             labeledField(abs.title, abs.content, size: 9.5pt)
@@ -610,6 +612,13 @@
         if (jel.len() > 0) {
           labeledField("JEL codes", jel.join(", "))
         }
+        // Whatever the rail could not hold, run in beside the keywords so none of it is lost
+        if not railExtraFits {
+          for (label, _, runIn) in railExtra {
+            parbreak()
+            labeledField(label, runIn)
+          }
+        }
         if mainKeyPoints {
           v(1.1em, weak: true)
           keyPoints(keypoints, size: 9pt)
@@ -619,6 +628,22 @@
         materialsBlock(materials)
       })
     }
+  }
+
+  // A dedication is centred on a line of its own, as a book sets one, and an epigraph follows it as
+  // a quotation set in from the right. Both come after the front matter and before the first
+  // heading, which is where a site renders them and where a reader meets them in a book.
+  if dedication != none {
+    align(center, text(style: "italic", dedication))
+    v(0.9em)
+  }
+  if epigraph != none {
+    align(right, block(width: 72%, {
+      set par(justify: false)
+      set text(size: 9pt, style: "italic")
+      epigraph
+    }))
+    v(0.9em)
   }
 
   // Line numbers start with the main text, so the title block and abstract stay clean

@@ -108,11 +108,11 @@ parts:
       or under the abstract when the margin has no room.
     max_words: 80
   - id: dedication
-    description: Dedication, centred on its own above the abstract.
+    description: Dedication, centred on its own after the front matter and before the first heading.
     max_words: 50
   - id: epigraph
     description: >
-      Epigraph, set as a quotation from the right above the abstract; write the attribution
+      Epigraph, set as a quotation from the right after the dedication; write the attribution
       into the text.
     max_words: 100
   - id: acknowledgments

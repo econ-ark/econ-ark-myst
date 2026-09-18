@@ -246,6 +246,18 @@ check_no_aliases() {
   fi
 }
 
+# Italic leaves no trace in a PDF's text layer, so the list itself is what gets read. These are the
+# kinds amsthm sets in its plain style that MyST also has a directive for; every other kind it
+# knows belongs to the upright definition or remark styles.
+check_italic_kinds() {
+  local name=$1 file=$2 want='("theorem", "lemma", "proposition", "corollary", "conjecture", "criterion")'
+  if grep -qF "#let italicKinds = $want" "$file"; then
+    ok "$name: the italic proof kinds are amsthm's plain style"
+  else
+    bad "$name: italicKinds is not amsthm's plain style; found $(grep -F '#let italicKinds' "$file" | head -1)"
+  fi
+}
+
 # Before asking which file serves a weight, ask whether the family is there at all. A missing one
 # is not a tie: Typst falls back to a bundled face, and the text rewraps.
 check_family() {
@@ -795,6 +807,7 @@ else
   check_temml_pin pins "$ROOT/scripts/fonts.sh" "$ROOT/package.json"
   check_documented_config docs "$ROOT/README.md" "$ROOT/myst.yml"
   check_no_aliases docs "$ROOT/myst.yml" "$ROOT/landing/myst.yml" "$ROOT"/examples/*.md
+  check_italic_kinds docs "$ROOT/econark.typ"
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
