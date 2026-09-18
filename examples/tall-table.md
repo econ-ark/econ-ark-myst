@@ -14,9 +14,12 @@ exports:
 
 A table taller than a page, which must break across pages.
 
-Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page.
+The caption has to start low on the page for the orphan check to mean anything. The space below is
+what puts it there. Thirty-three repetitions of one filler sentence did the same job before.
 
-Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page. Filler sentence to push the caption toward the foot of the page.
+:::{raw:typst}
+#v(11cm)
+:::
 
 :::{table} Every case, one row each.
 :label: tbl-cases

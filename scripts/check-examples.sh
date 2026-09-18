@@ -91,16 +91,24 @@ check_pdf() {
   fi
 }
 
+# One line per page, as "<page> <text>", with the page's whitespace collapsed so it stays one line.
+# The checks below differ only in what they do with each page, so the walk lives here.
+page_lines() {
+  local pdf=$1 pages p
+  pages=$(page_count "$pdf")
+  for ((p = 1; p <= ${pages:-0}; p++)); do
+    printf '%d %s\n' "$p" "$(pdftotext -layout -f "$p" -l "$p" "$pdf" - 2>/dev/null | tr -s '[:space:]' ' ')"
+  done
+}
+
 # A table taller than a page must break: its first and last rows land on different pages.
 # An unbreakable one overflows the page foot, where its rows still extract as text, so a text search misses it.
 check_breaks() {
-  local name=$1 pdf=$2 first=$3 last=$4 pages p text pfirst="" plast=""
-  pages=$(page_count "$pdf")
-  for ((p = 1; p <= ${pages:-0}; p++)); do
-    text=$(pdftotext -layout -f "$p" -l "$p" "$pdf" - 2>/dev/null | tr -s "[:space:]" " ")
+  local name=$1 pdf=$2 first=$3 last=$4 p text pfirst="" plast=""
+  while read -r p text; do
     grep -qF -- "$first" <<<"$text" && [ -z "$pfirst" ] && pfirst=$p
     grep -qF -- "$last" <<<"$text" && plast=$p
-  done
+  done < <(page_lines "$pdf")
   if [ -n "$pfirst" ] && [ -n "$plast" ] && [ "$plast" -gt "$pfirst" ]; then
     ok "$name: table breaks from page $pfirst to page $plast"
   else
@@ -110,13 +118,11 @@ check_breaks() {
 
 # A caption above a table that breaks must stay on the page where the table's first row is
 check_same_page() {
-  local name=$1 pdf=$2 caption=$3 row=$4 pages p text pcap="" prow=""
-  pages=$(page_count "$pdf")
-  for ((p = 1; p <= ${pages:-0}; p++)); do
-    text=$(pdftotext -layout -f "$p" -l "$p" "$pdf" - 2>/dev/null | tr -s "[:space:]" " ")
+  local name=$1 pdf=$2 caption=$3 row=$4 p text pcap="" prow=""
+  while read -r p text; do
     [ -z "$pcap" ] && grep -qF -- "$caption" <<<"$text" && pcap=$p
     [ -z "$prow" ] && grep -qF -- "$row" <<<"$text" && prow=$p
-  done
+  done < <(page_lines "$pdf")
   if [ -n "$pcap" ] && [ "$pcap" = "$prow" ]; then
     ok "$name: caption and first row share page $pcap"
   else
@@ -180,6 +186,22 @@ check_temml_pin() {
     ok "$name: fonts.sh and package.json both pin Temml $tag"
   else
     bad "$name: fonts.sh pins Temml '${tag:-none}' and package.json '${version:-none}'"
+  fi
+}
+
+# The README shows the site block a consumer should write, and this repository's myst.yml is that
+# block. Two copies of one thing drift, and the copy a reader trusts is the one in the README.
+check_documented_config() {
+  local name=$1 readme=$2 config=$3 line missing=0 checked=0
+  while IFS= read -r line; do
+    [ -n "${line// /}" ] || continue
+    checked=$((checked + 1))
+    grep -qxF "$line" "$config" || { bad "$name: README shows '$line', which $config does not"; missing=1; }
+  done < <(awk '/^site:$/ { on = 1 } on && /^```$/ { exit } on' "$readme")
+  if [ "$missing" -eq 0 ] && [ "$checked" -gt 0 ]; then
+    ok "$name: every line of the README's site block is in myst.yml ($checked lines)"
+  elif [ "$checked" -eq 0 ]; then
+    bad "$name: found no site block in $readme, so this check proved nothing"
   fi
 }
 
@@ -543,6 +565,18 @@ self_test() {
   fi
   rm -rf "$land"
 
+  # The README documenting a key the config no longer carries, which is how these two drift
+  local conf
+  conf=$(mktemp)
+  printf 'site:\n  template: book-theme\n' >"$conf"
+  out=$(check_documented_config seeded "$ROOT/README.md" "$conf")
+  if grep -q 'FAIL.*README shows' <<<"$out"; then
+    ok "self-test: a README documenting a key the config lacks is caught"
+  else
+    bad "self-test: a README documenting a key the config lacks went undetected"
+  fi
+  rm -f "$conf"
+
   # A machine that never had Fira Math installed, which is what scripts/fonts.sh install prevents
   out=$(check_family seeded "$(printf 'Fira Sans\nFira Mono\nDejaVu Sans Mono\n')" "Fira Math")
   if grep -q 'FAIL.*does not find Fira Math' <<<"$out"; then
@@ -696,6 +730,7 @@ else
   check_font paper "$PAPER" FiraMath-Regular-Identity-H
   check_bundle plugin "$ROOT/plugins/fira-math.bundle.mjs"
   check_temml_pin pins "$ROOT/scripts/fonts.sh" "$ROOT/package.json"
+  check_documented_config docs "$ROOT/README.md" "$ROOT/myst.yml"
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
