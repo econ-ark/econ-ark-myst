@@ -3,7 +3,7 @@ title: Buffer Stock Saving with Heterogeneous Agents
 subtitle: An example of the Econ-ARK MyST template
 short_title: Buffer Stock Saving
 downloads:
-  - title: PDF
+  - title: Latest PDF
     url: https://github.com/econ-ark/econ-ark-myst/blob/main/examples/exports/paper.pdf
   - title: BibTeX
     url: https://github.com/econ-ark/econ-ark-myst/blob/main/examples/paper.bib

@@ -52,7 +52,7 @@ project:
   # frontmatter, so a paper that lists downloads still needs them named here to reach the site
   downloads:
     - file: examples/exports/paper.pdf
-      title: PDF
+      title: Latest PDF
     - file: examples/paper.bib
       title: BibTeX
   # Without a table of contents MyST would take the README for a page of the site
