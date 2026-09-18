@@ -24,6 +24,13 @@ ANCHORS=(
   'BibTeX'
   'JEL codes'
   '2.1.1 Sources of the parameters'
+  # A part written last with nothing closing it costs the paper its footnotes, and MyST says so in
+  # a line the Typst warning check never reads. These are the parts and people that go with it.
+  'inverts the first-order condition'
+  'For everyone who waited'
+  'All models are wrong'
+  'Rita Referee'
+  'Eddie Editor'
   'Proposition 1 (Concavity)'
   'Admonitions take a rule in the palette'
   'Declarations'
@@ -151,6 +158,20 @@ check_warnings() {
   else
     bad "$name: $ours build warnings name files of this template:"
     grep -v '@preview/' <<<"$locations" | head -10
+  fi
+}
+
+# MyST reports its own troubles on lines of its own, which the check above never reads: that one
+# looks for Typst compiler warnings and nothing else. A dropped footnote left the PDF missing text
+# and said so only here, so the log is the cheaper of the two places to catch it.
+check_myst_errors() {
+  local name=$1 log=$2 errors
+  errors=$(grep -F '⛔' "$log" 2>/dev/null)
+  if [ -z "$errors" ]; then
+    ok "$name: MyST reports no errors of its own"
+  else
+    bad "$name: MyST reported $(wc -l <<<"$errors") errors of its own:"
+    head -5 <<<"$errors"
   fi
 }
 
@@ -718,6 +739,7 @@ else
   buildlog=$(mktemp)
   (cd "$ROOT" && rm -rf _build examples/_build && myst build --typst) >"$buildlog" 2>&1
   check_warnings build "$buildlog"
+  check_myst_errors build "$buildlog"
   rm -f "$buildlog"
   check_pdf paper "$PAPER" "${ANCHORS[@]}"
   check_pdf minimal "$MINIMAL" 'Minimal Example'

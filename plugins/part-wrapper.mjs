@@ -2,8 +2,8 @@
 // A selector reaching such a part by position would sooner or later label a paper that has none.
 // README, "The parts the site has no slot for", carries the rest.
 
-// Parts to wrap. theme.css supplies the heading text, as template.typ does for the PDF.
-const WRAPPED_PARTS = ['declaration'];
+// Parts to wrap. theme.css supplies what marks each one, as the Typst side does for the PDF.
+const WRAPPED_PARTS = ['declaration', 'dedication', 'epigraph'];
 
 const partClass = (part) => `ark-part-${part.replaceAll('_', '-')}`;
 

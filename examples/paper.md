@@ -37,6 +37,14 @@ Households save more when their income is uncertain. This paper shows how much m
 - The endogenous grid method solves the model without root finding.
 - Patience, returns and risk set the size of the buffer.
 
++++ {"part": "dedication"}
+
+For everyone who waited for the solver to converge.
+
++++ {"part": "epigraph"}
+
+All models are wrong, but some are useful. George Box
+
 +++ {"part": "acknowledgement"}
 
 We thank the Econ-ARK community for comments.
@@ -120,3 +128,5 @@ The first-order condition for $c_t$ in @eq-bellman sets $u'(c_t)$ equal to $\bet
 
 The authors report no competing interests. The authors used a large language model to draft the
 example text of this template and reviewed every sentence before release.
+
++++

@@ -24,6 +24,12 @@ project:
   first_page: 1
   last_page: 3
   banner: banner.svg
+  description: A worked example of the Econ-ARK MyST template, with every part it supports
+  source: https://github.com/econ-ark/econ-ark-myst
+  reviewers:
+    - name: Rita Referee
+  editors:
+    - name: Eddie Editor
   license:
     content: CC-BY-4.0
     code: MIT

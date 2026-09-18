@@ -325,6 +325,14 @@
   volume: none,
   issue: none,
   summary: none,
+  // A dedication is set on its own above the abstract; an epigraph follows it, attribution and all
+  dedication: none,
+  epigraph: none,
+  // People who are not authors, each a list of names, shown in the margin rail
+  reviewers: (),
+  editors: (),
+  // Where the work itself lives, shown with the other materials
+  source: none,
   // Funding statements and awards, as strings, shown in the margin rail
   funding: (),
   copyright: none,
@@ -467,6 +475,9 @@
     if remark != none {
       ("REMARK", link("https://econ-ark.org/materials/" + remark, remark))
     },
+    if source != none {
+      ("Source", link(source, source.replace(regex("^https?://(www\.)?"), "").trim("/")))
+    },
     if formats.len() > 0 {
       ("Also as", formats.map(d => link(d.url, d.title)).join(linebreak()))
     },
@@ -498,6 +509,11 @@
     if corresponding != none and "email" in corresponding {
       railItem("Correspondence", [#corresponding.name\ #link("mailto:" + corresponding.email, corresponding.email)])
     },
+    // People who worked on the paper without authoring it. MyST carries them and a site theme
+    // shows neither, so the rail is where a reader meets them
+    ..(("Reviewers", reviewers), ("Editors", editors)).map(((label, names)) => {
+      if names.len() > 0 { railItem(label, names.join(linebreak())) }
+    }),
     // Funding is a fact about the paper, so the rail carries it beside the rest of what the
     // project declares
     {
@@ -556,6 +572,20 @@
       block(above: 1.4em, below: 2em, inset: (x: 1.5em), {
         set par(first-line-indent: 0pt)
         set text(size: 10pt)
+        // A dedication is centred on a line of its own, as a book sets one; an epigraph follows
+        // it as a quotation set in from the right. Both are read before the abstract
+        if dedication != none {
+          align(center, text(style: "italic", dedication))
+          v(0.9em)
+        }
+        if epigraph != none {
+          align(right, block(width: 72%, {
+            set par(justify: false)
+            set text(size: 9pt, style: "italic")
+            epigraph
+          }))
+          v(0.9em)
+        }
         if ("abstracts" in fm) {
           for abs in fm.abstracts {
             labeledField(abs.title, abs.content, size: 9.5pt)

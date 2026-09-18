@@ -62,6 +62,12 @@ doc:
     description: Other formats of the paper, linked in the materials block; a web address ending in .bib goes to "Cite as" as BibTeX
   - id: first_page
   - id: last_page
+  - id: source
+    description: Where the work itself lives, linked in the materials block beside the code and the REMARK
+  - id: reviewers
+    description: Reviewers, listed in the margin under the funding
+  - id: editors
+    description: Editors, listed in the margin under the reviewers
 options:
   - id: kind
     type: string
@@ -101,6 +107,14 @@ parts:
       Three or four short bullet points, shown in the margin under the logo,
       or under the abstract when the margin has no room.
     max_words: 80
+  - id: dedication
+    description: Dedication, centred on its own above the abstract.
+    max_words: 50
+  - id: epigraph
+    description: >
+      Epigraph, set as a quotation from the right above the abstract; write the attribution
+      into the text.
+    max_words: 100
   - id: acknowledgments
     description: Acknowledgments, shown unnumbered after the main text.
   - id: data_availability

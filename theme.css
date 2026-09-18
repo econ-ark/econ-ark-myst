@@ -570,6 +570,25 @@ article.article .ark-part-declaration::before {
 }
 
 /*
+ * MyST's `dedication` and `epigraph`, two more parts the theme leaves as body text. The PDF centres
+ * the one and sets the other in from the right; these do the same so a reader meets them the same
+ * way in both. plugins/part-wrapper.mjs writes both classes.
+ */
+article.article .ark-part-dedication {
+  margin: 1.5rem 0;
+  text-align: center;
+  font-style: italic;
+}
+
+article.article .ark-part-epigraph {
+  margin: 1.5rem 0 1.5rem auto;
+  max-width: 72%;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--ark-grey);
+}
+
+/*
  * Landing pages, which book-theme renders from `+++ { "kind": ... }` blocks. The blocks arrive
  * with Tailwind colours of their own, so the rules below are what put them in the house palette.
  * article-theme carries no landing renderers, which is why the landing site is on book-theme.

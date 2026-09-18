@@ -181,6 +181,31 @@
     [-parts.summary-]
   ],
   [# endif #]
+  [# if parts.dedication #]
+  dedication: [
+    [-parts.dedication-]
+  ],
+  [# endif #]
+  [# if parts.epigraph #]
+  epigraph: [
+    [-parts.epigraph-]
+  ],
+  [# endif #]
+  [# if doc.source #]
+  source: [-s(doc.source)-],
+  [# endif #]
+  // MyST keeps one pool of people under doc.contributors, listing reviewers and editors as ids into it
+  [# for group in [["reviewers", doc.reviewers], ["editors", doc.editors]] #]
+  [# if group[1] #]
+  [-group[0]-]: (
+  [# for person in doc.contributors #]
+  [# if group[1].includes(person.id) #]
+    [-s(person.name)-],
+  [# endif #]
+  [# endfor #]
+  ),
+  [# endif #]
+  [# endfor #]
   [# if doc.funding #]
   funding: (
   [# for entry in doc.funding #]

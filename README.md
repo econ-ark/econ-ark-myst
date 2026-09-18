@@ -81,7 +81,9 @@ A site built from here carries one OpenGraph tag, `og:title`, which leaves a sha
 | `copyright` | Replaces the author names in the margin's copyright line. Text that already carries "©" or starts with "Copyright" is printed as written | "Copyright © year" and the authors' family names |
 | `funding` | Each statement, then each award as "name (id)", in the margin rail under the correspondence. Write `funding` as a list, because mystmd 1.10.1 stops with `funding?.forEach is not a function` on a single funding object | Omitted |
 | `numbering` | `headings: false` removes the section numbers, including the appendix letters | Sections are numbered |
-| `binder`, `github`, `downloads` | Materials block under the abstract, described below | With none of these and no `remark` option, the four-colour rule alone ends the front matter |
+| `binder`, `github`, `downloads`, `source` | Materials block under the abstract, described below | With none of these and no `remark` option, the four-colour rule alone ends the front matter |
+| `reviewers`, `editors` | Margin, under the funding. MyST holds one pool of people and gives these as references into it, which the template resolves back to names | Omitted |
+| `description` | Nothing | The page's meta description and its `og:description`, which is what a shared link quotes |
 | `first_page` | Starting page number, also the first page in the "Cite as" entry | Pages start at 1 |
 | `bibliography` | References, in Chicago author-date style, after the declarations | No references section |
 
@@ -180,11 +182,15 @@ Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib 
 | `abstract` | Run-in abstract under the title | Above the page |
 | `summary` | Run-in "Summary" after the abstract | Above the page, where `theme.css` relabels the theme's "Plain Language Summary" to "Summary" |
 | `keypoints` | Three or four short bullet points, at most 80 words, in the margin under the logo. When the margin cannot hold them above its lower notes, they move under the abstract | Above the page, as "Key Points" |
+| `dedication` | Centred and italic above the abstract | Centred and italic where the block is written |
+| `epigraph` | Set in from the right above the abstract, smaller than the text; write the attribution into it | Set in from the right where the block is written |
 | `declaration` | First unnumbered section of the back matter. One block for competing interests, generative AI use and whatever else the paper states | Where the block is written, above the back matter, under a "Declarations" heading `theme.css` supplies |
 | `acknowledgments` | Unnumbered section after the declarations (`acknowledgements` and `acknowledgement` also work) | Below the page |
 | `data_availability` | Unnumbered section after the acknowledgments | Below the page |
 
-A part the template does not list, such as `dedication` or `epigraph`, stays in the text of the PDF as an unlabeled paragraph.
+A part the template does not list stays in the text of the PDF as an unlabeled paragraph.
+
+The last part in a file needs a bare `+++` closing it. A part written at the end with nothing following costs the paper every footnote in the body: the marks and the notes both vanish from the PDF, the text around them closes up as though they were never written, and the only sign is one line, `Unknown footnote identifier`, in a build that still exits 0. `examples/paper.md` ends with that closing `+++` for this reason, and `check_myst_errors` in the check script fails the run on any such line.
 
 The back matter, these three sections and then the references, goes before the `<appendix>` marker, or at the end of the paper when there is no marker. MyST removes a part from the text of a PDF wherever it is written. The `parts:` key of the project frontmatter does not reach a PDF export.
 
@@ -197,6 +203,8 @@ Parts behave differently. In an `articles:` export MyST collects each part from 
 ### Bibliographic fields belong in `myst.yml`
 
 A MyST site builds its header from the project alone. Write a `doi`, `date`, `venue` or `volume` in the paper's own frontmatter and it reaches the PDF while the header stays blank, with nothing reported. `examples/paper.md` keeps none of them for that reason. They live in `myst.yml`, where MyST hands each one down to the paper as well. One copy serves both the PDF and the header. The arrangement covers `date`, `subject`, `doi`, `arxiv`, `zenodo`, `binder`, `open_access`, `venue`, `volume`, `issue`, `first_page`, `last_page`, `license`, `copyright` and `funding`.
+
+One key reaches neither half. MyST keeps `contributors` as a pool it fills from `reviewers` and `editors`. A `contributors` list an author writes is dropped on the way through, in `myst.yml` and in the paper alike. Name those people under `reviewers` or `editors` instead.
 
 MyST reads a second group from the project and the page separately. A project value stays where it is written, which is why a paper that wants its `subtitle` in both places writes it in both places. That group is `title`, `subtitle`, `short_title`, `downloads`, `tags` and `description`.
 
