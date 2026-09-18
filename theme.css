@@ -93,11 +93,12 @@
 }
 
 :root {
-  /* Econ-ARK brand palette, from econ-ark.org assets/sass/_variables.scss */
+  /* Econ-ARK brand palette. The blue is the one econ-ark.org sets throughout its own stylesheet */
   --ark-blue: #1f476b;
   --ark-grey: #676470;
-  /* The four logo curves as the Econ-ARK design guidelines name them, in the order the
-     rule under the front matter shows them */
+  /* The four logo curves as the Econ-ARK design guidelines name them, in the order the rule under
+     the front matter shows them. The logo EPS authors them in CMYK, 0/35/85/0, 0/95/20/0,
+     75/0/100/0 and 100/0/0/0, and these are that set converted */
   --ark-curve-1: #fbaf3f;
   --ark-curve-2: #ed2a7b;
   --ark-curve-3: #00adef;

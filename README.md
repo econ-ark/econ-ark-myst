@@ -46,6 +46,16 @@ grep '#let serifFont' _build/templates/typst/*/*/econark.typ
   One family sets the whole paper: Fira Sans for text and apparatus, Fira Mono for code, and Fira Math, its OpenType math companion, for everything between dollars. Another release of either renders the same words to different line breaks, so a paper built against one stops matching its own tracked PDF. Without any of them the template still compiles with fonts bundled in the Typst binary, falling back to New Computer Modern for the text, DejaVu Sans Mono for code and New Computer Modern Math for equations. Typst's bundled faces are serif apart from the mono, so a paper built without Fira comes out in a serif.
 - Ask only for a weight that has a file. Fira Sans carries 400, 500, 600 and 700, and the template stays on those. Take one format and keep to it. The release carries the same faces as `ttf` and as `otf`, this repository builds from the `ttf`, and a machine holding both renders whichever it reaches first. A weight with no file of its own sits midway between two that have one. The order the machine happened to find those two in then decides which it uses.
 
+## Brand assets
+
+Two sources set the palette. econ-ark.org uses `#1f476b` throughout its own stylesheet, which the template takes for headings, labels and rules. The four logo curves are authored in CMYK inside the Econ-ARK logo EPS: 0/35/85/0 orange, 0/95/20/0 pink, 75/0/100/0 green, 100/0/0/0 cyan. `econark.typ` and `theme.css` carry that set converted to RGB. Read them from the EPS if you ever need them again, because the site's stylesheet holds none of the four and its raster logo rounds them.
+
+Econ-ARK draws its logo in two lockups. The horizontal one sets the wordmark on a single line at 4:1, with the curves tucked between "Econ" and "ARK". It survives wherever height is short, which is why the site header and the landing header both take it, and why `logo.png` is that lockup. Its partially stacked companion runs 2:1, curves sweeping well above the wordmark, wanting vertical room to work: covers, posters, slides, heroes. Getting a stacked asset here means rendering one from the EPS.
+
+The margin rail of the PDF takes the horizontal lockup too. That is the one place the stacked one would suit. `econark.typ` measures the key points from the foot of the logo, so a lockup twice as tall would push them out of the margin more often than happens now.
+
+A site built from here carries one OpenGraph tag, `og:title`, which leaves a shared link with a bare preview. Setting `thumbnail` in `myst.yml` adds `og:image`. A paper wanting a preview card should point it at a raster around 1200x630. MyST writes that image as both a png and a webp and puts the webp in the tag, which X reads and some other unfurlers refuse. The `social` key is carried into the page data and article-theme draws nothing from it, so a Twitter handle set there reaches no reader.
+
 ## Frontmatter
 
 | Field | Where it appears | When unset |
