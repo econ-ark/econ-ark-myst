@@ -490,6 +490,47 @@ check_left_of() {
   fi
 }
 
+# The rail is placed from the foot of the page, so a rail too tall for its column grows up over the
+# logo. Build a paper with more reviewers than it can hold and read where their names land: in the
+# text column means the template moved them out, in the rail means they are sitting on the mark.
+check_rail_overflow() {
+  local name=$1 scratch x
+  scratch=$(mktemp -d)
+  {
+    echo '---'
+    echo 'title: Rail overflow'
+    echo 'authors:'
+    echo '  - name: A Person'
+    echo 'reviewers:'
+    # Enough names to pass the column on their own: this paper carries none of the citation,
+    # correspondence, funding or licence blocks that fill a real one
+    for i in $(seq 1 60); do echo "  - name: Reviewer Number $i"; done
+    echo 'exports:'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: rail.pdf'
+    echo '---'
+    echo
+    echo '# Body'
+    echo
+    echo 'Text.'
+  } >"$scratch/rail.md"
+  (cd "$scratch" && myst build rail.md --typst) >/dev/null 2>&1
+  if [ ! -s "$scratch/rail.pdf" ]; then
+    bad "$name: the overflow paper did not build, so the rail guard went unchecked"
+    rm -rf "$scratch"
+    return
+  fi
+  x=$(pdftotext -bbox "$scratch/rail.pdf" - 2>/dev/null | grep -F '>Number</word>' | head -1 |
+    sed -E 's/.*xMin="([0-9.]+)".*/\1/')
+  if [ -n "$x" ] && awk -v x="$x" 'BEGIN { exit !(x > 150) }'; then
+    ok "$name: a rail it cannot hold moves the reviewers into the text column (x = ${x%%.*}pt)"
+  else
+    bad "$name: reviewers stayed in the rail at x = ${x:-none}pt, so the rail is over the logo"
+  fi
+  rm -rf "$scratch"
+}
+
 self_test() {
   local good seeded out
   good=$(pdftotext "$PAPER" - 2>/dev/null)
@@ -808,6 +849,7 @@ else
   check_documented_config docs "$ROOT/README.md" "$ROOT/myst.yml"
   check_no_aliases docs "$ROOT/myst.yml" "$ROOT/landing/myst.yml" "$ROOT"/examples/*.md
   check_italic_kinds docs "$ROOT/econark.typ"
+  check_rail_overflow rail
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   check_site "site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))" "$ROOT/_build/html"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree

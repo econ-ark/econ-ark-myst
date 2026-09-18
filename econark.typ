@@ -567,9 +567,9 @@
     // The rail is placed from the bottom, so anything it cannot hold grows up over the logo. Give
     // the reviewers, editors and funding to the front matter instead when they do not fit under it.
     let railRoom = page.height - 2in - keyPointsTop - 1em.to-absolute() - 10pt
-    // The placed rail ends some 43pt above the foot of the page rather than at it, for a reason not
-    // yet found, so the room measured here overstates what it has and the discount covers it.
-    // Without that, a rail measuring 573pt into 576pt passed and printed its first line on the logo.
+    // Typst holds back part of the region for the footnotes a page carries, and place(bottom) lands
+    // on what is left, 43pt up the page for the two on page one. The room below counts none of that,
+    // so it is discounted: undiscounted, a rail measuring 573pt into 576pt printed over the logo.
     let railExtraFits = height(railBottomWith(railExtra)) <= railRoom * 0.9
     let railBottom = railBottomWith(if railExtraFits { railExtra } else { () })
     // Key points sit under the logo, beside the title and abstract, unless they would run into the bottom of the rail
