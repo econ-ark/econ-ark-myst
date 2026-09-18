@@ -24,7 +24,7 @@ myst clean --templates -y
 
 A build against a stale clone exits 0 and writes a well-formed PDF, typeset from whatever the old copy said. The PDF also comes out identical to the last one, which reads as a build that did nothing, and the natural response to that is to run it again. `--force` rebuilds the paper without refreshing the clone, so it leaves the export where it was.
 
-Two ways to see which version of the template produced a file. `pdffonts` on the export names the faces it embedded. Reading the cached copy says it outright, before you have any theory about the cause:
+Two ways to see which version of the template produced a file. `pdffonts` on the export lists the faces it embedded. Reading the downloaded copy says it outright, before you have any theory about the cause:
 
 ```sh
 grep '#let serifFont' _build/templates/typst/*/*/econark.typ
@@ -168,22 +168,29 @@ Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib 
 | Part | In the PDF | On a MyST site with article-theme |
 |------|------------|-----------------------------------|
 | `abstract` | Run-in abstract under the title | Above the page |
-| `summary` | Run-in "Non-technical summary" after the abstract | Above the page, as "Plain Language Summary" |
+| `summary` | Run-in "Summary" after the abstract | Above the page, where `theme.css` relabels the theme's "Plain Language Summary" to "Summary" |
 | `keypoints` | Three or four short bullet points, at most 80 words, in the margin under the logo. When the margin cannot hold them above its lower notes, they move under the abstract | Above the page, as "Key Points" |
-| `acknowledgments` | First unnumbered section of the back matter (`acknowledgements` and `acknowledgement` also work) | Below the page |
+| `declaration` | First unnumbered section of the back matter. One block for competing interests, generative AI use and whatever else the paper states | Where the block is written, above the back matter, under a "Declarations" heading `theme.css` supplies |
+| `acknowledgments` | Unnumbered section after the declarations (`acknowledgements` and `acknowledgement` also work) | Below the page |
 | `data_availability` | Unnumbered section after the acknowledgments | Below the page |
-| `declaration` | Unnumbered "Declarations" after the data availability statement and before the references. One block for competing interests, generative AI use and whatever else the paper states | In the text, where the block is written |
-| `title_note` | Starred footnote on the title, placed before any author notes | In the text, where the block is written |
 
 A part the template does not list, such as `dedication` or `epigraph`, stays in the text of the PDF as an unlabeled paragraph.
 
-The back matter, these four sections and then the references, goes before the `<appendix>` marker, or at the end of the paper when there is no marker. MyST removes a part from the text of a PDF wherever it is written. The `parts:` key of the project frontmatter does not reach a PDF export.
+The back matter, these three sections and then the references, goes before the `<appendix>` marker, or at the end of the paper when there is no marker. MyST removes a part from the text of a PDF wherever it is written. The `parts:` key of the project frontmatter does not reach a PDF export.
 
 ## Where the values come from
 
 When you export one page, its frontmatter replaces the project's field by field, and any field the page leaves out comes from the project. An export with `articles:` works differently. MyST ignores the frontmatter of every page, including the page that holds the export block, and takes each field from the project. A field written in the export block replaces the project's value for that export only. This holds for every field in the table above, `keywords`, `date`, `github` and `subject` included. Options such as `kind` go only in the export block.
 
-Parts behave differently. In an `articles:` export MyST collects each part from every article, so the acknowledgments can live in the supplement and the declaration in the paper. When two articles give the same part, the first article's wins and MyST reports an error naming the one it ignored.
+Parts behave differently. In an `articles:` export MyST collects each part from every article, so the acknowledgments can live in the supplement and the declaration in the paper. When two articles give the same part, the first article's wins and MyST reports an error saying which one it ignored.
+
+### Bibliographic fields belong in `myst.yml`
+
+A MyST site builds its header from the project alone. Write a `doi`, `date`, `venue` or `volume` in the paper's own frontmatter and it reaches the PDF while the header stays blank, with nothing reported. `examples/paper.md` keeps none of them for that reason. They live in `myst.yml`, where MyST hands each one down to the paper as well. One copy serves both the PDF and the header. The arrangement covers `date`, `subject`, `doi`, `arxiv`, `zenodo`, `binder`, `open_access`, `venue`, `volume`, `issue`, `first_page`, `last_page`, `license`, `copyright` and `funding`.
+
+MyST reads a second group from the project and the page separately. A project value stays where it is written, which is why a paper that wants its `subtitle` in both places writes it in both places. That group is `title`, `subtitle`, `short_title`, `downloads`, `tags` and `description`.
+
+The theme takes a volume from `volume.title`. One given only as `number` comes out as "Volume" followed by nothing, which is why `myst.yml` sets both. The PDF prints a per-author `note`; a site drops it, including from the panel behind an author's name.
 
 ## Theorems and proofs
 
@@ -229,7 +236,7 @@ Open the appendices in the body with a marker, then write them as ordinary `#` s
 # Proofs
 ```
 
-After the marker, top-level sections read "Appendix A", "Appendix B" and their subsections "A.1", "A.2". Each top-level section is its own lettered appendix, so for a single appendix with numbered parts, write the parts as subsections of one top-level section. An unnumbered heading, such as a supplement title, leaves the lettering unchanged. The acknowledgments, declarations and references move to just before the marker, the usual order in economics papers. Add `#pagebreak()` inside the marker block to start the appendices on a new page. The marker also works inside an article of a multi-article export. There MyST turns each article's title into a top-level heading and moves its sections down a level, so the marker letters the next article's title rather than the sections that follow it. List each article with `level: 0` and `title: null` to keep its sections at their own level, so that "Appendix A" goes to the first `#` section after the marker.
+After the marker, top-level sections read "Appendix A", "Appendix B" and their subsections "A.1", "A.2". Each top-level section is its own lettered appendix, so for a single appendix with numbered parts, write the parts as subsections of one top-level section. An unnumbered heading, such as a supplement title, leaves the lettering unchanged. The acknowledgments, declarations and references move to just before the marker, the usual order in economics papers. Add `#pagebreak()` inside the marker block to start the appendices on a new page. The marker also works inside an article of a multi-article export. There MyST turns each article's title into a top-level heading and moves its sections down a level. The marker then letters the next article's title rather than the sections that follow it. List each article with `level: 0` and `title: null` to keep its sections at their own level, so that "Appendix A" goes to the first `#` section after the marker.
 
 To keep an appendix in its own file, pull it in after the marker with the `include` directive and list the pages in the project `toc`. Without a `toc` the included file is also a page of its own, and MyST warns about duplicate identifiers.
 
@@ -325,6 +332,30 @@ An equation Temml cannot parse keeps the KaTeX it already had, so the failure is
 
 Two things still differ from the PDF. A binary operator inside a subscript, as in `m_{t+1}`, keeps its full spacing, because MathML Core does not tighten operator spacing at script level the way TeX does. The other is `\widehat` over a single symbol, which overstretches, where `\hat` is the right markup and sets correctly.
 
+### The parts the site has no slot for
+
+MyST knows seven parts. The site theme reserves backmatter slots for two of them, acknowledgments and data availability. Every other part renders as a bare paragraph where the author wrote it, with no heading and nothing in the DOM to hang one on, so a `declaration` part arrives indistinguishable from the last paragraph of the paper. Reaching it by position would mean labelling whatever preceded the backmatter, which in a paper carrying no declarations is the closing paragraph of the body.
+
+`plugins/part-wrapper.mjs` wraps such a part in a class instead, and `theme.css` marks it through that class. Declarations take a heading laid out to match the backmatter rows beside them:
+
+```yaml
+project:
+  plugins:
+    - plugins/part-wrapper.mjs
+```
+
+The transform is plain JavaScript, so a repository loading it over the network takes the source file as it stands, where `fira-math` has to be bundled first:
+
+```yaml
+project:
+  plugins:
+    - https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/plugins/part-wrapper.mjs
+```
+
+It writes a `div`. A heading node would reach the Typst export as well, where it can only come out numbered, beside the unnumbered one `template.typ` already writes; Typst renders a `div` as its children alone, so the PDF is untouched. The heading text therefore lives in two places, `theme.css` for the site and `template.typ` for the PDF, and a check fails if the class the stylesheet hangs on stops being written.
+
+Declarations print first in the PDF, ahead of acknowledgments and data availability, to match the one order the site can produce. A part with no slot renders in the body, above the backmatter block that holds the two parts that have one.
+
 ### The landing page
 
 `landing/` is a second MyST project holding the page at the root of the published site, with the two theme demos under `/article` and `/book`. It takes its stylesheet, logos, fonts and math plugin from one level up, so the whole site is dressed from the same `theme.css`.
@@ -357,11 +388,11 @@ exports:
     template: https://github.com/econ-ark/econ-ark-myst.git
 ```
 
-The site side does need copying. Every site option that names a file, `style`, `logo`, `logo_dark` and `favicon`, is resolved against the local directory, and a URL there fails with `ENOENT`. A site that wants this look copies the files it needs into its own repository:
+The site side does need copying. Every site option that gives a file path, `style`, `logo`, `logo_dark` and `favicon`, is resolved against the local directory, and a URL there fails with `ENOENT`. A site that wants this look copies the files it needs into its own repository:
 
 | Copy | To get |
 |------|--------|
-| `theme.css` | The whole look: palette, typefaces, tables, admonitions, the four-curve rule, and the Econ-ARK mark over the title. The mark is embedded in the file, so nothing else has to come with it |
+| `theme.css` | Palette, typefaces, tables, admonitions, the four-curve rule and the Econ-ARK mark over the title, which is the whole look in one file. The mark is embedded in it, so nothing else has to come with it |
 | `logo.png`, `logo-dark.png` | The lockup in the site header, day and night |
 | `favicon.png` | The browser tab |
 | `banner.svg` | The default banner behind an article-theme title card |
@@ -401,8 +432,8 @@ The site's navigation, sidebar and search keep the theme's own typeface, which t
 |---------|-------|------------|
 | `[Section %s](#label)` prints "Section ??" | MyST resolves `%s` to nothing for headings in a single-article export, even with `numbering: headings: true` ([mystmd#3035](https://github.com/jupyter-book/mystmd/pull/3035)) | Refer to sections by name with `@label` or `[](#label)`, which print the section title |
 | A table that breaks across pages has no rule at the foot of each page before the last | The table package MyST uses draws rules only at fixed rows | The header, with its rules, repeats on each page, and the last page ends with the bottom rule |
-| The same sources give a PDF whose lines break differently on another machine | The requested font weight falls midway between the two nearest installed files, and Typst breaks that tie by the order it found them in, which is the filesystem's. A family with Medium and Bold but no SemiBold puts a request for semibold exactly between them | Ask for a weight a file actually carries, as the template now does with 500. `pdffonts` on both PDFs names the file each one embedded |
-| A paper built against this template's URL shows none of a change that is on main | MyST keeps its clone of the template under `_build/templates/typst` and reuses it without re-fetching. The build takes the copy downloaded first, and its export comes out identical to the last one, which reads as a build that did nothing. `--force` rebuilds the paper without refreshing the clone | `myst clean --templates -y`, then build. `pdffonts` on the export names the faces, which tells you which version of the template produced it |
+| The same sources give a PDF whose lines break differently on another machine | The requested font weight falls midway between the two nearest installed files, and Typst breaks that tie by the order it found them in, which is the filesystem's. A family with Medium and Bold but no SemiBold puts a request for semibold exactly between them | Ask for a weight a file actually carries, as the template now does with 500. `pdffonts` on both PDFs lists the file each one embedded |
+| A paper built against this template's URL shows none of a change that is on main | MyST keeps its clone of the template under `_build/templates/typst` and reuses it without re-fetching. The build takes the copy downloaded first. Its export comes out identical to the last one, which reads as a build that did nothing. `--force` rebuilds the paper without refreshing the clone | `myst clean --templates -y`, then build. `pdffonts` on the export lists the faces, which tells you which version of the template produced it |
 | A bibliography title reads "Stock Prices, News, In Markets" | Typst's title casing capitalizes a small word after a comma. The template lowercases And, Or, Nor, But, Of, The and For there, and leaves In, To and An, which can be first names | Write the word in braces in the `.bib` file, as in `{in}` |
 | A long table without a caption prints `state("tablex_tablex_header_pages__...") did not converge` | The table package MyST uses repeats the header on each page and needs more layout passes than Typst allows | Ignore the warning, because the table still breaks across pages with its header repeated |
 | A document using a macro from `project.math` fails its Typst export, with `file not found (searched at _build/temp/*/myst-imports.typ)` | MyST writes `#import "myst-imports.typ"` into the generated Typst for any document that uses a frontmatter macro. That file never reaches the export directory alongside this template. Failure is per document: a project stays green until one of them uses a macro | Write the expansion out in the document. The site takes either form, since `plugins/fira-math.mjs` reads `project.math` itself |

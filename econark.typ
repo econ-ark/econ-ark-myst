@@ -306,7 +306,6 @@
   jel: (),
   linenumbers: false,
   binder: none,
-  title-note: none,
   // Not an option of the template: the rail width below and the figure widths in the README are
   // measured on this size, and another size would need both recomputed
   paper-size: "us-letter",
@@ -433,11 +432,11 @@
     box(width: railWidthPercent, link(venueUrl, venueLogo)),
   )
 
-  // Title block, with the title note and author notes as a starred footnote on the title
+  // Title block, with the funding statement and author notes as a starred footnote on the title
   {
     set par(first-line-indent: 0pt, justify: false)
     let fundingNote = funding.filter(f => f != "").map(closeSentence).join(" ")
-    let notes = (if title-note != none { (title-note,) } else { () }) + (if fundingNote != none { (fundingNote,) } else { () }) + frontmatter.authors.filter(a => "note" in a).map(a => [#a.name: #a.note])
+    let notes = (if fundingNote != none { (fundingNote,) } else { () }) + frontmatter.authors.filter(a => "note" in a).map(a => [#a.name: #a.note])
     if notes.len() > 0 {
       let fm-title = fm
       fm-title.title = [#fm.title#footnote(numbering: "*", notes.join(" "))]

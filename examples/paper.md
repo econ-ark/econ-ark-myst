@@ -2,18 +2,6 @@
 title: Buffer Stock Saving with Heterogeneous Agents
 subtitle: An example of the Econ-ARK MyST template
 short_title: Buffer Stock Saving
-date: 2026-09-16
-subject: Working paper
-venue:
-  title: Econ-ARK Working Papers
-volume: 1
-issue: 3
-first_page: 1
-last_page: 3
-doi: 10.5281/zenodo.0000000
-arxiv: https://arxiv.org/abs/2609.00000
-zenodo: https://zenodo.org/records/0000000
-binder: https://mybinder.org/v2/gh/econ-ark/econ-ark-myst/HEAD
 downloads:
   - title: Latest version
     url: https://github.com/econ-ark/econ-ark-myst/blob/main/examples/exports/paper.pdf
@@ -56,10 +44,6 @@ We thank the Econ-ARK community for comments.
 +++ {"part": "data_availability"}
 
 All code needed to reproduce the results is in the repository linked in the margin.
-
-+++ {"part": "title_note"}
-
-Prepared for the Econ-ARK template documentation.
 
 +++
 

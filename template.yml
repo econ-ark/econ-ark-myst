@@ -107,8 +107,6 @@ parts:
     description: Data availability statement, shown unnumbered after the acknowledgments.
   - id: declaration
     description: >
-      Declarations, shown unnumbered after the data availability statement and before the
-      references. One block for competing interests, generative AI use and anything else a
-      working paper has to state; a journal submission uses that journal's own template.
-  - id: title_note
-    description: Footnote attached to the title, such as a funding or presentation note; author notes follow it.
+      Declarations, shown unnumbered at the head of the back matter, before the acknowledgments.
+      One block for competing interests, generative AI use and anything else a working paper has
+      to state; a journal submission uses that journal's own template.

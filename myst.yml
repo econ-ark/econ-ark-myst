@@ -1,6 +1,28 @@
 version: 1
 project:
   github: https://github.com/econ-ark/econ-ark-myst
+  # article-theme draws its header from the project, so a doi or a date written in the paper
+  # reaches the export alone. MyST hands each field below down to the paper, leaving one copy to
+  # edit; subtitle it does not hand down, so the paper carries its own, as it does for downloads.
+  subtitle: An example of the Econ-ARK MyST template
+  date: 2026-09-16
+  subject: Working paper
+  doi: 10.5281/zenodo.0000000
+  arxiv: https://arxiv.org/abs/2609.00000
+  zenodo: https://zenodo.org/records/0000000
+  binder: https://mybinder.org/v2/gh/econ-ark/econ-ark-myst/HEAD
+  open_access: true
+  venue:
+    title: Econ-ARK Working Papers
+  # article-theme prints volume.title and the Typst template reads volume.number, so both are set
+  volume:
+    number: 1
+    title: '1'
+  issue:
+    number: 3
+    title: '3'
+  first_page: 1
+  last_page: 3
   banner: banner.svg
   license:
     content: CC-BY-4.0
@@ -12,9 +34,11 @@ project:
           name: Computational Economics Grant
   bibliography:
     - examples/main.bib
-  # Re-renders equations as MathML Core, which is what lets theme.css set them in Fira Math
+  # fira-math re-renders equations as MathML Core, which is what lets theme.css set them in Fira
+  # Math; part-wrapper gives the parts with no backmatter slot a class theme.css can label
   plugins:
     - plugins/fira-math.mjs
+    - plugins/part-wrapper.mjs
   # theme.css asks for these by relative path, and MyST copies them beside it
   static_files:
     - fonts

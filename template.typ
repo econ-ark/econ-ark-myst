@@ -176,11 +176,6 @@
   [# endfor #]
   ),
   [# endif #]
-  [# if parts.title_note #]
-  title-note: [
-    [-parts.title_note-]
-  ],
-  [# endif #]
   [# if parts.summary #]
   summary: [
     [-parts.summary-]
@@ -216,7 +211,16 @@
   [# endif #]
 )
 
+// Declarations come first to match the site, where the theme has a backmatter slot for
+// acknowledgments and data availability but none for declarations, so the declarations render in
+// the body above both and no reordering here can be met on that side.
 #let backMatter = [
+[# if parts.declaration #]
+#heading(numbering: none)[Declarations]
+
+[-parts.declaration-]
+[# endif #]
+
 [# if parts.acknowledgments #]
 #heading(numbering: none)[Acknowledgments]
 
@@ -227,12 +231,6 @@
 #heading(numbering: none)[Data availability]
 
 [-parts.data_availability-]
-[# endif #]
-
-[# if parts.declaration #]
-#heading(numbering: none)[Declarations]
-
-[-parts.declaration-]
 [# endif #]
 
 [# if doc.bibtex #]

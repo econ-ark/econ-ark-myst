@@ -71,8 +71,13 @@ check_text() {
   else
     ok "$name: no prime after a digit"
   fi
+  # Anchors are matched against the text with its whitespace collapsed, since grep works a line at
+  # a time and a phrase that wraps would otherwise read as missing. Whether a phrase is in the PDF
+  # is the question; where the line happens to break is not, and an edit anywhere above can move it.
+  local flat
+  flat=$(tr '\n' ' ' <<<"$text" | tr -s '[:space:]' ' ')
   for a in "$@"; do
-    if grep -qF -- "$a" <<<"$text"; then ok "$name: contains '$a'"; else bad "$name: missing '$a'"; fi
+    if grep -qF -- "$a" <<<"$flat"; then ok "$name: contains '$a'"; else bad "$name: missing '$a'"; fi
   done
 }
 
@@ -409,6 +414,14 @@ check_site() {
     ok "$name: the summary part still carries the id theme.css relabels it through"
   else
     bad "$name: no id=\"summary\" under $dir, so the site says Plain Language Summary again"
+  fi
+  # theme.css labels the declaration part through the class plugins/part-wrapper.mjs writes, the
+  # part having no backmatter slot of its own. A plugin that stopped loading would drop the label
+  # silently, and the paragraph would read as the last paragraph of the paper.
+  if grep -q 'ark-part-declaration' <<<"$html"; then
+    ok "$name: the declaration part still carries the class theme.css labels it through"
+  else
+    bad "$name: no ark-part-declaration under $dir, so the declarations show unlabelled"
   fi
   check_css_urls "$name" "$dir"
   if grep -qE 'myst-fm-parts|id="skip-to-article"' <<<"$html"; then
