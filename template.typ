@@ -21,11 +21,13 @@
 #let warningBlock = arkAdmonitions.warning
 #let dangerBlock = arkAdmonitions.danger
 #let errorBlock = arkAdmonitions.error
-// MyST writes the imports file only for a document that needs imports, and imports tablex only for one with a table
+// MyST writes the imports file only for a document that needs imports, and imports each package only
+// for a document that uses it: tablex for one with a table, subpar for one with a subfigure
 [# if IMPORTS #]
 #import "myst-imports.typ" as mystImports
 #let tablex = dictionary(mystImports).at("tablex", default: none)
 #let tablex = if tablex != none { arkTablex.with(tablex) }
+#import "ark-subpar.typ" as subpar
 [# endif #]
 
 // Every frontmatter string goes through s(), which escapes backslashes and double quotes for a Typst string

@@ -201,6 +201,31 @@ check_rule() {
   fi
 }
 
+# check_rule looks beside a word; this looks at the word itself, for the elements whose branding is
+# the ink rather than a rule. Anti-aliasing softens the edges, so one exact pixel is enough.
+check_ink() {
+  local name=$1 pdf=$2 word=$3 colour=$4 hit page x0 y0 w h scratch n
+  hit=$(pdftotext -bbox "$pdf" - 2>/dev/null | awk -v w=">$word</word>" '
+    /<page / { p++ }
+    index($0, w) { print p, $0; exit }')
+  if [ -z "$hit" ]; then
+    bad "$name: '$word' is not in the PDF, so its colour cannot be checked"
+    return
+  fi
+  page=${hit%% *}
+  read -r x0 y0 w h < <(sed -E 's/.*xMin="([0-9.]+)" yMin="([0-9.]+)" xMax="([0-9.]+)" yMax="([0-9.]+)".*/\1 \2 \3 \4/' <<<"$hit" |
+    awk '{ printf "%d %d %d %d\n", $1 * 150 / 72, $2 * 150 / 72, ($3 - $1) * 150 / 72, ($4 - $2) * 150 / 72 }')
+  scratch=$(mktemp -d)
+  pdftoppm -png -r 150 -f "$page" -l "$page" "$pdf" "$scratch/page" 2>/dev/null
+  n=$(convert "$scratch"/page-*.png -crop "${w}x${h}+${x0}+${y0}" +repage txt: 2>/dev/null | grep -c "${colour#\#}")
+  rm -rf "$scratch"
+  if [ "${n:-0}" -gt 0 ]; then
+    ok "$name: '$word' is set in $colour ($n pixels)"
+  else
+    bad "$name: '$word' carries no $colour pixel, so it is unbranded or off palette"
+  fi
+}
+
 # fonts.sh fetches Temml's stylesheet from a release tag and package.json pins the library the
 # plugin bundles. They render the same markup, so a build where they disagree styles MathML with
 # a sheet from one version and lays it out with another.
@@ -745,6 +770,14 @@ self_test() {
     bad "self-test: a missing rule went undetected"
   fi
 
+  # A word in the body carries the body's ink, so asking for the blue must report it unbranded
+  out=$(check_ink seeded "$PAPER" 'Discount' '#1F476B')
+  if grep -q 'FAIL.*unbranded' <<<"$out"; then
+    ok "self-test: an unbranded word is caught"
+  else
+    bad "self-test: an unbranded word went undetected"
+  fi
+
   out=$(check_site seeded "$(mktemp -d)")
   if grep -q 'FAIL.*unstyled' <<<"$out" && grep -q 'FAIL.*no banner' <<<"$out" &&
     grep -q 'FAIL.*rule is inert' <<<"$out" && grep -q 'FAIL.*four-colour rule is missing' <<<"$out" &&
@@ -820,6 +853,11 @@ else
   check_rule paper "$PAPER" 'Green' '#38B449'
   check_rule paper "$PAPER" 'Orange' '#FBAF3F'
   check_rule paper "$PAPER" 'Pink' '#ED2A7B'
+  # Three elements MyST styles for itself, each branded through a different seam: a show rule for the
+  # definition term, a wrapped subpar.grid for the panel label, and a left rule for the quotation
+  check_ink paper "$PAPER" 'Perfect' '#1F476B'
+  check_ink paper "$PAPER" '(a)' '#1F476B'
+  check_rule paper "$PAPER" 'Prudence' '#B3B2B8'
   check_left_of tall-table "$TALL" 'Widecaption' 100
   check_left_of tall-table "$TALL" 'Widetablecaption' 100
   committed=$(mktemp)

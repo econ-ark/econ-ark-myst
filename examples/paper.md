@@ -29,7 +29,7 @@ We solve a buffer stock saving model with the endogenous grid method and show ho
 
 +++ {"part": "summary"}
 
-Households save more when their income is uncertain. This paper shows how much more, and how quickly the extra saving can be computed.
+Households save more when their income is uncertain. This paper shows how much more, and how quickly the endogenous grid method computes it.
 
 +++ {"part": "keypoints"}
 
@@ -71,7 +71,7 @@ v(m_t) = \max_{c_t} \; u(c_t) + \beta \mathbb{E}_t \left[ v(m_{t+1}) \right],
 \qquad m_{t+1} = R (m_t - c_t) + y_{t+1}.
 ```
 
-The Euler equation implied by @eq-bellman is $u'(c_t) = \beta R \, \mathbb{E}_t[u'(c_{t+1})]$, and with constant relative risk aversion $u(c) = c^{1-\rho}/(1-\rho)$.
+@eq-bellman implies the Euler equation $u'(c_t) = \beta R \, \mathbb{E}_t[u'(c_{t+1})]$. Under constant relative risk aversion, $u(c) = c^{1-\rho}/(1-\rho)$.
 
 ## Calibration
 
@@ -87,7 +87,7 @@ The Euler equation implied by @eq-bellman is $u'(c_t) = \beta R \, \mathbb{E}_t[
 
 ### Sources of the parameters
 
-The discount factor and the interest factor follow @Carroll1997, and risk aversion is set to the value the literature uses most often.
+Both the discount factor and the interest factor follow @Carroll1997, while we set risk aversion to the value the literature uses most often.
 
 # Results
 
@@ -117,6 +117,26 @@ Orange carries `attention`, `caution` and this kind.
 :::{danger}
 Pink carries this kind and `error`.
 :::
+
+:::{figure}
+:label: fig-solution
+
+(fig-policy)=
+![The consumption function](../logo.png)
+
+(fig-value)=
+![The value function](../logo.png)
+
+Solution at the calibration of @tbl-calibration, over the same range of market resources.
+:::
+
+Buffer stock
+: Wealth an impatient consumer facing income risk holds against a bad draw, toward which wealth returns from either side.
+
+Perfect foresight
+: Section 2's problem with income risk removed, which @Carroll1997 treats as the limiting case.
+
+> Prudence and impatience together pin down a target level of wealth, which the consumer saves toward from below and spends down toward from above.
 
 ```python
 from HARK.ConsumptionSaving.ConsIndShockModel import IndShockConsumerType

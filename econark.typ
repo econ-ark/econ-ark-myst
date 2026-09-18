@@ -97,6 +97,16 @@
   }
 }
 
+// Wraps MyST's subpar.grid so a subfigure's (a) label matches the caption above it, in the sans at
+// Econ-ARK blue. ark-subpar.typ binds it; that file exists because the binding must be a module.
+#let arkSubparGrid(base) = if base != none {
+  base.grid.with(show-sub-caption: (num, it) => {
+    text(font: sansFont, weight: 500, fill: arkBlue, num)
+    h(0.4em)
+    it.body
+  })
+}
+
 // A "Label  content" run-in field, which the front matter sets its abstract, summary, keywords
 // and JEL codes as. One definition, so a change of label weight or colour reaches all of them.
 #let labeledField(label, content, size: 8.5pt) = {
@@ -416,6 +426,29 @@
   // Configure lists.
   set enum(indent: 1.2em, body-indent: 0.6em)
   set list(indent: 1.2em, body-indent: 0.6em)
+
+  // A definition list sets its term the way the margin sets a field label, in the sans at Econ-ARK blue
+  // Replacing the item drops the block Typst wraps it in, so the block comes back here
+  show terms.item: it => block(above: 0.7em, below: 0.7em, {
+    set par(first-line-indent: 0pt)
+    text(font: sansFont, weight: 500, fill: arkBlue, it.term)
+    h(0.7em)
+    it.description
+  })
+
+  // A quotation carries the admonition's left rule, in grey so it reads quieter than a note
+  show quote.where(block: true): it => block(
+    width: 100%,
+    inset: (left: 0.9em),
+    stroke: (left: 2pt + arkGrey.lighten(50%)),
+    {
+      it.body
+      if it.attribution != none {
+        parbreak()
+        text(font: sansFont, size: 9pt, fill: arkGrey, [#sym.dash.em #it.attribution])
+      }
+    },
+  )
 
   // Headings: sans, sentence case as written, numbers in grey
   set heading(numbering: heading-numbering)

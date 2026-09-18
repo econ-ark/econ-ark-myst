@@ -97,13 +97,14 @@ These are all the fields the template reads. It ignores the fields that serve a 
 
 The "Cite as" block appears once the paper has a `doi`, `arxiv` or `zenodo` link, since a draft without a persistent identifier changes under its readers. It gives a Chicago author-date entry, the style of the reference list, followed by the DOI as a URL, the arXiv identifier and a link to the Zenodo archive. The entry lists up to three authors and shortens more to the first author and "et al." MyST reads a suffix such as "Jr." as part of the family name. To cite such a name correctly, give the author's `name` as an object with `given`, `family` and `suffix`.
 
-The materials block lists what exists for the paper beyond the PDF, in up to four columns under rules in the four colours of the Econ-ARK logo. All four rules print however many columns a paper fills. A paper with no materials keeps the rules without the heading, as the line between its front matter and its text. The columns keep this order:
+The materials block lists what exists for the paper beyond the PDF, in up to five columns under rules in the four colours of the Econ-ARK logo. All four rules print however many columns a paper fills. A paper with no materials keeps the rules without the heading, as the line between its front matter and its text. The columns keep this order:
 
 | Column | Source |
 |--------|--------|
 | Run online, or the `binder_label` option | `binder`, with a note that it starts in a few minutes |
 | Code | `github`, shown as `owner/repo`, with the code license under it |
 | REMARK | The `remark` option |
+| Source | `source`, shown without its scheme. Give it when the repository that builds the paper is not the one `github` names |
 | Also as | Each entry of `downloads` with a web address, by its `title`. An entry whose address ends in `.bib` goes to "Cite as" as a BibTeX link instead. See The site for the second list a site needs |
 
 ```yaml
@@ -225,6 +226,10 @@ MyST `prf:` directives (`prf:theorem`, `prf:proposition`, `prf:lemma`, `prf:defi
 ## Admonitions
 
 A MyST admonition (`note`, `warning`, `tip` and the rest) stands against a rule in the palette, with its label in the same colour. MyST's own filled box is replaced. Its ten kinds take four colours. Econ-ARK blue carries `note` and `important`, and three logo curves carry the rest: green for `tip`, `hint` and `seealso`, orange for `attention`, `caution` and `warning`, pink for `danger` and `error`. A MyST site gets the same treatment from `theme.css`.
+
+## Definition lists, quotations and subfigures
+
+A definition list (`Term`, then `: definition` on the next line) runs its term into the definition, set in the sans at Econ-ARK blue, the same label the margin uses for "Keywords" and "Cite as". Block quotations stand against a 2pt rule in grey, quieter than an admonition. Several images in one figure become panels side by side through `subpar`, with `(a)` and `(b)` in the blue of the caption above them. Write `(name)=` on the line before a panel's image, so `@name` points at that panel.
 
 ## Tables
 
@@ -479,7 +484,7 @@ myst build --typst
 
 ## Checks
 
-`scripts/check-examples.sh` rebuilds the examples and reads what they produced. It fails when a PDF was not written, when a literal `??` marks an unresolved reference, when text from a template feature is missing, when the PDF carries a creation timestamp, when the tall table stays on one page and runs off its foot, when a caption is orphaned from its table, when the tracked PDF's text or rendered pages no longer match what the sources produce, when a font weight resolved to a file the template did not ask for, when more than one installed file offers a weight the template uses, when either theme's site is missing the stylesheet, the banner, a logo, the favicon, the paper as a download, or the classes the stylesheet reaches the paper through, when an admonition's rule is off the palette, and when Typst warns about a file of this template rather than an imported package. `myst build` exits 0 in all of these cases. `--self-test` seeds each defect and confirms the check catches it. CI runs both on every push with the same Typst, mystmd and fonts used for the tracked PDF.
+`scripts/check-examples.sh` rebuilds the examples and reads what they produced. It fails when a PDF was not written, when a literal `??` marks an unresolved reference, when text from a template feature is missing, when the PDF carries a creation timestamp, when the tall table stays on one page and runs off its foot, when a caption is orphaned from its table, when the tracked PDF's text or rendered pages no longer match what the sources produce, when a font weight resolved to a file the template did not ask for, when more than one installed file offers a weight the template uses, when either theme's site is missing the stylesheet, the banner, a logo, the favicon, the paper as a download, or the classes the stylesheet reaches the paper through, when an admonition's rule is off the palette, when a definition term or a subfigure label comes out unbranded, and when Typst warns about a file of this template rather than an imported package. `myst build` exits 0 in all of these cases. `--self-test` seeds each defect and confirms the check catches it. CI runs both on every push with the same Typst, mystmd and fonts used for the tracked PDF.
 
 ## License
 

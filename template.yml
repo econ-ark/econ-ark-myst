@@ -6,6 +6,7 @@ template: template.typ
 files:
   - template.typ
   - econark.typ
+  - ark-subpar.typ
   - logo.png
 authors:
   - name: Alan Lujan
