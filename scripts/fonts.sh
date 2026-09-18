@@ -63,16 +63,17 @@ case "${1:-}" in
     echo "installed Fira $FIRA_TAG and Fira Math $FIRAMATH_TAG into $FONTDIR"
     ;;
   webfonts)
-    # fontTools does the subsetting and brotli writes the woff2. Either an environment that already
-    # carries them or uv, which fetches them into a throwaway one, so nobody installs to run this.
-    if command -v pyftsubset >/dev/null; then
-      subset() { pyftsubset "$@"; }
+    # fontTools subsets and brotli writes the woff2: the import tests for both, since an environment
+    # carrying fontTools alone refuses every woff2 in the loop below rather than here. Failing that,
+    # uv fetches them into a throwaway one. -m runs the subsetter in the interpreter just tested.
+    if command -v python3 >/dev/null && python3 -c 'import brotli, fontTools' 2>/dev/null; then
+      subset() { python3 -m fontTools.subset "$@"; }
       fonttools_py() { python3 -c "$1" "${@:2}"; }
     elif command -v uvx >/dev/null; then
       subset() { uvx --quiet --from 'fonttools[woff]' pyftsubset "$@"; }
       fonttools_py() { uvx --quiet --from 'fonttools[woff]' python -c "$1" "${@:2}"; }
     else
-      echo "needs pyftsubset: install fonttools and brotli, or install uv" >&2
+      echo "needs fontTools with Brotli: install 'fonttools[woff]', or install uv" >&2
       exit 2
     fi
     # Recompressing rather than subsetting, so every table the file arrived with is still in it
