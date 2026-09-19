@@ -223,6 +223,43 @@ html.dark .myst-article-header-fm::before {
 }
 
 /*
+ * book-theme shows its own "Made with MyST" lockup, a mark beside a line of text, unless the site
+ * supplies a primary_sidebar_footer part. A site that supplies one gets raw markdown where that
+ * lockup was, so a 256px mark and body-sized text. This gives the part the badge's proportions
+ * back.
+ */
+.myst-primary-sidebar-footer p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+/* The mark and the words read as one lockup rather than as a phrase with a link in it, which is
+ * how the badge this replaces was set. */
+.myst-primary-sidebar-footer p > a {
+  text-decoration: none;
+}
+
+/* The mark arrives inside a picture, itself inside the span the link wraps its text in, so a block
+ * picture puts the words on their own line. Inline-block keeps the lockup on one.
+ *
+ * The size needs both selectors. The theme caps an inline image with
+ * `.article p > a img { max-height: 1.2em }`, three elements and a class, which outranks one class
+ * and one element however late this sheet loads and flattened the square favicon to 18 by 15. The
+ * footer carries `article` as well, so two classes take it back. */
+.myst-primary-sidebar-footer picture,
+.article.myst-primary-sidebar-footer img {
+  display: inline-block;
+  vertical-align: -0.28em;
+  width: 1.15rem;
+  height: 1.15rem;
+  max-width: none;
+  max-height: none;
+  margin: 0 0.18rem 0 0;
+  border-radius: 3px;
+}
+
+/*
  * The sidebar runs to the line where the paper's text begins, so a column wider than the
  * space left for it lands on the paper. Pin it to the margin band instead, which ends one
  * column earlier.
