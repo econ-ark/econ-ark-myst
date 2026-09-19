@@ -103,6 +103,20 @@
   --ark-curve-2: #ed2a7b;
   --ark-curve-3: #00adef;
   --ark-curve-4: #38b449;
+  /* The four in a row, which closes the front matter on a paper and the hero on a landing. Named
+     so those two cannot drift when the order or the stops change. Each site sets its own height */
+  --ark-curve-rule: linear-gradient(
+    to right,
+    var(--ark-curve-1) 0 25%,
+    var(--ark-curve-2) 0 50%,
+    var(--ark-curve-3) 0 75%,
+    var(--ark-curve-4) 0
+  );
+  /* The field the banner artwork is drawn on. Held apart from --ark-blue, which switches to a
+     light blue under html.dark, while the artwork's own field does not change with the theme */
+  --ark-banner-field: #1f476b;
+  /* The artwork behind a landing hero. A site serving it elsewhere overrides this one line */
+  --ark-hero-image: url("/banner.svg");
   /* Paper, then the fills that stay visible on it. Pure white glares in a lit room, so the
      page takes the brand blue at the top of its lightness range and the fills step down far
      enough to hold the separation the PDF has between its white paper and its tint. */
@@ -172,7 +186,7 @@ html:not(.dark) .myst-search-bar {
  * change, which would drop the override with nothing to catch it.
  */
 .myst-article-header .myst-article-header-background {
-  background-color: #1f476b;
+  background-color: var(--ark-banner-field);
   background-size: 100% 100%;
 }
 
@@ -266,6 +280,22 @@ article.article math {
     text-align: justify;
     hyphens: auto;
   }
+
+  /*
+   * Justification is for the body measure. A card in a landing grid is about a quarter of it,
+   * measured at 173px on a three-column row, where justifying a line of four words opens gaps
+   * wide enough to read as a column of rivers. Cards and the landing blocks set ragged right.
+   *
+   * The landing half reaches through .myst-landing-block, the ancestor every landing component
+   * sits in, so a split image or any block added later is covered without naming it. A card is
+   * listed on its own because a grid of them is NOT inside that ancestor.
+   */
+  article.article .myst-card p,
+  article.article .myst-landing-block p,
+  article.article .myst-landing-block li {
+    text-align: left;
+    hyphens: manual;
+  }
 }
 
 /* The keyboard route through the paper stays visible */
@@ -311,13 +341,17 @@ article.article cite a {
   display: block;
   height: 2px;
   margin: 2rem 0 1.4rem;
-  background: linear-gradient(
-    to right,
-    var(--ark-curve-1) 0 25%,
-    var(--ark-curve-2) 0 50%,
-    var(--ark-curve-3) 0 75%,
-    var(--ark-curve-4) 0
-  );
+  background: var(--ark-curve-rule);
+}
+
+/*
+ * A landing hides its title block, so it reaches the fallback above with no front matter for the
+ * rule to close: it drew a 678px fragment across a 1428px page, above a hero that bleeds to both
+ * edges, and spent 54px of margin putting it there. The hero carries the same four colours along
+ * its own bottom edge, full width, which is the job this rule was doing.
+ */
+article.article:has(.ark-hero) #skip-to-article::after {
+  content: none;
 }
 
 /*
@@ -438,6 +472,48 @@ article.article .myst-code {
 
 article.article .myst-code-body {
   background: transparent;
+}
+
+/*
+ * A notebook page, which book-theme carries and article-theme will once its compute flags are
+ * fixed upstream. The theme reaches the code a reader writes and stopped at what the kernel
+ * prints back: cell output ships with Tailwind's own `font-system` and `font-thin`, so the answer
+ * arrived in Menlo at weight 100 beside a question set in Fira Mono. Both classes are on the
+ * element, which is what carries this past those utilities on specificity.
+ */
+.myst-jp-stream-output.jupyter-output,
+.myst-jp-safe-output-text.jupyter-output {
+  font-family: var(--ark-mono);
+  font-weight: 400;
+  font-size: 0.86em;
+  background: var(--ark-tint);
+  border-radius: 2px;
+  padding: 0.6rem 0.8rem;
+}
+
+/*
+ * The control that starts the kernel. Stock, it is a stone glyph held at 60% opacity, which reads
+ * as disabled on the one page where running the code is the point. It carries its own label for a
+ * screen reader, so the work here is to let it look as available as it is.
+ */
+.myst-jp-nb-toolbar .myst-jp-nb-toolbar-inner {
+  border-color: var(--ark-rule);
+  background: var(--ark-paper);
+}
+
+/* --ark-paper does not follow the theme, so the box stayed light while the glyph on it went to a
+   bright blue, which left the control at about 2.4 to 1 against its own ground */
+html.dark .myst-jp-nb-toolbar .myst-jp-nb-toolbar-inner {
+  background: var(--ark-tint);
+}
+
+.myst-jp-nb-toolbar-inner .myst-jp-nb-toolbar-power-btn {
+  color: var(--ark-blue);
+  opacity: 1;
+}
+
+html.dark .myst-jp-nb-toolbar-inner .myst-jp-nb-toolbar-power-btn {
+  color: var(--ark-curve-3);
 }
 
 /* Theorems and proofs, run against a blue edge rather than the theme's banded box */
@@ -661,10 +737,274 @@ article.article .ark-part-epigraph {
 }
 
 /*
+ * The Econ-ARK lockup is wide, four to one, so at the theme's own h-9 it takes 144px of a phone's
+ * header. With the site title, the search box, the theme toggle and the action menu beside it the
+ * row could not fit 375px and the whole page scrolled sideways by 39px. The header does not wrap,
+ * so the mark gives up the height instead.
+ */
+@media (max-width: 30rem) {
+  .myst-home-link-logo img {
+    height: 1.6rem;
+  }
+}
+
+/*
  * Landing pages, which book-theme renders from `+++ { "kind": ... }` blocks. The blocks arrive
  * with Tailwind colours of their own, so the rules below are what put them in the house palette.
  * article-theme carries no landing renderers, which is why the landing site is on book-theme.
  */
+/*
+ * A landing hero: the brand field with the copy over it, rather than a band of artwork sitting
+ * above the copy and pushing it down the page. `col-screen` on the block makes it full bleed, and
+ * the inner padding is trimmed because the stock py-20 sm:py-28 leaves a hero that is mostly empty
+ * once the copy is short.
+ *
+ * The artwork goes behind the copy the way mystmd.org puts its own hero graphic behind its
+ * headline: a full-bleed band whose height scales with the viewport, carrying a negative bottom
+ * margin nearly as large, so it paints its full height while occupying almost no space in the
+ * flow. Whatever follows is pulled up over it. No absolute positioning, so nothing has to be
+ * taken out of the document or fought with z-index.
+ *
+ * The artwork comes from --ark-hero-image so a site can point it somewhere else in one line. Its
+ * default expects banner.svg at the site root, which `static_files` in myst.yml puts there; a
+ * relative url() would resolve against the stylesheet rather than the site. A site that publishes
+ * neither gets the field colour alone, which is a quiet result rather than an error.
+ */
+article.article .ark-hero {
+  position: relative;
+  background: var(--ark-banner-field);
+  overflow: hidden;
+}
+
+article.article .ark-hero::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 26vw;
+  margin-bottom: -26vw;
+  background: var(--ark-hero-image) no-repeat center / cover;
+  /* At full strength the curves cross the headline and win it. Held back, they read as the field
+     the words sit on, which is the job a hero graphic does on mystmd.org's own landing. */
+  opacity: 0.45;
+}
+
+/*
+ * The copy sits in the same translucent card article-theme lays over a paper's banner, so a
+ * landing and a paper meet a reader the same way: the artwork carries on behind, the words keep
+ * a ground of their own. It also gives the copy a measure, which it needs because the block is
+ * full bleed and its inner would otherwise run a centred line the width of the screen.
+ */
+article.article .ark-hero .myst-landing-centered-inner {
+  position: relative;
+  max-width: 46rem;
+  margin: 3rem auto;
+  padding: 2.5rem 2rem;
+  background-color: rgb(from var(--ark-paper) r g b / 0.88);
+  backdrop-filter: blur(6px);
+  border-radius: 2px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.25);
+}
+
+/* The four curves close the hero the way they close a title block in the PDF */
+article.article .ark-hero::after {
+  content: "";
+  display: block;
+  height: 3px;
+  background: var(--ark-curve-rule);
+}
+
+/*
+ * The hero headline needs rank. MyST demotes a landing's `#` to an h2, so without this it took
+ * section styling and opened the page at exactly the size of "Life cycle models" further down,
+ * measured at a ratio of 1.00. A landing's first line is not one of its section headings.
+ */
+article.article .ark-hero h1,
+article.article .ark-hero h2 {
+  color: var(--ark-blue);
+  font-size: clamp(1.9rem, 3.6vw, 2.9rem);
+  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-bottom: 0.6em;
+}
+
+/*
+ * A card written with a `^^^` separator renders as a header and a body, and the theme gives the
+ * header its own grey fill, a bottom rule, and 12px of left padding against the body's 16px. The
+ * three together made every card read as two stacked boxes with the title misaligned under its own
+ * text. The title belongs to the card, so the fill and the rule come off and the padding lines up.
+ */
+article.article .myst-card-header {
+  background: transparent;
+  border-bottom: 0;
+  padding: 1rem 1rem 0.35rem;
+}
+
+article.article .myst-card-body {
+  padding: 0 1rem 1rem;
+}
+
+/* The body's first paragraph keeps a 21px top margin it inherits from running prose, which reopens
+ * the gap the header fix just closed. Inside a card the title and the sentence under it are one
+ * unit. */
+article.article .myst-card-body > p:first-child {
+  margin-top: 0.3rem;
+}
+
+/*
+ * A page whose title block is hidden still spends h1 and h2 on the title and the hero, so a `##`
+ * section arrives as h3 at 17.9px against 16.8px body text: the section headings were legible only
+ * as bold. On a landing they are the top-level structure whatever tag they land on, so they get the
+ * size to say so. A page opts in with `ark-section` on the block, which leaves every h3 in an
+ * ordinary article at the size its level earns.
+ */
+article.article .ark-section h3 {
+  font-family: var(--ark-sans);
+  /* The hero heading is itself clamped, and at 375px it lands on 30.4px. A flat 1.7rem section
+   * heading came to 27.2px there, so the page had two sizes that read as one. This tracks it down. */
+  font-size: clamp(1.3rem, 3.2vw, 1.7rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.012em;
+  color: var(--ark-blue);
+  margin-bottom: 0.4rem;
+  /* A landing block carries no padding of its own, so this margin is the only thing holding one
+   * section off the last, and zeroing it sat the first heading on the hero's bottom edge at exactly
+   * 703px to 703px. */
+  margin-top: 3rem;
+}
+
+/* The hero is a full-bleed field of colour rather than a paragraph, and a section heading needs
+ * more room to clear one than it does to clear a row of cards. */
+article.article .ark-hero + .ark-section h3 {
+  margin-top: 4.5rem;
+}
+
+/* The theme wraps heading text in its own span and sets size and colour there, so the rule above
+ * reaches the box and not the letters without this. */
+article.article .ark-section h3 .heading-text {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+/*
+ * Two rows of cards on one page say two different things: the first is a sequence that builds,
+ * the second a set of parallel ways in. Giving both the same box made the page read as one
+ * undifferentiated grid, so the steps take a counter in the curve colours and the ways in drop
+ * the box entirely for a rule in the same four.
+ */
+article.article .ark-steps .myst-card {
+  counter-increment: ark-step;
+  position: relative;
+  padding-left: 2.2rem;
+}
+
+article.article .ark-steps {
+  counter-reset: ark-step;
+}
+
+/*
+ * The four curve colours are chart fills, and setting a numeral in them put amber at 1.73 to 1 on
+ * paper, cyan at 2.38 and green at 2.51: three of the four failed even the 3 to 1 a numeral this
+ * size is held to. They keep the job they are good at. Each colour fills a disc and the numeral
+ * goes on top of it in near-black, which is 5.2 to 1 at worst (magenta) and 11.3 at best (amber),
+ * and the disc reads the same in both themes because a brand colour has no business following the
+ * page.
+ */
+article.article .ark-steps .myst-card::before {
+  content: counter(ark-step);
+  position: absolute;
+  left: 1rem;
+  top: 0.85rem;
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--ark-curve-1);
+  font-family: var(--ark-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  color: #111;
+}
+
+article.article .ark-steps .myst-card:nth-child(2)::before {
+  background: var(--ark-curve-2);
+}
+article.article .ark-steps .myst-card:nth-child(3)::before {
+  background: var(--ark-curve-3);
+}
+article.article .ark-steps .myst-card:nth-child(4)::before {
+  background: var(--ark-curve-4);
+}
+
+article.article .ark-ways .myst-card {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  border-top: 3px solid var(--ark-curve-1);
+  border-radius: 0;
+}
+
+article.article .ark-ways .myst-card:nth-child(2) {
+  border-top-color: var(--ark-curve-2);
+}
+article.article .ark-ways .myst-card:nth-child(3) {
+  border-top-color: var(--ark-curve-3);
+}
+article.article .ark-ways .myst-card:nth-child(4) {
+  border-top-color: var(--ark-curve-4);
+}
+
+article.article .ark-hero p {
+  color: var(--ark-ink);
+}
+
+/*
+ * The theme paints a button in its own blue and the house link colour lands on top of it, which
+ * left brand blue on Tailwind's blue-500 at 2.6 to 1. The field colour carries paper text at about
+ * nine to one instead.
+ *
+ * The second button is the quieter one: a reader who wants the whole library is not the reader
+ * this page is built for, so it keeps the shape and gives up the fill. Giving up the fill is what
+ * makes the dark rule below necessary: without a fill of its own the label sits on the card, and
+ * the card follows the page while the field colour does not, which is 1.6 to 1 in dark mode. Both
+ * buttons switch to --ark-blue there, which does follow, for about seven to one either way.
+ */
+article.article .ark-hero .button {
+  background: var(--ark-banner-field);
+  color: var(--ark-paper);
+  border: 1px solid var(--ark-banner-field);
+}
+
+article.article .ark-hero .button + .button {
+  background: transparent;
+  color: var(--ark-banner-field);
+}
+
+html.dark article.article .ark-hero .button {
+  background: var(--ark-blue);
+  color: var(--ark-tint);
+  border-color: var(--ark-blue);
+}
+
+html.dark article.article .ark-hero .button + .button {
+  background: transparent;
+  color: var(--ark-blue);
+}
+
+/*
+ * The card has to follow the theme, because the ink on it does. --ark-paper holds one colour in
+ * both modes while --ark-ink and --ark-blue each flip, so leaving the card alone put pale text on
+ * a near-white ground at about 1.1 to 1 once the page went dark. The field behind stays as it is,
+ * being the artwork's own.
+ */
+html.dark article.article .ark-hero .myst-landing-centered-inner {
+  background-color: rgb(from var(--ark-tint) r g b / 0.9);
+}
+
 /*
  * The banner across the head of the landing page. article-theme paints a project banner behind the
  * article header; book-theme draws none, so the landing carries it as an image and holds it here
