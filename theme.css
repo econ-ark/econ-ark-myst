@@ -152,29 +152,28 @@ html:not(.dark) .myst-search-bar {
 
 /*
  * article-theme paints the project banner as a background on a box sized `w-full h-full` of the
- * article header, so the space is whatever the header's own content needs. On a narrow screen the
- * title wraps and the metadata stacks until that box turns portrait, and `bg-cover` then has to
- * overscale the landscape artwork on width to cover the height, leaving the curves as a sliver.
- * Sizing on width holds them at their true proportions at every viewport, and the field colour
- * covers the remainder. One snapshot of the shape, against article-theme at mystmd 1.10.1: a 420px
- * viewport gave a 405x568 box, which stretches the 1600x445 artwork to about 2045px wide. Those
- * pixels move with the upstream header; the rule above needs only the portrait box, never them.
+ * article header, so the space is whatever the header's own content needs. A narrow screen wraps
+ * the title and stacks the metadata until that box turns portrait, taller than it is wide, and a
+ * landscape banner has to answer for a shape it was never drawn at.
  *
- * The colour is the literal from banner.svg, never --ark-blue, which switches to a light blue under
- * html.dark while the artwork's own field stays put.
+ * Stretching the artwork to the box is the answer, because of what the artwork says. The four
+ * curves all leave one point at the lower left and open out to the right edge, so the fan runs
+ * corner to corner under any scale and only its steepness changes. banner.svg carries
+ * preserveAspectRatio="none" for this. Holding the ratio would letterbox the fan into a strip and
+ * leave the rest of a tall header as bare field colour.
  *
- * The ancestor class qualifies the selector because the theme puts Tailwind's own `bg-cover` and
- * `bg-top` on this div. A single class ties those utilities and loses on source order, while two
- * carry it. Naming the `header` element as well would add nothing to that and would bind the rule
- * to a tag mystmd is free to change, which would drop the override with nothing to catch it.
+ * The colour stays as a fallback for the moments before the image paints. It is the literal from
+ * banner.svg, never --ark-blue, which switches to a light blue under html.dark while the artwork's
+ * own field stays put.
  *
- * The position restates what `bg-top` already computes, against that utility going away on its own:
- * the default without it is `0% 0%`, which would shift the crop off centre.
+ * The ancestor class qualifies the selector because the theme puts Tailwind's own `bg-cover` on
+ * this div. A single class ties that utility and loses on source order, while two carry it. Naming
+ * the `header` element as well would add nothing and would bind the rule to a tag mystmd is free to
+ * change, which would drop the override with nothing to catch it.
  */
 .myst-article-header .myst-article-header-background {
   background-color: #1f476b;
-  background-size: 100% auto;
-  background-position: top center;
+  background-size: 100% 100%;
 }
 
 /*
@@ -668,16 +667,19 @@ article.article .ark-part-epigraph {
  */
 /*
  * The banner across the head of the landing page. article-theme paints a project banner behind the
- * article header; book-theme draws none, so the landing carries it as an image and crops it here
- * to a band. The height tracks the viewport rather than sitting at one cap, so a wide window gets a
- * taller band instead of a harder crop; at full width a 1600x445 file would otherwise stand nearly
- * 400px tall. The bounds hold it between a readable strip on a phone and 18rem on a desktop.
+ * article header; book-theme draws none, so the landing carries it as an image and holds it here
+ * to a band. The height tracks the viewport, so a wide window gets a taller band; at full width a
+ * 1600x445 file would otherwise stand nearly 400px tall. The bounds hold it between a readable
+ * strip on a phone and 18rem on a desktop.
+ *
+ * The fill matches the article header, where the same artwork stretches to its box. banner.svg
+ * carries preserveAspectRatio="none", so the fan reaches the corners of the band at every width
+ * and nothing of it is cropped away.
  */
 article.article img.ark-banner {
   height: clamp(7rem, 16vw, 18rem);
   width: 100%;
-  object-fit: cover;
-  object-position: center 40%;
+  object-fit: fill;
   margin: 0 0 1.5rem;
   border-radius: 0;
 }

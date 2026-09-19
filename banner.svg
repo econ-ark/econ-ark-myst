@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 445" width="1600" height="445" role="img" aria-label="The four Econ-ARK logo curves, stretched across a deep blue field">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 445" width="1600" height="445" preserveAspectRatio="none" role="img" aria-label="The four Econ-ARK logo curves, stretched across a deep blue field">
   <!--
     The default banner for an Econ-ARK paper: the four curves of the official logo,
     stretched to the width of a banner. Each path is the centreline of one curve in
@@ -6,6 +6,11 @@
     taper and a pen that stays even across the stretch. Drawing them this way keeps
     what the logo says: the curves leave one origin, each kinks where it stops being
     bound by the constraint, and the kinks sit on one line.
+
+    preserveAspectRatio is none, so the fan reaches the corners of whatever box holds
+    it. The curves all leave one point at the lower left and open out to the right
+    edge, so under a non-uniform scale that reading survives and only the steepness
+    changes. Why a caller would want that belongs to the caller.
   -->
   <rect width="1600" height="445" fill="#1f476b"/>
   <g>
