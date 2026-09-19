@@ -484,6 +484,15 @@ myst build --typst
 
 ![](thumbnail.png)
 
+## The site half, in use
+
+[DemARK](https://github.com/econ-ark/DemARK) takes this theme as a submodule. Its landing uses the
+hero, the section headings and the step cards, and its notebook pages the book-theme chrome.
+
+| Landing | Dark | A notebook page |
+| --- | --- | --- |
+| ![](docs/screenshots/demark-landing.png) | ![](docs/screenshots/demark-landing-dark.png) | ![](docs/screenshots/demark-notebook.png) |
+
 ## Checks
 
 `scripts/check-examples.sh` rebuilds the examples and reads what they produced. It fails when a PDF was not written, when a literal `??` marks an unresolved reference, when text from a template feature is missing, when the PDF carries a creation timestamp, when the tall table stays on one page and runs off its foot, when a caption is orphaned from its table, when the tracked PDF's text or rendered pages no longer match what the sources produce, when a font weight resolved to a file the template did not ask for, when more than one installed file offers a weight the template uses, when either theme's site is missing the stylesheet, the banner, a logo, the favicon, the paper as a download, or the classes the stylesheet reaches the paper through, when an admonition's rule is off the palette, when a definition term or a subfigure label comes out unbranded, and when Typst warns about a file of this template rather than an imported package. `myst build` exits 0 in all of these cases. `--self-test` seeds each defect and confirms the check catches it. CI runs both on every push with the same Typst, mystmd and fonts used for the tracked PDF.
