@@ -48,6 +48,9 @@ project:
   # theme.css asks for these by relative path, and MyST copies them beside it
   static_files:
     - fonts
+    # theme.css paints the landing hero with url("/banner.svg"), so the file has to reach the site
+    # root. A consumer that uses .ark-hero has to list its own copy here too.
+    - banner.svg
   # article-theme reads its downloads panel from the project, not from the paper's own
   # frontmatter, so a paper that lists downloads still needs them named here to reach the site
   downloads:

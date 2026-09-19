@@ -1,27 +1,23 @@
 ---
 title: Econ-ARK
 description: A Typst template and website theme for Econ-ARK working papers and REMARKs
+site:
+  # A landing carries its own navigation, and the hero below is the title, so the rails and the
+  # frontmatter title block both come off.
+  hide_toc: true
+  hide_outline: true
+  hide_title_block: true
 ---
 
-+++
-
-:::{image} ../banner.svg
-:alt: Econ-ARK
-:class: col-screen ark-banner
-:::
-
-+++ { "kind": "centered" }
-
-Econ-ARK
++++ { "kind": "centered", "class": "ark-hero col-screen" }
 
 # One source, set twice
 
 A working paper written in MyST becomes a Typst PDF for circulation and a website in the same
 house style. The palette, the typefaces and the four logo curves are shared between them.
 
-[The article theme](/article/)
-[The book theme](/book/)
-[The paper (PDF)](/article/paper.pdf)
+{button}`See the article theme </article/>`
+{button}`Read the paper (PDF) </article/paper.pdf>`
 
 +++ { "kind": "split-image" }
 
@@ -46,12 +42,74 @@ positions it has already computed, so no stylesheet can put another typeface und
 plugin re-renders each equation as MathML Core, which a browser lays out itself from whatever font it
 is given. Symbols on the page now read the same as symbols in a sentence.
 
-+++ { "kind": "centered" }
++++ { "class": "ark-section col-body-outset" }
 
 ## Use it
 
-Point an export at this repository and MyST fetches the template. The website half is a stylesheet
-and a plugin. A script fetches and subsets the fonts at build time, from one pinned release.
+Four steps, in the order you take them.
 
-[Read the documentation](https://github.com/econ-ark/econ-ark-myst#readme)
-[Source on GitHub](https://github.com/econ-ark/econ-ark-myst)
+::::{grid} 1 1 2 2
+:class: ark-steps
+
+:::{card}
+**Point an export at this repository**
+^^^
+MyST fetches the Typst template itself, so nothing is vendored into your paper.
+:::
+
+:::{card}
+**Name the stylesheet**
+^^^
+The website half is `theme.css` and one plugin, which your `myst.yml` points at by path.
+:::
+
+:::{card}
+**Subset the fonts**
+^^^
+A script fetches and subsets every face at build time, from one pinned release.
+:::
+
+:::{card}
+**Check the artifact**
+^^^
+The suite builds both themes and the paper, then asserts what reached the page.
+:::
+
+::::
+
++++ { "class": "ark-section col-body-outset" }
+
+## Where to look next
+
+::::{grid} 1 1 2 2
+:class: ark-ways
+
+:::{card}
+:link: /article/
+**Article theme**
+^^^
+One paper, with the banner, the margin rail and the front matter the PDF sets.
+:::
+
+:::{card}
+:link: /book/
+**Book theme**
+^^^
+A site of many pages, with the sidebar and the landing blocks this page uses.
+:::
+
+:::{card}
+:link: https://github.com/econ-ark/econ-ark-myst#readme
+**Documentation**
+^^^
+What each option does, down to what a consumer puts in its own `myst.yml`.
+:::
+
+:::{card}
+:link: https://github.com/econ-ark/econ-ark-myst
+**Source**
+^^^
+The template, the stylesheet, the font script and the checks that guard them.
+:::
+
+::::

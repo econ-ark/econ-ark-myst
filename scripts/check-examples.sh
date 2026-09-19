@@ -403,9 +403,15 @@ check_css_urls() {
     while IFS= read -r url; do
       [ -n "$url" ] || continue
       # A fragment is an id in the same document, and %23 is how one reads inside a data URI
-      case "$url" in data:*|http:*|https:*|/*|'#'*|%23*) continue ;; esac
+      case "$url" in data:*|http:*|https:*|'#'*|%23*) continue ;; esac
       seen=$((seen + 1))
-      target="$(dirname "$sheet")/${url%%[?#]*}"
+      # A leading slash means the site root, not the stylesheet's directory. Skipping those left
+      # --ark-hero-image: url("/banner.svg") unchecked on a landing that never served the file.
+      case "$url" in
+        /*) target="$dir/${url#/}" ;;
+        *) target="$(dirname "$sheet")/$url" ;;
+      esac
+      target="${target%%[?#]*}"
       [ -f "$target" ] || { bad "$name: $sheet asks for $url, which the site does not serve"; missing=1; }
       # A data URI carries its own url() inside it, so drop those before looking for real ones
     done < <(sed -E 's/url\("data:[^"]*"\)//g; s/url\(data:[^)]*\)//g' "$sheet" |
@@ -415,6 +421,22 @@ check_css_urls() {
     ok "$name: every url() in the served stylesheets resolves ($seen references)"
   elif [ "$seen" -eq 0 ]; then
     bad "$name: no url() found in any stylesheet under $dir, so this check proved nothing"
+  fi
+}
+
+# The landing branding is opt-in by class, which is why it needs its own check: the stylesheet can
+# define .ark-hero and the page can stop asking for it, or the reverse, and every other check here
+# still passes. Both ends of each class are asserted.
+check_landing_classes() {
+  local name=$1 dir=$2 css=$3 cls missing_html="" missing_css=""
+  for cls in ark-hero ark-section ark-steps ark-ways; do
+    grep -q "$cls" "$dir/index.html" 2>/dev/null || missing_html="$missing_html $cls"
+    grep -q "\.$cls" "$css" 2>/dev/null || missing_css="$missing_css $cls"
+  done
+  if [ -z "$missing_html" ] && [ -z "$missing_css" ]; then
+    ok "$name: the page and the stylesheet agree on all four landing classes"
+  else
+    bad "$name: absent from the page:${missing_html:- none}; absent from $css:${missing_css:- none}"
   fi
 }
 
@@ -722,6 +744,20 @@ self_test() {
   else
     bad "self-test: a stylesheet whose files are all served was reported missing"
   fi
+  # The root-relative branch, which this check used to skip outright: a url("/x.svg") that the
+  # site root lacks has to fail, and the same one has to pass once the file is there.
+  printf '@font-face { src: url("Temml.woff2") format("woff2"); }\n.h{background:url("/banner.svg")}\n' >"$cssdir/myst-theme.css"
+  if grep -q 'FAIL.*asks for /banner.svg' <<<"$(check_css_urls seeded "$cssdir")"; then
+    ok "self-test: a stylesheet asking for a root-relative file the site lacks is caught"
+  else
+    bad "self-test: a root-relative url() the site does not serve went undetected"
+  fi
+  : >"$cssdir/banner.svg"
+  if grep -q 'ok.*resolves (2 references)' <<<"$(check_css_urls seeded "$cssdir")"; then
+    ok "self-test: a root-relative url() the site does serve passes, and is counted"
+  else
+    bad "self-test: a served root-relative url() was reported missing or went uncounted"
+  fi
   rm -rf "$cssdir"
 
   out=$(check_temml_pin seeded "$ROOT/scripts/fonts.sh" /dev/null)
@@ -743,6 +779,33 @@ self_test() {
     bad "self-test: a landing page whose blocks the theme rejected went undetected"
   fi
   rm -rf "$land"
+
+  # Each end of check_landing_classes separately: a page that stopped asking for a class, and a
+  # stylesheet that stopped defining one. A check that only ever sees the real pair proves nothing.
+  local lc lcss
+  lc=$(mktemp -d)
+  lcss="$lc/theme.css"
+  printf '.ark-hero{}\n.ark-section{}\n.ark-steps{}\n.ark-ways{}\n' >"$lcss"
+  printf '<div class="ark-hero ark-section ark-steps ark-ways"></div>\n' >"$lc/index.html"
+  if grep -q '^ok' <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
+    ok "self-test: a page and stylesheet that agree on the landing classes pass"
+  else
+    bad "self-test: the landing-class check fails a page that does carry all four"
+  fi
+  printf '<div class="ark-hero ark-section ark-steps"></div>\n' >"$lc/index.html"
+  if grep -q 'FAIL.*absent from the page: ark-ways' <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
+    ok "self-test: a landing page that stopped asking for a class is caught"
+  else
+    bad "self-test: a landing page that stopped asking for a class went undetected"
+  fi
+  printf '.ark-hero{}\n.ark-section{}\n.ark-steps{}\n' >"$lcss"
+  printf '<div class="ark-hero ark-section ark-steps ark-ways"></div>\n' >"$lc/index.html"
+  if grep -q "FAIL.*absent from $lcss: ark-ways" <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
+    ok "self-test: a stylesheet that dropped a landing class is caught"
+  else
+    bad "self-test: a stylesheet that dropped a landing class went undetected"
+  fi
+  rm -rf "$lc"
 
   # The README documenting a key the config no longer carries, which is how these two drift
   local conf
@@ -969,6 +1032,7 @@ else
   (cd "$ROOT/landing" && myst build --html) >/dev/null 2>&1
   landdir="$ROOT/landing/_build/html"
   check_landing landing "$landdir"
+  check_landing_classes landing "$landdir" "$ROOT/theme.css"
   check_css_urls landing "$landdir"
   if [ "$(find "$landdir" -name 'FiraSans-*.woff2' 2>/dev/null | wc -l)" -ge 4 ]; then
     ok "landing: the site serves the faces theme.css asks for"

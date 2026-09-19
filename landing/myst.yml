@@ -13,6 +13,8 @@ project:
     - ../plugins/fira-math.mjs
   static_files:
     - ../fonts
+    # theme.css paints the hero with url("/banner.svg"), so the file has to reach the site root.
+    - ../banner.svg
   toc:
     - file: index.md
 site:
