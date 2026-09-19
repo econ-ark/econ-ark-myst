@@ -448,6 +448,14 @@ check_site() {
   else
     bad "$name: no banner-*.svg under $dir, so the paper has no banner"
   fi
+  # Both banner rules in theme.css stretch the artwork to its box, which only reaches the corners
+  # while the file declines to preserve its ratio. Restore the default and the fan quietly
+  # letterboxes into a strip instead, which no colour or geometry check here would notice.
+  if [ -n "$banner" ] && grep -q 'preserveAspectRatio="none"' "$banner"; then
+    ok "$name: the banner still stretches to its box"
+  else
+    bad "$name: the served banner preserves its ratio, so the fan will letterbox rather than fill"
+  fi
   # The night lockup is a separate file, so a site can serve the day one and still go dark-blind
   if find "$dir" -name 'logo-dark-*.png' 2>/dev/null | grep -q .; then
     ok "$name: the site serves the night logo"
@@ -825,6 +833,19 @@ self_test() {
     ok "self-test: a site without the stylesheet, the banner, the logos or the classes it styles is caught"
   else
     bad "self-test: a site missing the stylesheet, the banner, the logos or its classes went undetected"
+  fi
+
+  # The banner that matters here is the one that is present and carries the palette, since that is
+  # what every other banner check accepts. Only the ratio is wrong, which is the regression a
+  # regenerated file could reintroduce without changing a colour or a coordinate.
+  local ratiodir
+  ratiodir=$(mktemp -d)
+  sed 's/ preserveAspectRatio="none"//' "$ROOT/banner.svg" >"$ratiodir/banner-seeded.svg"
+  out=$(check_site seeded "$ratiodir")
+  if grep -q 'FAIL.*letterbox rather than fill' <<<"$out"; then
+    ok "self-test: a banner that preserves its ratio is caught"
+  else
+    bad "self-test: a banner that preserves its ratio went undetected"
   fi
 
   # A bundle left behind by an edit to the plugin source, which is the way this one goes wrong

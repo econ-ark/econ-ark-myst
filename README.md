@@ -22,6 +22,10 @@ MyST clones the template from that URL once and keeps the clone under `_build/te
 myst clean --templates -y
 ```
 
+`main` is the only published version of this template. Every consumer builds against whatever it
+holds now. The clone under `_build/templates/typst` only caches that state. Refreshing it is how a
+paper stays current, and leaving it alone freezes the paper on the day it first built.
+
 A build against a stale clone exits 0 and writes a well-formed PDF, typeset from whatever the old copy said. The PDF also comes out identical to the last one, which reads as a build that did nothing, and the natural response to that is to run it again. `--force` rebuilds the paper without refreshing the clone, so it leaves the export where it was.
 
 Two ways to see which version of the template produced a file. `pdffonts` on the export lists the faces it embedded. Reading the downloaded copy says it outright, before you have any theory about the cause:
