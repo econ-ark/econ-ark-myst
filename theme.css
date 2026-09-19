@@ -235,9 +235,15 @@ html.dark .myst-article-header-fm::before {
 }
 
 /* The mark and the words read as one lockup rather than as a phrase with a link in it, which is
- * how the badge this replaces was set. */
+ * how the badge this replaces was set. The underline goes, and so does the arrow MyST appends to
+ * an off-site link: a footer lockup is understood to leave the site, and the badge it stands in
+ * for carried no arrow either. */
 .myst-primary-sidebar-footer p > a {
   text-decoration: none;
+}
+
+.myst-primary-sidebar-footer p > a > svg {
+  display: none;
 }
 
 /* The mark arrives inside a picture, itself inside the span the link wraps its text in, so a block
