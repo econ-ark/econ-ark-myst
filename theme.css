@@ -1112,6 +1112,13 @@ article.article .ark-hero .button ~ .button {
   background: transparent;
   color: var(--ark-blue);
   border-color: var(--ark-blue);
+
+  /* Nested to carry the four classes above: the transparent fill outranks the theme's own hover
+     at two, which left this the one control on the page answering a pointer with nothing. A wash
+     rather than a colour, because the card under it flips between the two modes. */
+  &:hover {
+    background: rgb(from var(--ark-blue) r g b / 0.12);
+  }
 }
 
 /* The card has to follow the theme, because the ink on it does: --ark-paper holds one colour in
@@ -1119,17 +1126,6 @@ article.article .ark-hero .button ~ .button {
  * a near-white ground at about 1.1 to 1 once the page went dark. The field behind is the art's. */
 html.dark article.article .ark-hero .myst-landing-centered-inner {
   background-color: rgb(from var(--ark-tint) r g b / 0.9);
-}
-
-/* The banner across the head of the landing page: article-theme paints one behind the article
- * header and book-theme draws none, so the landing carries it as an image in a band whose height
- * tracks the viewport; a 1600x445 file would otherwise stand nearly 400px tall at full width. */
-article.article img.ark-banner {
-  height: clamp(7rem, 16vw, 18rem);
-  width: 100%;
-  object-fit: fill;
-  margin: 0 0 1.5rem;
-  border-radius: 0;
 }
 
 .myst-landing-block h1,

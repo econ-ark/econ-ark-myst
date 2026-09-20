@@ -17,6 +17,10 @@ so the nested `&:hover` lands at (0,2,2) on every element it matches, a plain `a
 A flat `a.button:hover` in `theme.css` is (0,2,1) and loses at any load order. The fix is to nest
 our hover inside our own rule with the same four selectors, so `&` resolves the same way.
 
+The hero's outline button needed the same treatment for the opposite reason. Its base rule is
+(0,4,1) against the theme's nested hover at (0,2,2). Here the theme's hover is what loses, leaving
+the button to answer a pointer with nothing. Its hover is nested inside that rule now.
+
 The suite never computes nested specificity. A static checker could parse the built `app-*.css`,
 take `spec(&) = max(spec(s))` over the parent list, and fail when `theme.css` sets the same
 property on an overlapping selector at lower specificity. That would have caught this one. It has
@@ -40,7 +44,7 @@ injected instead.
 ## Rules whose class no example renders
 
 A rule written against a class that no example renders is a rule nothing checks, which is why
-`examples/site-only.md` exists. Counted against both built sites, sixteen rules are still in that
+`examples/site-only.md` exists. Counted against both built sites, fifteen rules are still in that
 state, in the four groups below.
 
 Needs a page this repo has no way to produce: `.font-system` and the five `.myst-jp-*` rules want
@@ -57,9 +61,10 @@ centered block, where the landing puts its subtitle on a split-image one.
 
 Applied by the theme's own JavaScript rather than by markup: `.myst-outline-item-active`.
 
-Styles a class this repo never emits: `article.article img.ark-banner`. `ark-banner` appears in
-`theme.css` and in no other file, so that one is dead code and should go.
+A sixteenth was `article.article img.ark-banner`, styling a class this repo never emitted anywhere.
+That one was dead code and has been deleted.
 
 The blue utility overrides are deliberately a superset of what the examples render, so the six
 classes no page paints are forward coverage rather than a gap. `check_blue_coverage` compares in
-one direction only, so it reports neither the superset nor a rule whose declaration is empty.
+one direction only, which leaves that superset unreported. It now pairs each selector with its
+declaration block, so a rule left empty stopped counting as an override.
