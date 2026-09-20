@@ -119,7 +119,12 @@ check_pdf() {
     return
   fi
   check_text "$name" "$(pdftotext "$pdf" - 2>/dev/null)" "$@"
-  if pdfinfo "$pdf" 2>/dev/null | grep -q '^CreationDate'; then
+  # A file that is not a PDF at all clears the size test above and gives pdfinfo nothing, which the
+  # bare grep read as the absence of a timestamp. check_text fails beside it, so the run still goes
+  # red, but this line was printing ok about a file it had not read.
+  if ! pdfinfo "$pdf" >/dev/null 2>&1; then
+    bad "$name: $pdf is not a readable PDF, so the timestamp check proved nothing"
+  elif pdfinfo "$pdf" 2>/dev/null | grep -q '^CreationDate'; then
     bad "$name: PDF carries a creation timestamp, so rebuilds will not be byte-identical"
   else
     ok "$name: no creation timestamp"
@@ -284,9 +289,17 @@ check_documented_config() {
 # the canonical names reads as though the two named different things. The examples and the configs
 # keep to what PAGE_KNOWN_PARTS and the frontmatter schema call them.
 check_no_aliases() {
-  local name=$1 hits
+  local name=$1 hits f missing=""
   shift
-  hits=$(grep -nE '"(ack|acknowledgement|acknowledgements|acknowledgment|availability|dataAvailability|data-availability|quote|plain_language_summary|plain-language-summary|plainLanguageSummary|lay_summary|lay-summary|keyPoints|key_points|key-points)"|^[[:space:]]*(author|reviewer|editor|contributor|affiliation|export|download|part|identifier|socials|image):' "$@" 2>/dev/null)
+  # An unmatched examples/*.md reaches grep as the literal glob: grep exits 2, the output is empty,
+  # and the ok branch below reported that the examples name everything correctly. Reorganising
+  # examples/ is all it took, so the paths are checked before they are read.
+  for f in "$@"; do [ -f "$f" ] || missing="$missing $f"; done
+  if [ "$#" -eq 0 ] || [ -n "$missing" ]; then
+    bad "$name: no file at:${missing:- (no paths given)}, so the alias check read nothing"
+    return
+  fi
+  hits=$(grep -nE '"(ack|acknowledgement|acknowledgements|acknowledgment|availability|dataAvailability|data-availability|quote|plain_language_summary|plain-language-summary|plainLanguageSummary|lay_summary|lay-summary|keyPoints|key_points|key-points)"|^[[:space:]]*(author|reviewer|editor|contributor|affiliation|export|download|part|identifier|socials|image):' "$@")
   if [ -z "$hits" ]; then
     ok "$name: the examples and configs name every part and field as MyST does"
   else
@@ -481,9 +494,14 @@ check_blue_coverage() {
     bad "$name: no blue utility in the built pages, so the override list goes untested"
     return
   fi
-  # theme.css escapes the colon and the slash; strip the backslashes to compare like with like
-  overridden=$(rg -o '\.[a-z0-9\\:/-]*blue-[0-9]+(\\/[0-9]+)?' "$css" |
-    sed 's/^\.//; s/\\//g' | sort -u)
+  # A selector counts only when its block declares something: .text-blue-600 { } matched the old
+  # read of selector strings alone and painted nothing. Pairing each selector list with its body
+  # here is also what lets a stylesheet escape its colons, which the sed then strips off.
+  overridden=$(perl -0777 -ne 'while (/([^{}]*)\{([^{}]*)\}/g) {
+      my ($sel, $body) = ($1, $2);
+      next unless $body =~ /[a-z-]+\s*:\s*[^;\s]/;
+      while ($sel =~ /\.([a-z0-9\\:\/-]*blue-[0-9]+(?:\\\/[0-9]+)?)/g) { print "$1\n" }
+    }' "$css" | sed 's/\\//g' | sort -u)
   missing=$(comm -23 <(echo "$rendered") <(echo "$overridden") | tr '\n' ' ')
   if [ -n "${missing// /}" ]; then
     bad "$name: $css leaves the theme's blue on: $missing"
@@ -497,8 +515,14 @@ check_blue_coverage() {
 # on the banner field, where a theme colour reaching the fill would read as deliberate.
 check_landing_button() {
   local name=$1 dir=$2
-  if ! grep -q 'class="[^"]*button' "$dir/index.html" 2>/dev/null; then
-    bad "$name: the landing page renders no button, so the fill rule goes untested"
+  # Split on the block wrapper and require a button in a block that is not the hero: the old guard
+  # took any class holding the letters, which the two hero buttons and the nav's own
+  # myst-top-nav-menu-button each satisfied. The page's JSON blob repeats every class, so it goes.
+  if ! perl -0777 -pe 's{<script\b.*?</script>}{}gs' "$dir/index.html" 2>/dev/null |
+    awk -v RS='myst-landing-block' '
+      !/ark-hero/ && /class="([^"]* )?button( [^"]*)?"/ { found = 1 }
+      END { exit !found }'; then
+    bad "$name: the landing page renders no button outside the hero, so the fill rule goes untested"
     return
   fi
   # The served stylesheet, never the source: a build that failed to copy theme.css would pass a
@@ -538,14 +562,55 @@ check_theme_css_served() {
   fi
 }
 
+# theme.css carries no @layer and every override in it lands at the specificity it is overriding,
+# so each one wins on source order alone. Move the injection point above the theme's own bundle and
+# the whole palette goes inert with no rule here failing.
+check_css_last() {
+  local name=$1 dir=$2 last
+  last=$(grep -oE '<link[^>]*rel="stylesheet"[^>]*>' "$dir/index.html" 2>/dev/null |
+    grep -oE 'href="[^"]*"' | tail -1)
+  if [ "$last" = 'href="/myst-theme.css"' ]; then
+    ok "$name: /myst-theme.css is the last stylesheet the page links"
+  else
+    bad "$name: the last stylesheet the page links is ${last:-none}, so theme.css no longer wins ties on order"
+  fi
+}
+
+# The bundled theme predates --myst-color-* (#843), so the stylesheet has to declare every one of
+# those it reads. Gut its :root block and the button fill resolves to nothing: the theme's white
+# label lands on the page with no fill under it, which nothing else here reads.
+check_tokens_defined() {
+  local name=$1 sheet=$2 used declared missing
+  used=$(grep -oE 'var\(--myst-color-[a-z-]+' "$sheet" 2>/dev/null | sed 's/^var(//' | sort -u)
+  if [ -z "$used" ]; then
+    bad "$name: $sheet reads no --myst-color- token, so this check proved nothing"
+    return
+  fi
+  declared=$(grep -oE -- '--myst-color-[a-z-]+[[:space:]]*:' "$sheet" | sed 's/[[:space:]]*:$//' | sort -u)
+  missing=$(comm -23 <(echo "$used") <(echo "$declared") | tr '\n' ' ')
+  if [ -n "${missing// /}" ]; then
+    bad "$name: $sheet reads tokens nothing in it declares: $missing"
+  else
+    ok "$name: every --myst-color- token the stylesheet reads is declared in it ($(wc -l <<<"$used"))"
+  fi
+}
+
 # The faces are built rather than tracked, so a site can be published complete in every other way
 # and still fall back to the system sans, which no page of it would report
 check_faces_served() {
-  local name=$1 dir=$2
-  if [ "$(find "$dir" -name 'FiraSans-*.woff2' 2>/dev/null | wc -l)" -ge 4 ]; then
-    ok "$name: the site serves the faces theme.css asks for"
+  local name=$1 dir=$2 sheet="$2/myst-theme.css" url target n=0
+  # Only a face the served sheet names, at a path the site serves, reaches a reader. Counting woff2
+  # anywhere under the build counted the template's own cache copies too, so a landing serving none
+  # of them to its pages still cleared four.
+  while IFS= read -r url; do
+    case "$url" in /*) target="$dir/${url#/}" ;; *) target="$(dirname "$sheet")/$url" ;; esac
+    [ -f "${target%%[?#]*}" ] && n=$((n + 1))
+  done < <(sed -nE "s@.*url\((['\"]?)([^'\")]*FiraSans-[^'\")]*\.woff2)\1\).*@\2@p" "$sheet" 2>/dev/null |
+    sort -u)
+  if [ "$n" -ge 4 ]; then
+    ok "$name: the served stylesheet names $n Fira Sans faces the site serves"
   else
-    bad "$name: fewer than four FiraSans woff2 under $dir, so readers get the system sans"
+    bad "$name: $sheet names only $n served FiraSans woff2, so readers get the system sans"
   fi
 }
 
@@ -709,9 +774,14 @@ check_rail_overflow() {
 }
 
 self_test() {
-  local good seeded out
+  local good seeded out fixture
+  # $TALL seeds four of the tests below, three of which assert a FAILURE, so an absent fixture used
+  # to satisfy the very tests meant to prove those checks have power. Both fixtures are required.
+  for fixture in "$PAPER" "$TALL"; do
+    [ -s "$fixture" ] || { echo "self-test needs a built $fixture"; exit 2; }
+  done
   good=$(pdftotext "$PAPER" - 2>/dev/null)
-  [ -n "$good" ] || { echo "self-test needs a built $PAPER"; exit 2; }
+  [ -n "$good" ] || { echo "self-test needs text in $PAPER"; exit 2; }
 
   # Capture first: piping into grep -q closes the pipe early, and pipefail then reports a false fail
   seeded="$good"$'\n''See Section ??.'
@@ -782,6 +852,14 @@ self_test() {
     fi
   else
     bad "self-test: could not compile a timestamped PDF to seed the check"
+  fi
+  # A non-empty file that is not a PDF: pdfinfo gives nothing, which the bare grep read as the
+  # absence of a timestamp and reported ok about. check_text fails beside it either way.
+  printf 'not a pdf at all\n' >"$scratch/notapdf.pdf"
+  if grep -q 'FAIL.*not a readable PDF' <<<"$(check_pdf seeded "$scratch/notapdf.pdf")"; then
+    ok "self-test: a file that is not a PDF is caught by the timestamp check too"
+  else
+    bad "self-test: the timestamp check reported ok about a file pdfinfo could not read"
   fi
   rm -rf "$scratch"
 
@@ -939,6 +1017,14 @@ self_test() {
   else
     bad "self-test: a longer class name passed for a shorter one"
   fi
+  # A selector whose block declares nothing overrides nothing, and the old read of selector strings
+  # alone accepted it. This is the shape a half-finished edit leaves behind.
+  printf '.hover\\:text-blue-700:hover{color:red}\n.bg-blue-50{ }\n' >"$bc/empty.css"
+  if grep -q 'FAIL.*bg-blue-50' <<<"$(check_blue_coverage seeded "$bc" "$bc/empty.css")"; then
+    ok "self-test: an override whose rule declares nothing is caught"
+  else
+    bad "self-test: an empty rule passed for an override"
+  fi
   printf '<a class="text-gray-500">x</a>\n' >"$bc/index.html"
   if grep -q 'FAIL.*no blue utility' <<<"$(check_blue_coverage seeded "$bc" "$bc/ok.css")"; then
     ok "self-test: pages rendering no blue at all are caught"
@@ -971,10 +1057,34 @@ self_test() {
   fi
   printf 'a.button{background-color: var(--myst-color-primary)}\n' >"$lb/myst-theme.css"
   printf '<p>no button here</p>\n' >"$lb/index.html"
-  if grep -q 'FAIL.*renders no button' <<<"$(check_landing_button seeded "$lb")"; then
+  if grep -q 'FAIL.*no button outside the hero' <<<"$(check_landing_button seeded "$lb")"; then
     ok "self-test: a landing page carrying no button is caught"
   else
     bad "self-test: a missing button fixture went undetected"
+  fi
+  # The two ways the old guard was satisfied without a button the rule applies to: a page whose only
+  # buttons sit in the hero, on the banner field, and the theme's own nav control, whose class
+  # merely ends in the word. Each has to read as no fixture at all.
+  printf '<div class="myst-landing-block ark-hero"><a class="link button">x</a></div>\n' >"$lb/index.html"
+  if grep -q 'FAIL.*no button outside the hero' <<<"$(check_landing_button seeded "$lb")"; then
+    ok "self-test: a page whose only buttons are in the hero is caught"
+  else
+    bad "self-test: a hero button stood in for the button outside it"
+  fi
+  printf '<button class="myst-top-nav-menu-button flex h-10">m</button>\n' >"$lb/index.html"
+  if grep -q 'FAIL.*no button outside the hero' <<<"$(check_landing_button seeded "$lb")"; then
+    ok "self-test: a class merely ending in the word button is not the fixture"
+  else
+    bad "self-test: myst-top-nav-menu-button passed for a landing button"
+  fi
+  # And the positive, which the four above cannot give: a real button outside the hero must pass,
+  # or the check would satisfy all of them by never passing at all.
+  printf '<div class="myst-landing-block ark-hero"><a class="link button">x</a></div>\n%s\n' \
+    '<div class="myst-landing-block ark-section"><a class="link whitespace-nowrap button">y</a></div>' >"$lb/index.html"
+  if grep -q '^ok' <<<"$(check_landing_button seeded "$lb")"; then
+    ok "self-test: a button in a block that is not the hero is the fixture"
+  else
+    bad "self-test: the button check rejects a page that does carry one outside the hero"
   fi
   rm -rf "$lb"
 
@@ -1010,12 +1120,105 @@ self_test() {
   else
     bad "self-test: a valid served stylesheet was rejected, so the check cannot pass at all"
   fi
-  if grep -q 'FAIL.*fewer than four' <<<"$(check_faces_served seeded "$sv")"; then
+  if grep -q 'FAIL.*names only 0' <<<"$(check_faces_served seeded "$sv")"; then
     ok "self-test: a site serving no faces is caught"
   else
     bad "self-test: a missing set of faces went undetected"
   fi
+  # The shape the old count passed: four woff2 sitting under the build where no stylesheet names
+  # them. A reader of the page gets the system sans, and the count reported the faces served.
+  mkdir -p "$sv/build/cache" "$sv/fonts"
+  local face
+  for face in Regular Italic Medium Bold; do : >"$sv/build/cache/FiraSans-$face.woff2"; done
+  if grep -q 'FAIL.*names only 0' <<<"$(check_faces_served seeded "$sv")"; then
+    ok "self-test: faces the served stylesheet never names do not count as served"
+  else
+    bad "self-test: woff2 under the build passed for faces the page loads"
+  fi
+  # A sheet that names its faces at a path the site does not serve, which is the dangling-reference
+  # bug in the other direction: the name is there and the browser still paints the next face down.
+  { printf ':root{--ark-blue:#0a7}\n'
+    for face in Regular Italic Medium Bold; do
+      printf '@font-face{src:url("fonts/FiraSans-%s.woff2") format("woff2")}\n' "$face"
+    done; } >"$sv/myst-theme.css"
+  if grep -q 'FAIL.*names only 0' <<<"$(check_faces_served seeded "$sv")"; then
+    ok "self-test: faces named at a path the site lacks do not count as served"
+  else
+    bad "self-test: a dangling @font-face src passed for a served face"
+  fi
+  for face in Regular Italic Medium Bold; do : >"$sv/fonts/FiraSans-$face.woff2"; done
+  if grep -q 'ok.*names 4 Fira Sans faces' <<<"$(check_faces_served seeded "$sv")"; then
+    ok "self-test: four faces named and served pass"
+  else
+    bad "self-test: the face check rejects a site that does serve what its stylesheet names"
+  fi
   rm -rf "$sv"
+
+  # check_css_last: theme.css beats the theme's bundle on source order alone, so the order is the
+  # assertion. A page linking it anywhere but last has every override in it inert.
+  local ord
+  ord=$(mktemp -d)
+  printf '%s\n%s\n' '<link rel="stylesheet" href="/build/_assets/app-A.css"/>' \
+    '<link rel="stylesheet" href="/myst-theme.css"/>' >"$ord/index.html"
+  if grep -q 'ok.*is the last stylesheet' <<<"$(check_css_last seeded "$ord")"; then
+    ok "self-test: a page linking the stylesheet last passes"
+  else
+    bad "self-test: the load-order check rejects a page that does link it last"
+  fi
+  printf '%s\n%s\n' '<link rel="stylesheet" href="/myst-theme.css"/>' \
+    '<link rel="stylesheet" href="/build/_assets/app-A.css"/>' >"$ord/index.html"
+  if grep -q 'FAIL.*no longer wins ties on order' <<<"$(check_css_last seeded "$ord")"; then
+    ok "self-test: a stylesheet injected above the theme's bundle is caught"
+  else
+    bad "self-test: an injection point above the theme went undetected"
+  fi
+  rm -rf "$ord"
+
+  # check_tokens_defined: the bundled theme declares none of these, so a usage the stylesheet does
+  # not also declare resolves to nothing, and the property it sets simply does not apply.
+  local tok
+  tok=$(mktemp)
+  printf ':root{--myst-color-primary:#1f476b}\na.button{background-color:var(--myst-color-primary)}\n' >"$tok"
+  if grep -q 'ok.*is declared in it' <<<"$(check_tokens_defined seeded "$tok")"; then
+    ok "self-test: a stylesheet declaring every token it reads passes"
+  else
+    bad "self-test: the token check rejects a stylesheet that does declare them"
+  fi
+  printf 'a.button{background-color:var(--myst-color-primary)}\n' >"$tok"
+  if grep -q 'FAIL.*reads tokens nothing in it declares' <<<"$(check_tokens_defined seeded "$tok")"; then
+    ok "self-test: a token read but never declared is caught"
+  else
+    bad "self-test: an undeclared --myst-color- token went undetected"
+  fi
+  printf 'a.button{background-color:#1f476b}\n' >"$tok"
+  if grep -q 'FAIL.*proved nothing' <<<"$(check_tokens_defined seeded "$tok")"; then
+    ok "self-test: a stylesheet reading no token at all is caught"
+  else
+    bad "self-test: a stylesheet that dropped every token read as covered"
+  fi
+  rm -f "$tok"
+
+  # check_no_aliases reads paths a glob produced, and an unmatched glob reaches it as its own text
+  local al
+  al=$(mktemp -d)
+  printf 'project:\n  author: A Person\n' >"$al/aliased.yml"
+  printf 'project:\n  authors:\n    - name: A Person\n' >"$al/clean.yml"
+  if grep -q 'FAIL.*so the alias check read nothing' <<<"$(check_no_aliases seeded "$al"/does-not-exist-*.md)"; then
+    ok "self-test: a glob that matched no file is caught"
+  else
+    bad "self-test: an unmatched glob passed as files naming everything correctly"
+  fi
+  if grep -q 'FAIL.*aliases used' <<<"$(check_no_aliases seeded "$al/aliased.yml")"; then
+    ok "self-test: a MyST alias in a config is caught"
+  else
+    bad "self-test: a MyST alias went undetected"
+  fi
+  if grep -q '^ok' <<<"$(check_no_aliases seeded "$al/clean.yml")"; then
+    ok "self-test: a config using the canonical names passes"
+  else
+    bad "self-test: the alias check fails a config that uses the canonical names"
+  fi
+  rm -rf "$al"
 
   # The README documenting a key the config no longer carries, which is how these two drift
   local conf
@@ -1242,34 +1445,49 @@ else
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   primary="site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))"
   check_site "$primary" "$ROOT/_build/html"
-  check_blue_coverage "$primary" "$ROOT/_build/html" "$ROOT/theme.css"
-  check_dropdown_tags "$primary" "$ROOT/_build/html" "$ROOT/theme.css"
+  check_css_last "$primary" "$ROOT/_build/html"
+  # The served copy rather than $ROOT/theme.css throughout: a build that failed to copy the
+  # stylesheet leaves the source read passing about a site that carries none of it.
+  check_tokens_defined "$primary" "$ROOT/_build/html/myst-theme.css"
+  check_blue_coverage "$primary" "$ROOT/_build/html" "$ROOT/_build/html/myst-theme.css"
+  check_dropdown_tags "$primary" "$ROOT/_build/html" "$ROOT/_build/html/myst-theme.css"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
   other=$(mktemp -d)
   # node_modules is linked rather than copied: the plugin has to resolve from the copy or its
   # equations come back as KaTeX, but copying it spends a tenth of a second on every run
   tar -c --exclude=_build --exclude=.git --exclude=./node_modules -C "$ROOT" . | tar -x -C "$other"
   ln -s "$ROOT/node_modules" "$other/node_modules"
-  if grep -q 'template: article-theme' "$other/myst.yml"; then
-    sed -i 's/template: article-theme/template: book-theme/' "$other/myst.yml"
-    othername="book-theme"
+  # sed -i exits 0 on no match, so "not article-theme" used to mean book-theme even when myst.yml
+  # quoted the value or named neither, and the run then built one theme twice under the other's
+  # heading. Read the value, write its counterpart, and confirm the file now carries it.
+  case "$(awk '/^  template:/ { gsub(/["'\'']/, "", $2); print $2; exit }' "$other/myst.yml")" in
+    article-theme) othername=book-theme ;;
+    book-theme) othername=article-theme ;;
+    *) othername="" ;;
+  esac
+  sed -i -E "s/^(  template:).*/\1 $othername/" "$other/myst.yml"
+  if [ -z "$othername" ] || ! grep -qx "  template: $othername" "$other/myst.yml"; then
+    bad "site (other theme): $other/myst.yml does not name the second theme, so it went unbuilt"
   else
-    sed -i 's/template: book-theme/template: article-theme/' "$other/myst.yml"
-    othername="article-theme"
+    (cd "$other" && myst build --html) >/dev/null 2>&1
+    check_site "site ($othername)" "$other/_build/html"
+    check_css_last "site ($othername)" "$other/_build/html"
+    check_dropdown_tags "site ($othername)" "$other/_build/html" "$other/_build/html/myst-theme.css"
+    check_blue_coverage "site ($othername)" "$other/_build/html" "$other/_build/html/myst-theme.css"
   fi
-  (cd "$other" && myst build --html) >/dev/null 2>&1
-  check_site "site ($othername)" "$other/_build/html"
-  check_dropdown_tags "site ($othername)" "$other/_build/html" "$ROOT/theme.css"
-  check_blue_coverage "site ($othername)" "$other/_build/html" "$ROOT/theme.css"
   rm -rf "$other"
   # The landing page carries no paper, so check_site's banner, equation and download checks do not
   # apply to it. What it shares with the two demos is the stylesheet, the faces and the palette.
+  # _build goes first: site/public keeps every theme-<hash>.css it has built and re-emits them all.
+  rm -rf "$ROOT/landing/_build"
   (cd "$ROOT/landing" && myst build --html) >/dev/null 2>&1
   landdir="$ROOT/landing/_build/html"
   check_landing landing "$landdir"
   check_landing_button landing "$landdir"
-  check_blue_coverage landing "$landdir" "$ROOT/theme.css"
-  check_landing_classes landing "$landdir" "$ROOT/theme.css"
+  check_css_last landing "$landdir"
+  check_tokens_defined landing "$landdir/myst-theme.css"
+  check_blue_coverage landing "$landdir" "$landdir/myst-theme.css"
+  check_landing_classes landing "$landdir" "$landdir/myst-theme.css"
   check_css_urls landing "$landdir"
   check_faces_served landing "$landdir"
   check_theme_css_served landing "$landdir"

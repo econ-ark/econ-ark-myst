@@ -6,10 +6,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="${1:-${MYST_THEME_SRC:-}}"
 
-if [ -z "$SRC" ] || [ ! -d "$SRC/packages" ]; then
+# Every path this script reads, so a checkout missing one says so with the usage hint rather than
+# dying a line later with a bare rg error, or printing a zero that lands in the docs as a fact.
+if [ -z "$SRC" ] || [ ! -d "$SRC/packages" ] || [ ! -d "$SRC/themes" ] ||
+  [ ! -f "$SRC/styles/theme-colors.css" ]; then
   echo "usage: $(basename "$0") <path to a myst-theme checkout>" >&2
   echo "   or: MYST_THEME_SRC=<path> $(basename "$0")" >&2
   echo "get one with: git clone https://github.com/jupyter-book/myst-theme" >&2
+  echo "needs packages/, themes/ and styles/theme-colors.css under it" >&2
   exit 2
 fi
 
@@ -25,8 +29,8 @@ printf '%-16s %8s %8s\n' FAMILY EMITTED BRANDED
 sed -E 's/myst-([a-z0-9]+).*/\1/' <<<"$emitted" | sort -u | while read -r f; do
   e=$(grep -c "^myst-$f" <<<"$emitted" || true)
   o=$(grep -c "^myst-$f" <<<"$ours" || true)
-  # The test is last in the loop body, so its status becomes the loop's. Under set -e a family
-  # below the cutoff would end the script here, with every section after this one unprinted.
+  # Families below the cutoff are the long tail: one or two classes each, and listing them all
+  # buries the thirty that carry the theme's chrome.
   if [ "$e" -ge 4 ]; then printf '%-16s %8s %8s\n' "$f" "$e" "${o:-0}"; fi
 done
 

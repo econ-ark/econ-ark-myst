@@ -34,7 +34,9 @@ rg -c -- '--myst-color-' landing/_build/templates/site/myst/book-theme/*/public/
 
 While that count is zero, a rule needing a colour reads the variable from our own `:root`.
 `theme.css` sets link, link-hover, link-underline, focus-ring, focus-outline, primary and
-primary-hover.
+primary-hover. `check_tokens_defined` holds those two ends together. A token the served stylesheet
+reads and nothing declares resolves to nothing; the property it sets goes unapplied. The button
+fill carried that risk.
 
 ## 2. Class hooks
 
