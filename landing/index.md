@@ -42,6 +42,14 @@ positions it has already computed, so no stylesheet can put another typeface und
 plugin re-renders each equation as MathML Core, which a browser lays out itself from whatever font it
 is given. Symbols on the page now read the same as symbols in a sentence.
 
+The consumer discounts next period at $\beta$ and earns $R$ on what is left, which is the same
+$\beta$ and the same $R$ the display below is set from:
+
+```{math}
+v(m_t) = \max_{c_t} \; u(c_t) + \beta \mathbb{E}_t \left[ v(m_{t+1}) \right],
+\qquad m_{t+1} = R (m_t - c_t) + y_{t+1}.
+```
+
 +++ { "class": "ark-section col-body-outset" }
 
 ## Use it

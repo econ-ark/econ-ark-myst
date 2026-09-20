@@ -673,6 +673,19 @@ check_faces_served() {
   fi
 }
 
+# The plugin is the only thing putting MathML on the page. Were it to stop loading the build would
+# still succeed and every equation would come back in KaTeX's Computer Modern, which is legible
+# enough that nothing else here would notice. Both sites carry equations, so both are read.
+check_mathml() {
+  local name=$1 dir=$2 html
+  html=$(cat "$dir"/index.html "$dir"/*/index.html 2>/dev/null)
+  if grep -q '<math' <<<"$html" && ! grep -q 'class="katex-html"' <<<"$html"; then
+    ok "$name: the equations reach the page as MathML, which is what can take Fira Math"
+  else
+    bad "$name: no <math> under $dir, or KaTeX markup still present, so equations are not in Fira Math"
+  fi
+}
+
 # The site half is an artifact too: the stylesheet and the banner must reach the built site, and
 # the two themes must keep writing the classes the stylesheet reaches the paper through. A theme
 # that renamed them would serve the stylesheet and ignore it.
@@ -720,14 +733,7 @@ check_site() {
   else
     bad "$name: no FiraMath woff2 or no temml css under $dir, so equations fall back to a system math font"
   fi
-  # The plugin is the only thing putting MathML on the page. Were it to stop loading the build
-  # would still succeed and every equation would quietly come back in KaTeX's Computer Modern,
-  # which is legible enough that nothing else here would notice.
-  if grep -q '<math' <<<"$html" && ! grep -q 'class="katex-html"' <<<"$html"; then
-    ok "$name: the equations reach the page as MathML, which is what can take Fira Math"
-  else
-    bad "$name: no <math> under $dir, or KaTeX markup still present, so equations are not in Fira Math"
-  fi
+  check_mathml "$name" "$dir"
   # article-theme takes its downloads from the project, not from the paper's frontmatter, so a
   # paper that lists them still reaches a reader with no way to the PDF unless the project does too
   if find "$dir" -name 'paper-*.pdf' 2>/dev/null | grep -q .; then
@@ -1219,6 +1225,16 @@ self_test() {
     >"$sites/katex/index.html"
   expect 'FAIL.*not in Fira Math' 'a site whose equations stayed in KaTeX is caught' \
     check_site seeded "$sites/katex"
+  # The same three cases against the extracted check, which both sites now call: KaTeX markup left
+  # behind, a page carrying no equation at all, and the MathML that proves the plugin ran.
+  expect 'FAIL.*not in Fira Math' 'KaTeX markup is caught by the math check itself' \
+    check_mathml seeded "$sites/katex"
+  printf '<article class="article">no equation here</article>\n' >"$sites/katex/index.html"
+  expect 'FAIL.*no <math>' 'a page carrying no equation at all is caught' \
+    check_mathml seeded "$sites/katex"
+  printf '<article class="article"><math><mi>v</mi></math></article>\n' >"$sites/katex/index.html"
+  expect 'ok.*reach the page as MathML' 'a page whose equations are MathML passes' \
+    check_mathml seeded "$sites/katex"
   printf '<article class="article-grid subgrid-gap">no article token</article>\n' >"$sites/renamed/index.html"
   cp "$ROOT/theme.css" "$sites/renamed/theme-0.css"
   cp "$ROOT/banner.svg" "$sites/renamed/banner-0.svg"
@@ -1368,6 +1384,8 @@ else
   landdir="$ROOT/landing/_build/html"
   check_landing landing "$landdir"
   check_landing_button landing "$landdir"
+  # The landing loads the plugin too, and now carries the equations that prove it ran
+  check_mathml landing "$landdir"
   check_css_last landing "$landdir"
   check_tokens_defined landing "$landdir/myst-theme.css"
   check_blue_coverage landing "$landdir" "$landdir/myst-theme.css"
