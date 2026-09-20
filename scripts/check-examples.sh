@@ -1495,6 +1495,51 @@ self_test() {
     bad "self-test: a theme that dropped the article class went undetected"
   fi
   rm -rf "$scratchsite"
+
+  # A kind list short of amsthm's plain style, which is what a hand edit to the template leaves
+  local ik
+  ik=$(mktemp)
+  printf '#let italicKinds = ("theorem", "lemma")\n' >"$ik"
+  if grep -q "FAIL.*not amsthm's plain style" <<<"$(check_italic_kinds seeded "$ik")"; then
+    ok "self-test: an italic kind list short of amsthm's plain style is caught"
+  else
+    bad "self-test: a wrong italicKinds list went undetected"
+  fi
+  printf '#let italicKinds = ("theorem", "lemma", "proposition", "corollary", "conjecture", "criterion")\n' >"$ik"
+  if grep -q '^ok' <<<"$(check_italic_kinds seeded "$ik")"; then
+    ok "self-test: the amsthm plain-style kind list passes"
+  else
+    bad "self-test: the italic-kinds check rejects the list it is written for"
+  fi
+  rm -f "$ik"
+
+  # A check shipped with no fixture proves nothing, which is how every silent pass here arrived.
+  # This reads the text of this function, so a check named nowhere above fails the run.
+  local seeded_here canary
+  seeded_here=$(declare -f self_test)
+  sweep_fixtures() {
+    local fn
+    for fn in $(declare -F | sed -n 's/^declare -f \(check_[a-z_]*\)$/\1/p'); do
+      # Written exemptions, never omissions: check_swatch is exercised through check_rule and
+      # check_ink, and check_rail_overflow builds its own paper against this very template, so
+      # seeding a failure would take a second template declining to move the reviewers out.
+      case $fn in check_swatch | check_rail_overflow) continue ;; esac
+      grep -q "(^|[^a-z_])$fn([^a-z_]|$)" -E <<<"$seeded_here" ||
+        bad "self-test: $fn has no fixture here, so nothing shows it can fail"
+    done
+  }
+  sweep_fixtures
+  # The sweep can quietly stop matching, which would leave it one more check reporting ok off
+  # evidence it never read. The canary's name is assembled so the text above cannot seed it.
+  canary=check_zz
+  canary="${canary}_unseeded"
+  eval "$canary() { :; }"
+  if grep -q "FAIL.*$canary has no fixture" <<<"$(sweep_fixtures)"; then
+    ok "self-test: the fixture sweep reports a check that nothing here seeds"
+  else
+    bad "self-test: the fixture sweep passed a check it was never given a fixture for"
+  fi
+  unset -f "$canary" sweep_fixtures
 }
 
 for tool in myst pdftotext pdfinfo pdffonts pdftoppm convert; do

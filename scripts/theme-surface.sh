@@ -29,8 +29,9 @@ printf '%-16s %8s %8s\n' FAMILY EMITTED BRANDED
 sed -E 's/myst-([a-z0-9]+).*/\1/' <<<"$emitted" | sort -u | while read -r f; do
   e=$(grep -c "^myst-$f" <<<"$emitted" || true)
   o=$(grep -c "^myst-$f" <<<"$ours" || true)
-  # Families below the cutoff are the long tail: one or two classes each, and listing them all
-  # buries the thirty that carry the theme's chrome.
+  # Below the cutoff is the long tail, one or two classes each, which would bury the thirty that
+  # carry the chrome. Keep the if: written as `[ "$e" -ge 4 ] && printf ...` the false case is the
+  # body's last status, and set -e would end the loop at the first family under the cutoff.
   if [ "$e" -ge 4 ]; then printf '%-16s %8s %8s\n' "$f" "$e" "${o:-0}"; fi
 done
 
