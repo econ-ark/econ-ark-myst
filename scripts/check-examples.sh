@@ -832,6 +832,20 @@ check_rail_overflow() {
   rm -rf "$scratch"
 }
 
+# One case per line: run the check, require its output to match, and let the label say what that
+# proves. A miss now prints what the check said instead, which the four-line form it replaces
+# threw away. Cases needing several patterns at once stay written out below.
+expect() {
+  local want=$1 label=$2 out
+  shift 2
+  out=$("$@")
+  if grep -qE -- "$want" <<<"$out"; then
+    ok "self-test: $label"
+  else
+    bad "self-test: $label; the check said: ${out//$'\n'/ | }"
+  fi
+}
+
 self_test() {
   local good seeded out fixture
   # $TALL seeds four of the tests below, three of which assert a FAILURE, so an absent fixture used
@@ -842,111 +856,61 @@ self_test() {
   good=$(pdftotext "$PAPER" - 2>/dev/null)
   [ -n "$good" ] || { echo "self-test needs text in $PAPER"; exit 2; }
 
-  # Capture first: piping into grep -q closes the pipe early, and pipefail then reports a false fail
+  # Every case below runs through expect, so an expect that stopped comparing would pass all of
+  # them in silence. These two run it against output whose verdict is known, one each way.
+  expect '^ok$' 'expect reports output that matches' echo ok
+  if grep -q 'FAIL' <<<"$(expect 'cannot-match-this' 'unreachable' echo ok)"; then
+    ok "self-test: expect reports output that does not match"
+  else
+    bad "self-test: expect passed a miss, so every case below proves nothing"
+  fi
+
   seeded="$good"$'\n''See Section ??.'
-  out=$(check_text seeded "$seeded" "${ANCHORS[@]}")
-  if grep -q 'FAIL.*unresolved' <<<"$out"; then
-    ok "self-test: a literal ?? is caught"
-  else
-    bad "self-test: a literal ?? went undetected"
-  fi
-
+  expect 'FAIL.*unresolved' 'a literal ?? is caught' check_text seeded "$seeded" "${ANCHORS[@]}"
   seeded="$good"$'\n'"Table 1${PRIME}s parameters."
-  out=$(check_text seeded "$seeded" "${ANCHORS[@]}")
-  if grep -q 'FAIL.*prime' <<<"$out"; then
-    ok "self-test: a prime after a digit is caught"
-  else
-    bad "self-test: a prime after a digit went undetected"
-  fi
-
+  expect 'FAIL.*prime' 'a prime after a digit is caught' check_text seeded "$seeded" "${ANCHORS[@]}"
   seeded=${good//Proposition 1 (Concavity)/}
-  out=$(check_text seeded "$seeded" "${ANCHORS[@]}")
-  if grep -q "FAIL.*missing 'Proposition 1" <<<"$out"; then
-    ok "self-test: a missing anchor is caught"
-  else
-    bad "self-test: a missing anchor went undetected"
-  fi
+  expect "FAIL.*missing 'Proposition 1" 'a missing anchor is caught' \
+    check_text seeded "$seeded" "${ANCHORS[@]}"
 
-  # The calibration table in the full example fits one page, so its first and last rows share it
-  out=$(check_breaks seeded "$PAPER" 'Discount factor' 'Relative risk aversion')
-  if grep -q 'FAIL.*did not break' <<<"$out"; then
-    ok "self-test: a table that stays on one page is caught"
-  else
-    bad "self-test: a table that stays on one page went undetected"
-  fi
-
-  # The full example's caption sits in the text column, so it must fail the widened-figure test
-  out=$(check_left_of seeded "$PAPER" 'Baseline' 100)
-  if grep -q 'FAIL.*not widened' <<<"$out"; then
-    ok "self-test: a figure left at text width is caught"
-  else
-    bad "self-test: a figure left at text width went undetected"
-  fi
-
-  out=$(check_pdf seeded "$EXAMPLES/exports/does-not-exist.pdf")
-  if grep -q 'FAIL.*not written' <<<"$out"; then
-    ok "self-test: a missing PDF is caught"
-  else
-    bad "self-test: a missing PDF went undetected"
-  fi
-
+  # The calibration table fits one page and the figure caption sits in the text column, so the
+  # full example is itself the seed for these two
+  expect 'FAIL.*did not break' 'a table that stays on one page is caught' \
+    check_breaks seeded "$PAPER" 'Discount factor' 'Relative risk aversion'
+  expect 'FAIL.*not widened' 'a figure left at text width is caught' \
+    check_left_of seeded "$PAPER" 'Baseline' 100
+  expect 'FAIL.*not written' 'a missing PDF is caught' \
+    check_pdf seeded "$EXAMPLES/exports/does-not-exist.pdf"
   # The tall table's caption and its last row are pages apart, so they must read as orphaned
-  out=$(check_same_page seeded "$TALL" 'Every case, one row each.' 'Case 35 A description')
-  if grep -q 'FAIL.*orphaned' <<<"$out"; then
-    ok "self-test: an orphaned caption is caught"
-  else
-    bad "self-test: an orphaned caption went undetected"
-  fi
+  expect 'FAIL.*orphaned' 'an orphaned caption is caught' \
+    check_same_page seeded "$TALL" 'Every case, one row each.' 'Case 35 A description'
 
   # Typst stamps a creation date unless the template clears it, so a plain compile seeds the defect
   local scratch
   scratch=$(mktemp -d)
   printf 'A page.\n' >"$scratch/stamped.typ"
   if typst compile "$scratch/stamped.typ" "$scratch/stamped.pdf" >/dev/null 2>&1; then
-    out=$(check_pdf seeded "$scratch/stamped.pdf" 'A page.')
-    if grep -q 'FAIL.*creation timestamp' <<<"$out"; then
-      ok "self-test: a creation timestamp is caught"
-    else
-      bad "self-test: a creation timestamp went undetected"
-    fi
+    expect 'FAIL.*creation timestamp' 'a creation timestamp is caught' \
+      check_pdf seeded "$scratch/stamped.pdf" 'A page.'
   else
     bad "self-test: could not compile a timestamped PDF to seed the check"
   fi
-  # A non-empty file that is not a PDF: pdfinfo gives nothing, which the bare grep read as the
-  # absence of a timestamp and reported ok about. check_text fails beside it either way.
   printf 'not a pdf at all\n' >"$scratch/notapdf.pdf"
-  if grep -q 'FAIL.*not a readable PDF' <<<"$(check_pdf seeded "$scratch/notapdf.pdf")"; then
-    ok "self-test: a file that is not a PDF is caught by the timestamp check too"
-  else
-    bad "self-test: the timestamp check reported ok about a file pdfinfo could not read"
-  fi
+  expect 'FAIL.*not a readable PDF' 'a file that is not a PDF is caught by the timestamp check too' \
+    check_pdf seeded "$scratch/notapdf.pdf"
   rm -rf "$scratch"
 
-  # Two different PDFs stand in for a tracked file left behind by its sources
-  out=$(check_tracked seeded "$PAPER" "$TALL")
-  if grep -q "FAIL.*text differs" <<<"$out"; then
-    ok "self-test: a stale tracked PDF is caught"
-  else
-    bad "self-test: a stale tracked PDF went undetected"
-  fi
-
-  # The no-evidence pair, which this check reported ok about until 2026-09-20: two empty files are
-  # byte-identical and two absent ones extract the same empty text. An empty $committed is what a
-  # git show that wrote nothing leaves, and it reached the "byte for byte" line.
+  # Two different PDFs stand in for a tracked file left behind by its sources. The empty pair below
+  # is the no-evidence case: both extract the same empty text and cmp calls them identical.
+  expect 'FAIL.*text differs' 'a stale tracked PDF is caught' check_tracked seeded "$PAPER" "$TALL"
   local empties
   empties=$(mktemp -d)
   : >"$empties/a.pdf"
   : >"$empties/b.pdf"
-  if grep -q 'FAIL.*went unchecked' <<<"$(check_tracked seeded "$empties/a.pdf" "$empties/b.pdf")"; then
-    ok "self-test: two empty PDFs do not pass for a tracked file matching its sources"
-  else
-    bad "self-test: two empty PDFs passed as byte for byte identical"
-  fi
-  if grep -q 'FAIL.*went unchecked' <<<"$(check_tracked seeded "$empties/gone.pdf" "$empties/also-gone.pdf")"; then
-    ok "self-test: two absent PDFs do not pass for a tracked file matching its sources"
-  else
-    bad "self-test: two absent PDFs passed as rendering identically"
-  fi
+  expect 'FAIL.*went unchecked' 'two empty PDFs do not pass for a tracked file matching its sources' \
+    check_tracked seeded "$empties/a.pdf" "$empties/b.pdf"
+  expect 'FAIL.*went unchecked' 'two absent PDFs do not pass for a tracked file matching its sources' \
+    check_tracked seeded "$empties/gone.pdf" "$empties/also-gone.pdf"
   rm -rf "$empties"
 
   # The same words at another weight: the text check reads them as equal, so only the pages differ
@@ -956,12 +920,8 @@ self_test() {
   printf '#set text(font: "Fira Sans", weight: 700)\nSame words either way.\n' >"$weights/heavy.typ"
   if typst compile "$weights/light.typ" "$weights/light.pdf" >/dev/null 2>&1 &&
     typst compile "$weights/heavy.typ" "$weights/heavy.pdf" >/dev/null 2>&1; then
-    out=$(check_tracked seeded "$weights/heavy.pdf" "$weights/light.pdf")
-    if grep -q 'FAIL.*renders differently' <<<"$out"; then
-      ok "self-test: a PDF whose text matches but whose pages differ is caught"
-    else
-      bad "self-test: a PDF whose text matches but whose pages differ went undetected"
-    fi
+    expect 'FAIL.*renders differently' 'a PDF whose text matches but whose pages differ is caught' \
+      check_tracked seeded "$weights/heavy.pdf" "$weights/light.pdf"
   else
     bad "self-test: could not compile the two weights that seed the render check"
   fi
@@ -972,111 +932,69 @@ self_test() {
   local cssdir
   cssdir=$(mktemp -d)
   printf '@font-face { src: url("Temml.woff2") format("woff2"); }\n' >"$cssdir/myst-theme.css"
-  out=$(check_css_urls seeded "$cssdir")
-  if grep -q 'FAIL.*does not serve' <<<"$out"; then
-    ok "self-test: a stylesheet asking for a file the site lacks is caught"
-  else
-    bad "self-test: a stylesheet asking for a file the site lacks went undetected"
-  fi
+  expect 'FAIL.*does not serve' 'a stylesheet asking for a file the site lacks is caught' \
+    check_css_urls seeded "$cssdir"
   : >"$cssdir/Temml.woff2"
-  out=$(check_css_urls seeded "$cssdir")
-  if grep -q 'ok.*resolves' <<<"$out"; then
-    ok "self-test: a stylesheet whose files are all served passes"
-  else
-    bad "self-test: a stylesheet whose files are all served was reported missing"
-  fi
-  # The root-relative branch, which this check used to skip outright: a url("/x.svg") that the
-  # site root lacks has to fail, and the same one has to pass once the file is there.
+  expect 'ok.*resolves' 'a stylesheet whose files are all served passes' \
+    check_css_urls seeded "$cssdir"
+  # The root-relative branch, which this check used to skip outright
   printf '@font-face { src: url("Temml.woff2") format("woff2"); }\n.h{background:url("/banner.svg")}\n' >"$cssdir/myst-theme.css"
-  if grep -q 'FAIL.*asks for /banner.svg' <<<"$(check_css_urls seeded "$cssdir")"; then
-    ok "self-test: a stylesheet asking for a root-relative file the site lacks is caught"
-  else
-    bad "self-test: a root-relative url() the site does not serve went undetected"
-  fi
+  expect 'FAIL.*asks for /banner.svg' 'a root-relative url() the site lacks is caught' \
+    check_css_urls seeded "$cssdir"
   : >"$cssdir/banner.svg"
-  if grep -q 'ok.*resolves (2 references)' <<<"$(check_css_urls seeded "$cssdir")"; then
-    ok "self-test: a root-relative url() the site does serve passes, and is counted"
-  else
-    bad "self-test: a served root-relative url() was reported missing or went uncounted"
-  fi
+  expect 'ok.*resolves \(2 references\)' 'a root-relative url() the site serves passes, and is counted' \
+    check_css_urls seeded "$cssdir"
   rm -rf "$cssdir"
 
-  out=$(check_temml_pin seeded "$ROOT/scripts/fonts.sh" /dev/null)
-  if grep -q "FAIL.*package.json 'none'" <<<"$out"; then
-    ok "self-test: Temml pins that disagree are caught"
-  else
-    bad "self-test: Temml pins that disagree went undetected"
-  fi
+  expect "FAIL.*package.json 'none'" 'Temml pins that disagree are caught' \
+    check_temml_pin seeded "$ROOT/scripts/fonts.sh" /dev/null
 
   # A landing page built under a theme that claims none of the block kinds, which is what
   # article-theme does: the blocks come out as ordinary headings with no wrapper at all
   local land
   land=$(mktemp -d)
   printf '<div class="myst-landing-block">one</div>\n<p>Invalid block</p>\n' >"$land/index.html"
-  out=$(check_landing seeded "$land")
-  if grep -q 'FAIL.*landing blocks under' <<<"$out"; then
-    ok "self-test: a landing page whose blocks the theme rejected is caught"
-  else
-    bad "self-test: a landing page whose blocks the theme rejected went undetected"
-  fi
+  expect 'FAIL.*landing blocks under' 'a landing page whose blocks the theme rejected is caught' \
+    check_landing seeded "$land"
   rm -rf "$land"
 
-  # Each end of check_landing_classes separately: a page that stopped asking for a class, and a
-  # stylesheet that stopped defining one. A check that only ever sees the real pair proves nothing.
+  # Both predicates are shared, so the shapes they reject are seeded once here rather than once per
+  # caller. Each is a way a rule goes inert while its name stays in the file, and on the page side
+  # a class the markup dropped that the JSON config blob still carries.
+  local pred
+  pred=$(mktemp -d)
+  declares_says() { css_declares "$1" "$2" && echo yes || echo no; }
+  uses_says() { page_uses_class "$1" "$2" && echo yes || echo no; }
+  printf '.ark-hero-image{color:red}\n.ark-section{ }\n/* .ark-ways */\n.ark-steps{color:red}\n' >"$pred/css"
+  printf '<div class="ark-steps"></div><script>{"class":"ark-hero"}</script>\n' >"$pred/index.html"
+  expect '^no$' 'a renamed class does not answer for the one it replaced' \
+    declares_says "$pred/css" ark-hero
+  expect '^no$' 'a rule that declares nothing does not count as styled' \
+    declares_says "$pred/css" ark-section
+  expect '^no$' 'a class left only in a comment does not count as styled' \
+    declares_says "$pred/css" ark-ways
+  expect '^yes$' 'a rule that does declare a property counts as styled' \
+    declares_says "$pred/css" ark-steps
+  expect '^no$' "a class only in the page's JSON blob is not on the page" \
+    uses_says "$pred/index.html" ark-hero
+  expect '^yes$' 'a class the markup writes is on the page' uses_says "$pred/index.html" ark-steps
+  rm -rf "$pred"
+
+  # That both predicates are wired into the check, one end each, plus the pair agreeing
   local lc lcss
   lc=$(mktemp -d)
   lcss="$lc/theme.css"
-  # Each rule declares something: an empty one was the fixture here until 2026-09-20, which taught
-  # the check that a class declaring nothing counts as styled.
   printf '.ark-hero{color:red}\n.ark-section{color:red}\n.ark-steps{color:red}\n.ark-ways{color:red}\n' >"$lcss"
   printf '<div class="ark-hero ark-section ark-steps ark-ways"></div>\n' >"$lc/index.html"
-  if grep -q '^ok' <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
-    ok "self-test: a page and stylesheet that agree on the landing classes pass"
-  else
-    bad "self-test: the landing-class check fails a page that does carry all four"
-  fi
-  # The four shapes this check passed until 2026-09-20, each a way a rule goes inert while its name
-  # stays in the file. The page side is last: its JSON config blob repeats every class.
-  printf '.ark-hero-image{color:red}\n.ark-section{color:red}\n.ark-steps{color:red}\n.ark-ways{color:red}\n' >"$lcss"
-  if grep -q "FAIL.*absent from $lcss: ark-hero" <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
-    ok "self-test: a renamed class does not answer for the one it was renamed from"
-  else
-    bad "self-test: .ark-hero-image passed for .ark-hero"
-  fi
-  printf '.ark-hero{ }\n.ark-section{color:red}\n.ark-steps{color:red}\n.ark-ways{color:red}\n' >"$lcss"
-  if grep -q "FAIL.*absent from $lcss: ark-hero" <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
-    ok "self-test: a landing rule that declares nothing does not count as styled"
-  else
-    bad "self-test: an empty landing rule passed as styled"
-  fi
-  printf '/* .ark-hero used to be here */\n.ark-section{color:red}\n.ark-steps{color:red}\n.ark-ways{color:red}\n' >"$lcss"
-  if grep -q "FAIL.*absent from $lcss: ark-hero" <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
-    ok "self-test: a class surviving only in a comment does not count as styled"
-  else
-    bad "self-test: a commented-out landing class passed as styled"
-  fi
-  printf '.ark-hero{color:red}\n.ark-section{color:red}\n.ark-steps{color:red}\n.ark-ways{color:red}\n' >"$lcss"
-  printf '<div class="ark-section ark-steps ark-ways"></div>\n%s\n' \
-    '<script>{"class":"ark-hero col-screen"}</script>' >"$lc/index.html"
-  if grep -q 'FAIL.*absent from the page: ark-hero' <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
-    ok "self-test: a class left only in the page's JSON blob does not answer for the markup"
-  else
-    bad "self-test: the config blob passed for a class the markup stopped writing"
-  fi
-  printf '<div class="ark-hero ark-section ark-steps ark-ways"></div>\n' >"$lc/index.html"
+  expect '^ok' 'a page and stylesheet that agree on the landing classes pass' \
+    check_landing_classes seeded "$lc" "$lcss"
   printf '<div class="ark-hero ark-section ark-steps"></div>\n' >"$lc/index.html"
-  if grep -q 'FAIL.*absent from the page: ark-ways' <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
-    ok "self-test: a landing page that stopped asking for a class is caught"
-  else
-    bad "self-test: a landing page that stopped asking for a class went undetected"
-  fi
+  expect 'FAIL.*absent from the page: ark-ways' 'a landing page that stopped asking for a class is caught' \
+    check_landing_classes seeded "$lc" "$lcss"
   printf '.ark-hero{color:red}\n.ark-section{color:red}\n.ark-steps{color:red}\n' >"$lcss"
   printf '<div class="ark-hero ark-section ark-steps ark-ways"></div>\n' >"$lc/index.html"
-  if grep -q "FAIL.*absent from $lcss: ark-ways" <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
-    ok "self-test: a stylesheet that dropped a landing class is caught"
-  else
-    bad "self-test: a stylesheet that dropped a landing class went undetected"
-  fi
+  expect "FAIL.*absent from $lcss: ark-ways" 'a stylesheet that dropped a landing class is caught' \
+    check_landing_classes seeded "$lc" "$lcss"
   rm -rf "$lc"
 
   # Both halves of check_dropdown_tags: the aside-qualified selector that caused the bug, and the
@@ -1086,188 +1004,93 @@ self_test() {
   printf '<details class="myst-admonition myst-admonition-seealso">x</details>\n' >"$dt/index.html"
   printf ':is(aside, details).myst-admonition{border-left:2px}\n' >"$dt/ok.css"
   printf 'aside.myst-admonition{border-left:2px}\n' >"$dt/bad.css"
-  if grep -q '^ok' <<<"$(check_dropdown_tags seeded "$dt" "$dt/ok.css")"; then
-    ok "self-test: a stylesheet reaching both admonition tags passes"
-  else
-    bad "self-test: the dropdown-tag check fails a stylesheet that does reach both"
-  fi
-  if grep -q 'FAIL.*qualifies an admonition' <<<"$(check_dropdown_tags seeded "$dt" "$dt/bad.css")"; then
-    ok "self-test: an aside-qualified admonition rule is caught"
-  else
-    bad "self-test: an aside-qualified admonition rule went undetected"
-  fi
+  expect '^ok' 'a stylesheet reaching both admonition tags passes' \
+    check_dropdown_tags seeded "$dt" "$dt/ok.css"
+  expect 'FAIL.*qualifies an admonition' 'an aside-qualified admonition rule is caught' \
+    check_dropdown_tags seeded "$dt" "$dt/bad.css"
   printf '<aside class="myst-admonition">x</aside>\n' >"$dt/index.html"
-  if grep -q 'FAIL.*no dropdown admonition' <<<"$(check_dropdown_tags seeded "$dt" "$dt/ok.css")"; then
-    ok "self-test: an example carrying no dropdown admonition is caught"
-  else
-    bad "self-test: a missing dropdown admonition went undetected"
-  fi
+  expect 'FAIL.*no dropdown admonition' 'an example carrying no dropdown admonition is caught' \
+    check_dropdown_tags seeded "$dt" "$dt/ok.css"
   rm -rf "$dt"
 
-  # check_blue_coverage, including the boundary that makes blue-50 and blue-500 distinct classes
+  # check_blue_coverage, including the boundary that makes blue-50 and blue-500 distinct classes.
+  # The empty rule and the commented-out one are the predicate's, seeded above.
   local bc
   bc=$(mktemp -d)
   printf '<a class="hover:text-blue-700 bg-blue-50">x</a>\n' >"$bc/index.html"
   printf '.hover\\:text-blue-700:hover{color:red}\n.bg-blue-50{background:red}\n' >"$bc/ok.css"
   printf '.hover\\:text-blue-700:hover{color:red}\n' >"$bc/bad.css"
   printf '.hover\\:text-blue-700:hover{color:red}\n.bg-blue-500{background:red}\n' >"$bc/prefix.css"
-  if grep -q '^ok' <<<"$(check_blue_coverage seeded "$bc" "$bc/ok.css")"; then
-    ok "self-test: a stylesheet covering every rendered blue passes"
-  else
-    bad "self-test: the blue-coverage check fails a stylesheet that does cover them"
-  fi
-  if grep -q 'FAIL.*bg-blue-50' <<<"$(check_blue_coverage seeded "$bc" "$bc/bad.css")"; then
-    ok "self-test: a blue the stylesheet never overrides is caught"
-  else
-    bad "self-test: an uncovered blue utility went undetected"
-  fi
-  if grep -q 'FAIL.*bg-blue-50' <<<"$(check_blue_coverage seeded "$bc" "$bc/prefix.css")"; then
-    ok "self-test: bg-blue-500 does not stand in for bg-blue-50"
-  else
-    bad "self-test: a longer class name passed for a shorter one"
-  fi
-  # A selector whose block declares nothing overrides nothing, and the old read of selector strings
-  # alone accepted it. This is the shape a half-finished edit leaves behind.
-  printf '.hover\\:text-blue-700:hover{color:red}\n.bg-blue-50{ }\n' >"$bc/empty.css"
-  if grep -q 'FAIL.*bg-blue-50' <<<"$(check_blue_coverage seeded "$bc" "$bc/empty.css")"; then
-    ok "self-test: an override whose rule declares nothing is caught"
-  else
-    bad "self-test: an empty rule passed for an override"
-  fi
-  # A comment sits in the text a selector is read out of, so a class named in one used to count
-  printf '.hover\\:text-blue-700:hover{color:red}\n/* .bg-blue-50 was here */\n.x{color:red}\n' >"$bc/comment.css"
-  if grep -q 'FAIL.*bg-blue-50' <<<"$(check_blue_coverage seeded "$bc" "$bc/comment.css")"; then
-    ok "self-test: an override surviving only in a comment is caught"
-  else
-    bad "self-test: a commented-out override passed as covering a rendered blue"
-  fi
+  expect '^ok' 'a stylesheet covering every rendered blue passes' \
+    check_blue_coverage seeded "$bc" "$bc/ok.css"
+  expect 'FAIL.*bg-blue-50' 'a blue the stylesheet never overrides is caught' \
+    check_blue_coverage seeded "$bc" "$bc/bad.css"
+  expect 'FAIL.*bg-blue-50' 'bg-blue-500 does not stand in for bg-blue-50' \
+    check_blue_coverage seeded "$bc" "$bc/prefix.css"
   printf '<a class="text-gray-500">x</a>\n' >"$bc/index.html"
-  if grep -q 'FAIL.*no blue utility' <<<"$(check_blue_coverage seeded "$bc" "$bc/ok.css")"; then
-    ok "self-test: pages rendering no blue at all are caught"
-  else
-    bad "self-test: an untested override list went undetected"
-  fi
+  expect 'FAIL.*no blue utility' 'pages rendering no blue at all are caught' \
+    check_blue_coverage seeded "$bc" "$bc/ok.css"
   rm -rf "$bc"
 
-  # check_landing_button, both halves: the fill leaving the token, and the missing button behind it
+  # check_landing_button: the fill leaving the token, and the fixture guard behind it. A hero-only
+  # page and the theme's own nav control, whose class merely ends in the word, are one case each.
   local lb
   lb=$(mktemp -d)
   printf '<a class="link button" href="/x">x</a>\n' >"$lb/index.html"
   printf 'a.button{background-color: var(--myst-color-primary)}\n' >"$lb/myst-theme.css"
-  if grep -q '^ok' <<<"$(check_landing_button seeded "$lb")"; then
-    ok "self-test: a button filled from the brand token passes"
-  else
-    bad "self-test: the button check fails a stylesheet that does use the token"
-  fi
+  expect '^ok' 'a button filled from the brand token passes' check_landing_button seeded "$lb"
   printf 'a.button{background-color: #1d4ed8}\n' >"$lb/myst-theme.css"
-  if grep -q 'FAIL.*no longer fills' <<<"$(check_landing_button seeded "$lb")"; then
-    ok "self-test: a button fill hard-coded to a literal is caught"
-  else
-    bad "self-test: a hard-coded button fill went undetected"
-  fi
+  expect 'FAIL.*no longer fills' 'a button fill hard-coded to a literal is caught' \
+    check_landing_button seeded "$lb"
   rm -f "$lb/myst-theme.css"
-  if grep -q 'FAIL.*no longer fills' <<<"$(check_landing_button seeded "$lb")"; then
-    ok "self-test: a site that never served the stylesheet is caught"
-  else
-    bad "self-test: a missing served stylesheet went undetected"
-  fi
+  expect 'FAIL.*no longer fills' 'a site that never served the stylesheet is caught' \
+    check_landing_button seeded "$lb"
   printf 'a.button{background-color: var(--myst-color-primary)}\n' >"$lb/myst-theme.css"
-  printf '<p>no button here</p>\n' >"$lb/index.html"
-  if grep -q 'FAIL.*no button outside the hero' <<<"$(check_landing_button seeded "$lb")"; then
-    ok "self-test: a landing page carrying no button is caught"
-  else
-    bad "self-test: a missing button fixture went undetected"
-  fi
-  # The two ways the old guard was satisfied without a button the rule applies to: a page whose only
-  # buttons sit in the hero, on the banner field, and the theme's own nav control, whose class
-  # merely ends in the word. Each has to read as no fixture at all.
-  printf '<div class="myst-landing-block ark-hero"><a class="link button">x</a></div>\n' >"$lb/index.html"
-  if grep -q 'FAIL.*no button outside the hero' <<<"$(check_landing_button seeded "$lb")"; then
-    ok "self-test: a page whose only buttons are in the hero is caught"
-  else
-    bad "self-test: a hero button stood in for the button outside it"
-  fi
-  printf '<button class="myst-top-nav-menu-button flex h-10">m</button>\n' >"$lb/index.html"
-  if grep -q 'FAIL.*no button outside the hero' <<<"$(check_landing_button seeded "$lb")"; then
-    ok "self-test: a class merely ending in the word button is not the fixture"
-  else
-    bad "self-test: myst-top-nav-menu-button passed for a landing button"
-  fi
-  # And the positive, which the four above cannot give: a real button outside the hero must pass,
-  # or the check would satisfy all of them by never passing at all.
+  printf '<div class="myst-landing-block ark-hero"><a class="link button">x</a></div>\n%s\n' \
+    '<button class="myst-top-nav-menu-button flex h-10">m</button>' >"$lb/index.html"
+  expect 'FAIL.*no button outside the hero' 'a hero button and a nav control are not the fixture' \
+    check_landing_button seeded "$lb"
   printf '<div class="myst-landing-block ark-hero"><a class="link button">x</a></div>\n%s\n' \
     '<div class="myst-landing-block ark-section"><a class="link whitespace-nowrap button">y</a></div>' >"$lb/index.html"
-  if grep -q '^ok' <<<"$(check_landing_button seeded "$lb")"; then
-    ok "self-test: a button in a block that is not the hero is the fixture"
-  else
-    bad "self-test: the button check rejects a page that does carry one outside the hero"
-  fi
+  expect '^ok' 'a button in a block that is not the hero is the fixture' \
+    check_landing_button seeded "$lb"
   rm -rf "$lb"
 
   # The two checks three call sites now share, including the looser match the landing copy had
   local sv
   sv=$(mktemp -d)
   mkdir -p "$sv/build"
-  if grep -q 'FAIL.*carries no palette' <<<"$(check_theme_css_served seeded "$sv")"; then
-    ok "self-test: a site serving no stylesheet is caught"
-  else
-    bad "self-test: a missing stylesheet went undetected"
-  fi
+  expect 'FAIL.*carries no palette' 'a site serving no stylesheet is caught' \
+    check_theme_css_served seeded "$sv"
   printf '.ark-blue{color:red}%*s\n' 1200 '' >"$sv/myst-theme.css"
-  if grep -q 'FAIL.*carries no palette' <<<"$(check_theme_css_served seeded "$sv")"; then
-    ok "self-test: a class named ark-blue does not pass for the palette"
-  else
-    bad "self-test: a stylesheet carrying no --ark-blue custom property passed"
-  fi
-  # The regression this check carried until 2026-09-19: a stale hash under build/ answering for the
-  # served file. It must not, whatever palette it holds.
+  expect 'FAIL.*carries no palette' 'a class named ark-blue does not pass for the palette' \
+    check_theme_css_served seeded "$sv"
+  # A stale hash under build/ answering for the served file, which this check did until 2026-09-19.
+  # The pass below holds that hash in place, so it fails if the read moves anywhere else.
   printf ':root{--ark-blue:#123}%*s\n' 1200 '' >"$sv/build/theme-abc.css"
-  if grep -q 'FAIL.*carries no palette' <<<"$(check_theme_css_served seeded "$sv")"; then
-    ok "self-test: a stale hashed stylesheet does not answer for the served one"
-  else
-    bad "self-test: a stale build/theme-*.css passed for the served stylesheet"
-  fi
-  # The three above all assert a failure, which an unconditionally failing check would satisfy.
-  # This one holds the stale hash in place and fixes only the served file, so it fails if the read
-  # moved anywhere else, and passes only on the file the page links.
+  expect 'FAIL.*carries no palette' 'a stale hashed stylesheet does not answer for the served one' \
+    check_theme_css_served seeded "$sv"
   printf ':root{--ark-blue:#0a7}%*s\n' 1200 '' >"$sv/myst-theme.css"
-  if grep -q 'ok.*serves theme.css' <<<"$(check_theme_css_served seeded "$sv")"; then
-    ok "self-test: a served stylesheet carrying the palette passes beside a stale hash"
-  else
-    bad "self-test: a valid served stylesheet was rejected, so the check cannot pass at all"
-  fi
-  if grep -q 'FAIL.*names only 0' <<<"$(check_faces_served seeded "$sv")"; then
-    ok "self-test: a site serving no faces is caught"
-  else
-    bad "self-test: a missing set of faces went undetected"
-  fi
-  # The shape the old count passed: four woff2 sitting under the build where no stylesheet names
-  # them. A reader of the page gets the system sans, and the count reported the faces served.
+  expect 'ok.*serves theme.css' 'a served stylesheet carrying the palette passes beside a stale hash' \
+    check_theme_css_served seeded "$sv"
+
+  # Faces counted three ways that must not count: none at all, four sitting in a build cache no
+  # stylesheet names, and four named at a path the site does not serve.
   mkdir -p "$sv/build/cache" "$sv/fonts"
   local face
+  expect 'FAIL.*names only 0' 'a site serving no faces is caught' check_faces_served seeded "$sv"
   for face in Regular Italic Medium Bold; do : >"$sv/build/cache/FiraSans-$face.woff2"; done
-  if grep -q 'FAIL.*names only 0' <<<"$(check_faces_served seeded "$sv")"; then
-    ok "self-test: faces the served stylesheet never names do not count as served"
-  else
-    bad "self-test: woff2 under the build passed for faces the page loads"
-  fi
-  # A sheet that names its faces at a path the site does not serve, which is the dangling-reference
-  # bug in the other direction: the name is there and the browser still paints the next face down.
+  expect 'FAIL.*names only 0' 'faces the served stylesheet never names do not count as served' \
+    check_faces_served seeded "$sv"
   { printf ':root{--ark-blue:#0a7}\n'
     for face in Regular Italic Medium Bold; do
       printf '@font-face{src:url("fonts/FiraSans-%s.woff2") format("woff2")}\n' "$face"
     done; } >"$sv/myst-theme.css"
-  if grep -q 'FAIL.*names only 0' <<<"$(check_faces_served seeded "$sv")"; then
-    ok "self-test: faces named at a path the site lacks do not count as served"
-  else
-    bad "self-test: a dangling @font-face src passed for a served face"
-  fi
+  expect 'FAIL.*names only 0' 'faces named at a path the site lacks do not count as served' \
+    check_faces_served seeded "$sv"
   for face in Regular Italic Medium Bold; do : >"$sv/fonts/FiraSans-$face.woff2"; done
-  if grep -q 'ok.*names 4 Fira Sans faces' <<<"$(check_faces_served seeded "$sv")"; then
-    ok "self-test: four faces named and served pass"
-  else
-    bad "self-test: the face check rejects a site that does serve what its stylesheet names"
-  fi
+  expect 'ok.*names 4 Fira Sans faces' 'four faces named and served pass' \
+    check_faces_served seeded "$sv"
   rm -rf "$sv"
 
   # check_css_last: theme.css beats the theme's bundle on source order alone, so the order is the
@@ -1276,18 +1099,12 @@ self_test() {
   ord=$(mktemp -d)
   printf '%s\n%s\n' '<link rel="stylesheet" href="/build/_assets/app-A.css"/>' \
     '<link rel="stylesheet" href="/myst-theme.css"/>' >"$ord/index.html"
-  if grep -q 'ok.*is the last stylesheet' <<<"$(check_css_last seeded "$ord")"; then
-    ok "self-test: a page linking the stylesheet last passes"
-  else
-    bad "self-test: the load-order check rejects a page that does link it last"
-  fi
+  expect 'ok.*is the last stylesheet' 'a page linking the stylesheet last passes' \
+    check_css_last seeded "$ord"
   printf '%s\n%s\n' '<link rel="stylesheet" href="/myst-theme.css"/>' \
     '<link rel="stylesheet" href="/build/_assets/app-A.css"/>' >"$ord/index.html"
-  if grep -q 'FAIL.*no longer wins ties on order' <<<"$(check_css_last seeded "$ord")"; then
-    ok "self-test: a stylesheet injected above the theme's bundle is caught"
-  else
-    bad "self-test: an injection point above the theme went undetected"
-  fi
+  expect 'FAIL.*no longer wins ties on order' "a stylesheet injected above the theme's bundle is caught" \
+    check_css_last seeded "$ord"
   rm -rf "$ord"
 
   # check_tokens_defined: the bundled theme declares none of these, so a usage the stylesheet does
@@ -1295,23 +1112,14 @@ self_test() {
   local tok
   tok=$(mktemp)
   printf ':root{--myst-color-primary:#1f476b}\na.button{background-color:var(--myst-color-primary)}\n' >"$tok"
-  if grep -q 'ok.*is declared in it' <<<"$(check_tokens_defined seeded "$tok")"; then
-    ok "self-test: a stylesheet declaring every token it reads passes"
-  else
-    bad "self-test: the token check rejects a stylesheet that does declare them"
-  fi
+  expect 'ok.*is declared in it' 'a stylesheet declaring every token it reads passes' \
+    check_tokens_defined seeded "$tok"
   printf 'a.button{background-color:var(--myst-color-primary)}\n' >"$tok"
-  if grep -q 'FAIL.*reads tokens nothing in it declares' <<<"$(check_tokens_defined seeded "$tok")"; then
-    ok "self-test: a token read but never declared is caught"
-  else
-    bad "self-test: an undeclared --myst-color- token went undetected"
-  fi
+  expect 'FAIL.*reads tokens nothing in it declares' 'a token read but never declared is caught' \
+    check_tokens_defined seeded "$tok"
   printf 'a.button{background-color:#1f476b}\n' >"$tok"
-  if grep -q 'FAIL.*proved nothing' <<<"$(check_tokens_defined seeded "$tok")"; then
-    ok "self-test: a stylesheet reading no token at all is caught"
-  else
-    bad "self-test: a stylesheet that dropped every token read as covered"
-  fi
+  expect 'FAIL.*proved nothing' 'a stylesheet reading no token at all is caught' \
+    check_tokens_defined seeded "$tok"
   rm -f "$tok"
 
   # check_no_aliases reads paths a glob produced, and an unmatched glob reaches it as its own text
@@ -1319,198 +1127,113 @@ self_test() {
   al=$(mktemp -d)
   printf 'project:\n  author: A Person\n' >"$al/aliased.yml"
   printf 'project:\n  authors:\n    - name: A Person\n' >"$al/clean.yml"
-  if grep -q 'FAIL.*so the alias check read nothing' <<<"$(check_no_aliases seeded "$al"/does-not-exist-*.md)"; then
-    ok "self-test: a glob that matched no file is caught"
-  else
-    bad "self-test: an unmatched glob passed as files naming everything correctly"
-  fi
-  if grep -q 'FAIL.*aliases used' <<<"$(check_no_aliases seeded "$al/aliased.yml")"; then
-    ok "self-test: a MyST alias in a config is caught"
-  else
-    bad "self-test: a MyST alias went undetected"
-  fi
-  if grep -q '^ok' <<<"$(check_no_aliases seeded "$al/clean.yml")"; then
-    ok "self-test: a config using the canonical names passes"
-  else
-    bad "self-test: the alias check fails a config that uses the canonical names"
-  fi
+  expect 'FAIL.*so the alias check read nothing' 'a glob that matched no file is caught' \
+    check_no_aliases seeded "$al"/does-not-exist-*.md
+  expect 'FAIL.*aliases used' 'a MyST alias in a config is caught' \
+    check_no_aliases seeded "$al/aliased.yml"
+  expect '^ok' 'a config using the canonical names passes' check_no_aliases seeded "$al/clean.yml"
   rm -rf "$al"
 
   # The README documenting a key the config no longer carries, which is how these two drift
   local conf
   conf=$(mktemp)
   printf 'site:\n  template: book-theme\n' >"$conf"
-  out=$(check_documented_config seeded "$ROOT/README.md" "$conf")
-  if grep -q 'FAIL.*README shows' <<<"$out"; then
-    ok "self-test: a README documenting a key the config lacks is caught"
-  else
-    bad "self-test: a README documenting a key the config lacks went undetected"
-  fi
+  expect 'FAIL.*README shows' 'a README documenting a key the config lacks is caught' \
+    check_documented_config seeded "$ROOT/README.md" "$conf"
   rm -f "$conf"
 
-  # A machine that never had Fira Math installed, which is what scripts/fonts.sh install prevents
-  out=$(check_family seeded "$(printf 'Fira Sans\nFira Mono\nDejaVu Sans Mono\n')" "Fira Math")
-  if grep -q 'FAIL.*does not find Fira Math' <<<"$out"; then
-    ok "self-test: a missing font family is caught"
-  else
-    bad "self-test: a missing font family went undetected"
-  fi
-
-  # A font directory holding the release twice, which is what a mixed ttf and otf install looks like
-  out=$(check_weight_files seeded "$(printf 'Fira Sans\n  |- /a/FiraSans-Medium.ttf\n      Style: Normal, Weight: 500, Stretch: 100%%\n  |- /b/FiraSans-Medium.otf\n      Style: Normal, Weight: 500, Stretch: 100%%\n')" "Fira Sans" Normal 500)
-  if grep -q 'FAIL.*2 files offer' <<<"$out"; then
-    ok "self-test: two files offering one weight is caught"
-  else
-    bad "self-test: two files offering one weight went undetected"
-  fi
-
-  # Fira has no Black, so it stands for any weight that resolved to a file the template lacks
-  out=$(check_font seeded "$PAPER" FiraSans-Black)
-  if grep -q 'FAIL.*not embedded' <<<"$out"; then
-    ok "self-test: a weight that resolved to another font file is caught"
-  else
-    bad "self-test: a weight that resolved to another font file went undetected"
-  fi
+  # A machine that never had Fira Math installed, then a font directory holding one release twice,
+  # which is what a mixed ttf and otf install looks like. Fira has no Black, so that weight stands
+  # for any that resolved to a file the template lacks.
+  expect 'FAIL.*does not find Fira Math' 'a missing font family is caught' \
+    check_family seeded "$(printf 'Fira Sans\nFira Mono\nDejaVu Sans Mono\n')" "Fira Math"
+  expect 'FAIL.*2 files offer' 'two files offering one weight is caught' check_weight_files seeded \
+    "$(printf 'Fira Sans\n  |- /a/FiraSans-Medium.ttf\n      Style: Normal, Weight: 500, Stretch: 100%%\n  |- /b/FiraSans-Medium.otf\n      Style: Normal, Weight: 500, Stretch: 100%%\n')" \
+    "Fira Sans" Normal 500
+  expect 'FAIL.*not embedded' 'a weight that resolved to another font file is caught' \
+    check_font seeded "$PAPER" FiraSans-Black
 
   # A log carrying a warning about a file of this template, beside the packages' own noise
   local log
   log=$(mktemp)
   printf 'warning: unknown variable\n  ┌─ econark.typ:12:3\nwarning: no whitespace\n  ┌─ @preview/scienceicons:0.1.0/index.typ:2:20\n' >"$log"
-  out=$(check_warnings seeded "$log")
-  if grep -q 'FAIL.*name files of this template' <<<"$out"; then
-    ok "self-test: a build warning about this template is caught"
-  else
-    bad "self-test: a build warning about this template went undetected"
-  fi
+  expect 'FAIL.*name files of this template' 'a build warning about this template is caught' \
+    check_warnings seeded "$log"
   printf 'warning: no whitespace\n  ┌─ @preview/scienceicons:0.1.0/index.typ:2:20\n' >"$log"
-  out=$(check_warnings seeded "$log")
-  if grep -q 'ok.*imported packages' <<<"$out"; then
-    ok "self-test: a package's own warnings pass"
-  else
-    bad "self-test: a package's own warnings failed the run"
-  fi
-  # A build that warned about nothing at all, which is the case the counting used to get wrong.
-  # Seeded with real progress output, never an empty file: a build that writes nothing is broken,
-  # and the guard below now says so rather than counting zero warnings on it.
+  expect 'ok.*imported packages' "a package's own warnings pass" check_warnings seeded "$log"
+  # Real progress output, never an empty file: a build writing nothing is broken, and the guard
+  # below says so rather than counting zero warnings on it.
   printf '📖 Built econark.md in 412 ms.\n🖨 Exported paper.pdf in 1.2 s.\n' >"$log"
-  out=$(check_warnings seeded "$log")
-  if grep -q 'ok.*(0 from imported packages)' <<<"$out"; then
-    ok "self-test: a build with no warnings passes and counts none"
-  else
-    bad "self-test: a build with no warnings was miscounted: $out"
-  fi
-  # An empty log is what a build that died before writing leaves, and it reads as a clean build to
-  # a bare grep. This is the guard that stops a dead build from going green.
+  expect 'ok.*\(0 from imported packages\)' 'a build with no warnings passes and counts none' \
+    check_warnings seeded "$log"
+  # An empty log is what a build that died before writing leaves, and both log checks have to say so
   : >"$log"
-  if grep -q 'FAIL.*proved nothing' <<<"$(check_warnings seeded "$log")" &&
-    grep -q 'FAIL.*proved nothing' <<<"$(check_myst_errors seeded "$log")"; then
-    ok "self-test: an empty build log is caught by both log checks"
-  else
-    bad "self-test: an empty build log passed as a clean build"
-  fi
+  expect 'FAIL.*proved nothing' 'an empty build log is caught by the warning check' \
+    check_warnings seeded "$log"
+  expect 'FAIL.*proved nothing' 'an empty build log is caught by the error check' \
+    check_myst_errors seeded "$log"
   printf '\342\233\224 errored: dropped footnote\ntruncated: \342\233\n' >"$log"
-  if grep -q 'FAIL.*reported 1 errors' <<<"$(check_myst_errors seeded "$log")"; then
-    ok "self-test: an error line is still read out of a log holding invalid UTF-8"
-  else
-    bad "self-test: invalid UTF-8 in the log hid a MyST error from the check"
-  fi
+  expect 'FAIL.*reported 1 errors' 'an error line is still read out of a log holding invalid UTF-8' \
+    check_myst_errors seeded "$log"
   rm -f "$log"
 
-  # A word in the table has no rule beside it, so the colour check must report one missing
-  out=$(check_rule seeded "$PAPER" 'Discount' "$ARK_BLUE")
-  if grep -q 'FAIL.*off palette' <<<"$out"; then
-    ok "self-test: a missing rule is caught"
-  else
-    bad "self-test: a missing rule went undetected"
-  fi
+  # A word in the table carries no rule beside it, and a word in the body carries the body's ink
+  expect 'FAIL.*off palette' 'a missing rule is caught' check_rule seeded "$PAPER" 'Discount' "$ARK_BLUE"
+  expect 'FAIL.*unbranded' 'an unbranded word is caught' check_ink seeded "$PAPER" 'Discount' "$ARK_BLUE"
 
-  # A word in the body carries the body's ink, so asking for the blue must report it unbranded
-  out=$(check_ink seeded "$PAPER" 'Discount' "$ARK_BLUE")
-  if grep -q 'FAIL.*unbranded' <<<"$out"; then
-    ok "self-test: an unbranded word is caught"
-  else
-    bad "self-test: an unbranded word went undetected"
-  fi
-
+  # check_site is a composite, so its empty-directory case has to report every assertion in it.
+  # One missing line here means one assertion that passes on a site serving nothing.
+  local want
   out=$(check_site seeded "$(mktemp -d)")
-  if grep -q 'FAIL.*unstyled' <<<"$out" && grep -q 'FAIL.*no banner' <<<"$out" &&
-    grep -q 'FAIL.*rule is inert' <<<"$out" && grep -q 'FAIL.*four-colour rule is missing' <<<"$out" &&
-    grep -q 'FAIL.*vanishes at night' <<<"$out" && grep -q "FAIL.*MyST's own mark" <<<"$out" &&
-    grep -q 'FAIL.*soften the theme' <<<"$out" && grep -q 'FAIL.*cannot reach the PDF' <<<"$out" &&
-    grep -q 'FAIL.*system sans' <<<"$out" && grep -q 'FAIL.*system math font' <<<"$out" &&
-    grep -q 'FAIL.*Plain Language Summary again' <<<"$out"; then
-    ok "self-test: a site without the stylesheet, the banner, the logos or the classes it styles is caught"
-  else
-    bad "self-test: a site missing the stylesheet, the banner, the logos or its classes went undetected"
-  fi
+  for want in unstyled 'no banner' 'rule is inert' 'four-colour rule is missing' \
+    'vanishes at night' "MyST's own mark" 'soften the theme' 'cannot reach the PDF' \
+    'system sans' 'system math font' 'Plain Language Summary again'; do
+    grep -q "FAIL.*$want" <<<"$out" ||
+      bad "self-test: a site serving nothing did not report '$want'"
+  done
+  ok "self-test: a site serving no stylesheet, banner, logo or class reports all eleven"
 
-  # The banner that matters here is the one that is present and carries the palette, since that is
-  # what every other banner check accepts. Only the ratio is wrong, which is the regression a
-  # regenerated file could reintroduce without changing a colour or a coordinate.
+  # The banner present and carrying the palette, which every other banner check accepts, with only
+  # the ratio wrong: the regression a regenerated file reintroduces without moving a coordinate.
   local ratiodir
   ratiodir=$(mktemp -d)
   sed 's/ preserveAspectRatio="none"//' "$ROOT/banner.svg" >"$ratiodir/banner-seeded.svg"
-  out=$(check_site seeded "$ratiodir")
-  if grep -q 'FAIL.*letterbox rather than fill' <<<"$out"; then
-    ok "self-test: a banner that preserves its ratio is caught"
-  else
-    bad "self-test: a banner that preserves its ratio went undetected"
-  fi
+  expect 'FAIL.*letterbox rather than fill' 'a banner that preserves its ratio is caught' \
+    check_site seeded "$ratiodir"
+  rm -rf "$ratiodir"
 
   # A bundle left behind by an edit to the plugin source, which is the way this one goes wrong
   local stale
   stale=$(mktemp)
   printf 'export default { name: "stale" };\n' >"$stale"
-  out=$(check_bundle seeded "$stale")
-  if grep -q 'FAIL.*is stale' <<<"$out"; then
-    ok "self-test: a bundle that no longer matches the plugin source is caught"
-  else
-    bad "self-test: a bundle that no longer matches the plugin source went undetected"
-  fi
+  expect 'FAIL.*is stale' 'a bundle that no longer matches the plugin source is caught' \
+    check_bundle seeded "$stale"
   rm -f "$stale"
 
-  # The case the MathML check exists for: a site whose equations came out of KaTeX after all
-  local katexsite
-  katexsite=$(mktemp -d)
+  # Equations that came out of KaTeX after all, then a theme that renamed the article class while
+  # still serving the stylesheet, which is why that match has to be an exact token
+  local sites
+  sites=$(mktemp -d)
+  mkdir -p "$sites/katex" "$sites/renamed"
   printf '<article class="article"><span class="katex"><span class="katex-html">v(m)</span></span></article>\n' \
-    >"$katexsite/index.html"
-  out=$(check_site seeded "$katexsite")
-  if grep -q 'FAIL.*not in Fira Math' <<<"$out"; then
-    ok "self-test: a site whose equations stayed in KaTeX is caught"
-  else
-    bad "self-test: a site whose equations stayed in KaTeX went undetected"
-  fi
-  rm -rf "$katexsite"
-
-  # A theme that renamed the class would still serve the stylesheet, so this check must be exact
-  local scratchsite
-  scratchsite=$(mktemp -d)
-  printf '<article class="article-grid subgrid-gap">no article token</article>\n' >"$scratchsite/index.html"
-  cp "$ROOT/theme.css" "$scratchsite/theme-0.css"
-  cp "$ROOT/banner.svg" "$scratchsite/banner-0.svg"
-  out=$(check_site seeded "$scratchsite")
-  if grep -q 'FAIL.*rule is inert' <<<"$out"; then
-    ok "self-test: a theme that dropped the article class is caught"
-  else
-    bad "self-test: a theme that dropped the article class went undetected"
-  fi
-  rm -rf "$scratchsite"
+    >"$sites/katex/index.html"
+  expect 'FAIL.*not in Fira Math' 'a site whose equations stayed in KaTeX is caught' \
+    check_site seeded "$sites/katex"
+  printf '<article class="article-grid subgrid-gap">no article token</article>\n' >"$sites/renamed/index.html"
+  cp "$ROOT/theme.css" "$sites/renamed/theme-0.css"
+  cp "$ROOT/banner.svg" "$sites/renamed/banner-0.svg"
+  expect 'FAIL.*rule is inert' 'a theme that dropped the article class is caught' \
+    check_site seeded "$sites/renamed"
+  rm -rf "$sites"
 
   # A kind list short of amsthm's plain style, which is what a hand edit to the template leaves
   local ik
   ik=$(mktemp)
   printf '#let italicKinds = ("theorem", "lemma")\n' >"$ik"
-  if grep -q "FAIL.*not amsthm's plain style" <<<"$(check_italic_kinds seeded "$ik")"; then
-    ok "self-test: an italic kind list short of amsthm's plain style is caught"
-  else
-    bad "self-test: a wrong italicKinds list went undetected"
-  fi
+  expect "FAIL.*not amsthm's plain style" "an italic kind list short of amsthm's plain style is caught" \
+    check_italic_kinds seeded "$ik"
   printf '#let italicKinds = ("theorem", "lemma", "proposition", "corollary", "conjecture", "criterion")\n' >"$ik"
-  if grep -q '^ok' <<<"$(check_italic_kinds seeded "$ik")"; then
-    ok "self-test: the amsthm plain-style kind list passes"
-  else
-    bad "self-test: the italic-kinds check rejects the list it is written for"
-  fi
+  expect '^ok' 'the amsthm plain-style kind list passes' check_italic_kinds seeded "$ik"
   rm -f "$ik"
 
   # A check shipped with no fixture proves nothing, which is how every silent pass here arrived.
