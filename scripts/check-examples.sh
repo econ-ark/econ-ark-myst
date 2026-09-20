@@ -170,8 +170,9 @@ check_same_page() {
 # this repository is ours to fix, so those fail the run and the rest are counted.
 check_warnings() {
   local name=$1 log=$2 locations ours theirs
-  # -a and the size guard together: a log that is missing, empty, or holds one truncated emoji
-  # otherwise reads exactly like a clean build, and both are what a broken build actually leaves.
+  # A missing or empty log otherwise reads exactly like a clean build, and an empty one is what a
+  # build that died before writing leaves. -a keeps the lines readable if the log ever goes binary,
+  # where grep reports "Binary file matches" instead of them.
   if [ ! -s "$log" ]; then
     bad "$name: the build log is missing or empty, so this check proved nothing"
     return
@@ -199,8 +200,8 @@ check_myst_errors() {
     bad "$name: the build log is missing or empty, so this check proved nothing"
     return
   fi
-  # -a, because one truncated emoji earlier in the log makes grep call the file binary and report
-  # no match on a line that is there. A chopped progress line is enough to do it.
+  # -a so a log holding one truncated emoji still yields the matching lines themselves rather than
+  # "Binary file matches", which would count as one error and print nothing useful.
   errors=$(grep -aF '⛔' "$log")
   if [ -z "$errors" ]; then
     ok "$name: MyST reports no errors of its own"
@@ -1079,8 +1080,8 @@ self_test() {
   else
     bad "self-test: a build with no warnings was miscounted: $out"
   fi
-  # An empty log and one holding a truncated emoji are what a build that died actually leaves, and
-  # both read as a clean build to a bare grep. These two are the guard finding 1 depends on.
+  # An empty log is what a build that died before writing leaves, and it reads as a clean build to
+  # a bare grep. This is the guard that stops a dead build from going green.
   : >"$log"
   if grep -q 'FAIL.*proved nothing' <<<"$(check_warnings seeded "$log")" &&
     grep -q 'FAIL.*proved nothing' <<<"$(check_myst_errors seeded "$log")"; then
@@ -1090,9 +1091,9 @@ self_test() {
   fi
   printf '\342\233\224 errored: dropped footnote\ntruncated: \342\233\n' >"$log"
   if grep -q 'FAIL.*reported 1 errors' <<<"$(check_myst_errors seeded "$log")"; then
-    ok "self-test: an error line survives a truncated emoji later in the log"
+    ok "self-test: an error line is still read out of a log holding invalid UTF-8"
   else
-    bad "self-test: one invalid UTF-8 sequence hid a MyST error from the check"
+    bad "self-test: invalid UTF-8 in the log hid a MyST error from the check"
   fi
   rm -f "$log"
 
