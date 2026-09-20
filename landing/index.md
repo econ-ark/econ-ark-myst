@@ -46,7 +46,7 @@ is given. Symbols on the page now read the same as symbols in a sentence.
 
 ## Use it
 
-Four steps, in the order you take them.
+Four steps, in the order you take them. {button}`Read the guide <https://mystmd.org/guide>`
 
 ::::{grid} 1 1 2 2
 :class: ark-steps

@@ -63,6 +63,9 @@ project:
     - file: examples/paper.md
     - file: examples/tall-table.md
     - file: examples/minimal.md
+    # No exports, so the Typst build skips it. It carries the directives that have no Typst
+    # conversion, which the site styles and a PDF drops.
+    - file: examples/site-only.md
   authors:
     - name: Jane Economist
       email: jane@example.org

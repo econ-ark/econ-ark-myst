@@ -118,6 +118,27 @@ Orange carries `attention`, `caution` and this kind.
 Pink carries this kind and `error`.
 :::
 
+:::{seealso} A kind that folds away
+:class: dropdown
+A dropdown admonition renders as `details` rather than `aside`, so a selector qualified by the tag
+reaches every other kind and silently misses this one.
+:::
+
+:::{exercise} An exercise
+:label: ex-one
+Exercises carry the third curve, since one asks the reader to act rather than to note.
+:::
+
+::::{tab-set}
+:::{tab-item} First
+The open tab takes the brand blue. The row rule under the set stays grey.
+:::
+:::{tab-item} Second
+The closed one stays grey until it is opened.
+:::
+::::
+
+
 :::{figure}
 :label: fig-solution
 
