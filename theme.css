@@ -1,33 +1,14 @@
-/*
- * The website's half of the Econ-ARK house style; econark.typ holds the PDF's half.
- * Same palette, the same Fira family throughout, the same tables and captions, and the four
- * logo curves as the rule that closes the front matter. The faces are served from fonts/
- * beside this file, which a MyST site copies over by naming fonts under the project's
- * static_files. A site that omits them falls back to the system sans, so the hierarchy
- * survives even where the typefaces do not.
- *
- * Point a MyST site at this file from myst.yml, under either theme:
- *
- *   site:
- *     template: article-theme
- *     options:
- *       style: theme.css
- *
- * The two themes wrap the paper in different classes, so the rules below reach the text
- * through article.article, which article-theme and book-theme both write.
- */
+/* The website's half of the Econ-ARK house style; econark.typ holds the PDF's half, sharing the
+ * palette, Fira family, tables, captions, and the four-curve rule. Fonts live in fonts/ beside this
+ * file, named under static_files in myst.yml with a system-sans fallback; both themes reach the text through article.article. */
 
-/*
- * Temml's own rules, which draw the MathML parts Chromium leaves undrawn: without them an
- * \underline loses its rule. First, so everything below overrides it; an @import must lead anyway.
- */
+/* Temml's own rules draw the MathML parts Chromium leaves undrawn; without them an \underline loses
+ * its rule. Placed first so everything below can override it, since an @import must lead anyway. */
 @import url("fonts/temml.css");
 
-/*
- * The PDF's own typefaces, subset to Latin and served beside this file (Fira Math whole: see
+/* The PDF's own typefaces, subset to Latin and served beside this file (Fira Math whole: see
  * scripts/fonts.sh). Ask only for a weight declared here, as econark.typ does: CSS answers an
- * undeclared weight with a neighbour, so 600 would silently get Bold. Emphasis is 500, bold 700.
- */
+ * undeclared weight with a neighbour, so 600 would silently get Bold. Emphasis is 500, bold 700. */
 @font-face {
   font-family: "Fira Math";
   src: url("fonts/FiraMath-Regular.woff2") format("woff2");
@@ -132,6 +113,21 @@
   --ark-math: "Fira Math", math;
 }
 
+/* myst-theme recolours its chrome through --myst-color-* vars (#843, 2026-06-18). INERT on what we
+ * ship: mystmd 1.10.1's book-theme predates it (1.3.1, zero --myst-color- in the built app-*.css),
+ * so the rules below read the variable from here instead. */
+:root {
+  --myst-color-link: var(--ark-blue);
+  --myst-color-link-hover: var(--ark-blue);
+  --myst-color-link-underline: var(--ark-rule);
+  --myst-color-focus-ring: var(--ark-blue);
+  --myst-color-focus-outline: var(--ark-blue);
+  /* The theme sets button text to white and the fill to this, so the fill has to carry white.
+     --ark-banner-field does in both themes; --ark-blue turns light under html.dark and would not */
+  --myst-color-primary: var(--ark-banner-field);
+  --myst-color-primary-hover: #163550;
+}
+
 html.dark {
   --ark-blue: #8ab4d8;
   --ark-grey: #a9a5b3;
@@ -140,11 +136,9 @@ html.dark {
   --ark-ink: #e7e9ec;
 }
 
-/*
- * Both themes paint their surfaces white: the page, the header bars and title card at four
- * fifths opacity, the outline panel at nineteen twentieths. Softening the page alone leaves those
- * floating above it, so each is caught at its class, and the checks watch that the class survives.
- */
+/* Both themes paint their surfaces white: the page, header bars and title card at four fifths
+ * opacity, the outline panel at nineteen twentieths. Softening the page alone leaves those floating
+ * above it, so each is caught at its own class, which the checks watch for survival. */
 html:not(.dark) body,
 html:not(.dark) .bg-white,
 html:not(.dark) dialog {
@@ -164,37 +158,17 @@ html:not(.dark) .myst-search-bar {
   background-color: var(--ark-tint);
 }
 
-/*
- * article-theme paints the project banner as a background on a box sized `w-full h-full` of the
- * article header, so the space is whatever the header's own content needs. A narrow screen wraps
- * the title and stacks the metadata until that box turns portrait, taller than it is wide, and a
- * landscape banner has to answer for a shape it was never drawn at.
- *
- * Stretching the artwork to the box is the answer, because of what the artwork says. The four
- * curves all leave one point at the lower left and open out to the right edge, so the fan runs
- * corner to corner under any scale and only its steepness changes. banner.svg carries
- * preserveAspectRatio="none" for this. Holding the ratio would letterbox the fan into a strip and
- * leave the rest of a tall header as bare field colour.
- *
- * The colour stays as a fallback for the moments before the image paints. It is the literal from
- * banner.svg, never --ark-blue, which switches to a light blue under html.dark while the artwork's
- * own field stays put.
- *
- * The ancestor class qualifies the selector because the theme puts Tailwind's own `bg-cover` on
- * this div. A single class ties that utility and loses on source order, while two carry it. Naming
- * the `header` element as well would add nothing and would bind the rule to a tag mystmd is free to
- * change, which would drop the override with nothing to catch it.
- */
+/* preserveAspectRatio="none" on purpose: the four curves fan from the lower left to the right edge,
+ * so the artwork fills any shape, where holding ratio would letterbox it. The fallback is
+ * banner.svg's own literal, since --ark-blue flips under html.dark. The ancestor beats bg-cover. */
 .myst-article-header .myst-article-header-background {
   background-color: var(--ark-banner-field);
   background-size: 100% 100%;
 }
 
-/*
- * article-theme shows no site logo beside a paper, so the paper carries the mark the PDF prints
- * at the top of its margin: the wide lockup at 528px, embedded here so no file can go missing,
- * standing over the title because the margin is too narrow at most widths. White wordmark at night.
- */
+/* article-theme shows no site logo beside a paper, so the paper carries the mark the PDF prints
+ * at the top of its margin: the wide lockup at 528px, embedded so no file can go missing, standing
+ * over the title because the margin is too narrow at most widths. White wordmark at night. */
 .myst-article-header-fm::before {
   content: "";
   display: block;
@@ -210,11 +184,9 @@ html.dark .myst-article-header-fm::before {
 }
 
 
-/*
- * The site title and its contents list stay inside the sidebar column. A machine whose
- * fonts are wider than the theme expects otherwise runs the title over the paper beside
- * it, which is what a reader sees when the site's fonts are missing.
- */
+/* The site title and its contents list stay inside the sidebar column. A machine whose fonts are
+ * wider than the theme expects otherwise runs the title over the paper beside it, which is what a
+ * reader sees when the site's fonts are missing. */
 .myst-primary-sidebar-nav,
 .myst-primary-sidebar-toc,
 .myst-toc {
@@ -222,22 +194,18 @@ html.dark .myst-article-header-fm::before {
   max-width: 100%;
 }
 
-/*
- * book-theme shows its own "Made with MyST" lockup, a mark beside a line of text, unless the site
- * supplies a primary_sidebar_footer part. A site that supplies one gets raw markdown where that
- * lockup was, so a 256px mark and body-sized text. This gives the part the badge's proportions
- * back.
- */
+/* book-theme shows its own "Made with MyST" lockup unless the site supplies a
+ * primary_sidebar_footer part; supplying one gets raw markdown in its place, a 256px mark and
+ * body-sized text. This rule restores the part to the badge's own proportions. */
 .myst-primary-sidebar-footer p {
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.35;
 }
 
-/* The mark and the words read as one lockup rather than as a phrase with a link in it, which is
- * how the badge this replaces was set. The underline goes, and so does the arrow MyST appends to
- * an off-site link: a footer lockup is understood to leave the site, and the badge it stands in
- * for carried no arrow either. */
+/* The mark and words read as one lockup, matching how the badge this replaces was set. The
+ * underline and MyST's off-site arrow both go: a footer lockup is understood to leave the site,
+ * and the badge it stands in for carried no arrow either. */
 .myst-primary-sidebar-footer p > a {
   text-decoration: none;
 }
@@ -246,13 +214,9 @@ html.dark .myst-article-header-fm::before {
   display: none;
 }
 
-/* The mark arrives inside a picture, itself inside the span the link wraps its text in, so a block
- * picture puts the words on their own line. Inline-block keeps the lockup on one.
- *
- * The size needs both selectors. The theme caps an inline image with
- * `.article p > a img { max-height: 1.2em }`, three elements and a class, which outranks one class
- * and one element however late this sheet loads and flattened the square favicon to 18 by 15. The
- * footer carries `article` as well, so two classes take it back. */
+/* The mark sits in a picture inside the link's span; inline-block keeps it on one line, where a
+ * block picture would drop the words to their own. Both selectors are needed: the theme's
+ * `.article p > a img` outranks one class and one element, and had flattened the favicon. */
 .myst-primary-sidebar-footer picture,
 .article.myst-primary-sidebar-footer img {
   display: inline-block;
@@ -265,11 +229,8 @@ html.dark .myst-article-header-fm::before {
   border-radius: 3px;
 }
 
-/*
- * The sidebar runs to the line where the paper's text begins, so a column wider than the
- * space left for it lands on the paper. Pin it to the margin band instead, which ends one
- * column earlier.
- */
+/* The sidebar runs to the line where the paper's text begins, so a column wider than the space left
+ * for it lands on the paper; pin it to the margin band instead, which ends one column earlier. */
 @media (min-width: 1280px) {
   .myst-primary-sidebar-pointer {
     grid-column: page-start / body-outset-start;
@@ -282,23 +243,204 @@ html.dark .myst-article-header-fm::before {
   overflow-wrap: anywhere;
 }
 
-/*
- * The paper's own front matter takes the brand sans. The site's navigation, sidebar and
- * search keep the theme's typeface: those columns are sized for it, and a wider fallback
- * on a reader's machine runs the site title into the paper beside it.
- */
-.myst-fm-block-header,
-.myst-fm-authors-grid,
-.myst-fm-block-date-doi,
+/* The theme's accent reaches a page through Tailwind utilities, so each override mirrors the built
+ * selector exactly and wins on source order; check_blue_coverage derives the list from the pages.
+ * Blue alone: the theme's greys carry structure, and a brand blue on a grey rule would mislead. */
+.text-blue-400,
+.text-blue-500,
+.text-blue-600,
+.hover\:text-blue-400:hover,
+.hover\:text-blue-500:hover,
+.hover\:text-blue-600:hover,
+.hover\:text-blue-700:hover,
+.dark\:hover\:text-blue-400:hover:is(.dark *) {
+  color: var(--ark-blue);
+}
+
+/* Blue-500 fills a solid surface; blue-50 is a tinted strip behind text, so it takes the tint
+ * instead. Painting both with the accent would put white-on-navy where the theme wanted a wash. */
+.bg-blue-500 {
+  background-color: var(--ark-blue);
+}
+
+/* Pale fills: admonition, exercise and proof headers, and book-theme's active contents link. The
+ * header rules further down clear the first three at two classes and outrank this, so those three
+ * stand as the backstop that keeps a theme blue off them if one of those rules is ever dropped. */
+.bg-blue-50,
+.bg-blue-50\/80,
+.bg-blue-300\/30 {
+  background-color: var(--ark-tint);
+}
+
+/* All four sides only where the theme set all four. The directional utilities pair with a grey box
+ * on the same element, so a shorthand here would repaint the three sides the theme left grey. */
+.border-blue-500,
+.hover\:border-blue-500:hover,
+.hover\:border-blue-600:hover,
+.dark\:hover\:border-blue-400:hover:is(.dark *),
+.dark\:hover\:border-blue-500:hover:is(.dark *) {
+  border-color: var(--ark-blue);
+}
+
+.dark\:border-blue-500\/60:is(.dark *) {
+  border-color: color-mix(in srgb, var(--ark-blue) 60%, transparent);
+}
+
+.border-b-blue-600 {
+  border-bottom-color: var(--ark-blue);
+}
+
+.border-l-blue-400,
+.border-l-blue-500 {
+  border-left-color: var(--ark-blue);
+}
+
+.ring-blue-500,
+.hover\:ring-blue-500:hover,
+.dark\:hover\:ring-blue-500:hover:is(.dark *) {
+  --tw-ring-color: var(--ark-blue);
+}
+
+.outline-blue-200 {
+  outline-color: var(--ark-blue);
+}
+
+/* Every face on the page is one of the three the PDF sets. `font-system` names a monospace stack
+ * (Menlo, Consolas, monospace) and carries Jupyter stream and error output, so it belongs here. */
+.font-mono,
+.font-system,
+code,
+pre,
+.myst-code-body,
+.sphinx-desc-signature,
+p[data-line-number].line::before {
+  font-family: var(--ark-mono);
+}
+
+/* The contents panel marks the section being read with a left rule and a tinted strip, both from
+ * the theme's own blue. The rule takes brand blue and the strip the house tint, so the panel
+ * agrees with the four-colour rule under the front matter and introduces no fifth blue. */
+.myst-outline .myst-outline-header {
+  font-family: var(--ark-sans);
+  letter-spacing: 0.06em;
+  color: var(--ark-grey);
+}
+
+.myst-outline .myst-outline-item {
+  border-left-color: var(--ark-rule);
+}
+
+.myst-outline .myst-outline-item-active {
+  border-left-color: var(--ark-blue);
+  background-color: var(--ark-tint);
+}
+
+.myst-outline .myst-outline-item-active a {
+  color: var(--ark-blue);
+}
+
+/* Keywords sit under the front matter, where the label is the only part a reader scans for, so it
+ * takes the blue and the terms stay in body ink. */
+.myst-keywords {
+  font-family: var(--ark-sans);
+  font-size: 0.9rem;
+}
+
+.myst-keywords-label {
+  color: var(--ark-blue);
+}
+
+.myst-keywords-item {
+  color: var(--ark-grey);
+}
+
+/* The previous and next links close every page of a book. The theme gives each a rounded box with a
+ * shadow, the one filled-box idiom this stylesheet drops everywhere else, since a filled box on
+ * these pages means code; they take the flat card instead, and brand blue on hover. */
+.myst-footer-links .myst-footer-link {
+  border-color: var(--ark-rule);
+  border-radius: 2px;
+  box-shadow: none;
+  font-family: var(--ark-sans);
+}
+
+.myst-footer-links .myst-footer-link:hover {
+  border-color: var(--ark-blue);
+  color: var(--ark-blue);
+  box-shadow: none;
+}
+
+.myst-footer-links .myst-footer-link-group {
+  color: var(--ark-grey);
+}
+
+/* Tabs, where the theme underlines the open one in its own blue. The set keeps its row rule in
+ * house grey so the brand blue marks one thing only: which tab is open. */
+article.article .myst-tab-set-row {
+  border-bottom-color: var(--ark-rule);
+}
+
+article.article .myst-tab-item-header {
+  font-family: var(--ark-sans);
+  color: var(--ark-grey);
+}
+
+article.article .myst-tab-item-header-active {
+  color: var(--ark-blue);
+  border-bottom-color: var(--ark-blue);
+}
+
+/* A dropdown and an exercise are the two remaining filled boxes, and both take the rule an
+ * admonition takes. The exercise keeps a colour of its own, since it asks the reader to do
+ * something rather than to note something. */
+article.article :is(details, aside).myst-dropdown,
+article.article :is(details, aside).myst-exercise {
+  background: transparent;
+  border: 0;
+  border-left: 2px solid var(--ark-blue);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+article.article :is(details, aside).myst-exercise {
+  border-left-color: var(--ark-curve-3);
+}
+
+article.article .myst-dropdown-header,
+article.article .myst-exercise-header,
+article.article .myst-exercise-title {
+  background: transparent;
+  border: 0;
+  font-family: var(--ark-sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--ark-blue);
+}
+
+article.article .myst-exercise-title {
+  color: var(--ark-curve-3);
+}
+
+/* A margin note takes the label treatment alone; its fill is left to the theme, which gives one to
+ * the `topic` kind and none to a margin note. The two cannot be told apart here: aside.tsx writes
+ * 'myst-aside-${kind}' in single quotes, so every aside carries that literal string as a class. */
+article.article .myst-aside-title {
+  font-family: var(--ark-sans);
+  color: var(--ark-blue);
+}
+
+/* Every face on the page is the house sans, chrome included. This once spared the nav, sidebar and
+ * search box, lest a wider font run the site title onto the paper; the columns above now carry
+ * min-width: 0 for exactly that, so the exemption had outlived itself. Set at the root. */
+body,
+[class*="myst-fm-"],
 .myst-supporting-documents {
   font-family: var(--ark-sans);
 }
 
-/*
- * Reading text. Text, tables, equations and code share the theme's column, as they share the
- * text block of the PDF. Fira Sans reads large for its size, so 1.05rem sets that column near
- * the 80 characters the paper holds; a sans also needs less leading than the serif it replaced.
- */
+/* Reading text: text, tables, equations and code share the theme's column, as they share the text
+ * block of the PDF. Fira Sans reads large for its size, so 1.05rem sets that column near the 80
+ * characters the paper holds; a sans also needs less leading than the serif it replaced. */
 article.article {
   font-family: var(--ark-serif);
   font-size: 1.05rem;
@@ -306,11 +448,9 @@ article.article {
   color: var(--ark-ink);
 }
 
-/*
- * Equations, in the companion face to the body text. Only MathML reaches this, which is what
+/* Equations, in the companion face to the body text. Only MathML reaches this, which is what
  * plugins/fira-math.mjs produces; an equation it could not parse stays KaTeX and is left alone.
- * Temml sets on the small side of the surrounding text, hence the bump.
- */
+ * Temml sets on the small side of the surrounding text, hence the size bump. */
 article.article math {
   font-family: var(--ark-math);
   font-size: 1.08em;
@@ -324,15 +464,9 @@ article.article math {
     hyphens: auto;
   }
 
-  /*
-   * Justification is for the body measure. A card in a landing grid is about a quarter of it,
-   * measured at 173px on a three-column row, where justifying a line of four words opens gaps
-   * wide enough to read as a column of rivers. Cards and the landing blocks set ragged right.
-   *
-   * The landing half reaches through .myst-landing-block, the ancestor every landing component
-   * sits in, so a split image or any block added later is covered without naming it. A card is
-   * listed on its own because a grid of them is NOT inside that ancestor.
-   */
+  /* Justification suits the body measure; a card in a landing grid is a quarter of it, 173px on a
+   * three-column row, where four words open gaps that read as rivers. Ragged right comes via
+   * .myst-landing-block; a card is listed too, since a grid of them sits outside that ancestor. */
   article.article .myst-card p,
   article.article .myst-landing-block p,
   article.article .myst-landing-block li {
@@ -345,21 +479,22 @@ article.article math {
 article.article a:focus-visible,
 .myst-top-nav a:focus-visible,
 .myst-toc a:focus-visible {
-  outline: 2px solid var(--ark-blue);
+  outline: 2px solid var(--myst-color-focus-outline);
   outline-offset: 2px;
 }
 
-/* Links leave the document, so they carry the blue; so do citations */
-article.article a,
-article.article cite a {
-  color: var(--ark-blue);
+/* Links leave the document, so they carry the blue; so do citations. A button is excluded because
+ * styles/button.css sets its text white over --myst-color-primary, and this rule would outrank
+ * that at two classes to one, leaving brand blue on the theme's blue-500 at 2.63 to 1. */
+article.article a:not(.button),
+article.article cite:not(.button) a {
+  color: var(--myst-color-link);
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18em;
 }
 
 /* Title block */
 .myst-fm-block-title {
-  font-family: var(--ark-sans);
   font-weight: 500;
   font-size: clamp(2rem, 1.2rem + 2.2vw, 2.8rem);
   line-height: 1.1;
@@ -368,16 +503,13 @@ article.article cite a {
 }
 
 .myst-fm-block-subtitle {
-  font-family: var(--ark-sans);
   font-weight: 400;
   color: var(--ark-grey);
 }
 
-/*
- * The four curves close the front matter, where the PDF draws them. A page with no
- * abstract, key points or summary has no parts block, and the rule falls to the anchor
- * that sits in its place, so the colours show whichever fields an author fills in.
- */
+/* The four curves close the front matter, where the PDF draws them. A page with no abstract, key
+ * points or summary has no parts block, so the rule falls to the anchor in its place, and the
+ * colours show whichever fields an author fills in. */
 .myst-fm-parts::after,
 #skip-to-article:not(:has(+ .myst-fm-parts))::after {
   content: "";
@@ -387,20 +519,15 @@ article.article cite a {
   background: var(--ark-curve-rule);
 }
 
-/*
- * A landing hides its title block, so it reaches the fallback above with no front matter for the
- * rule to close: it drew a 678px fragment across a 1428px page, above a hero that bleeds to both
- * edges, and spent 54px of margin putting it there. The hero carries the same four colours along
- * its own bottom edge, full width, which is the job this rule was doing.
- */
+/* A landing hides its title block, so it reaches the fallback above with no front matter to close:
+ * it drew a 678px fragment across a 1428px page, above a hero that bleeds to both edges, for 54px
+ * of margin. The hero carries the same four colours full width along its own bottom edge. */
 article.article:has(.ark-hero) #skip-to-article::after {
   content: none;
 }
 
-/*
- * Abstract, key points and summary. The blue label carries them, as it does in the PDF,
- * and the theme's box is dropped so that a filled block means one thing on the page: code.
- */
+/* Abstract, key points and summary: the blue label carries them, as it does in the PDF, and the
+ * theme's box is dropped so a filled block means one thing on the page: code. */
 article.article .myst-abstract-title {
   font-family: var(--ark-sans);
   font-size: 0.95rem;
@@ -419,11 +546,9 @@ article.article .myst-abstract-box li::marker {
   color: var(--ark-blue);
 }
 
-/*
- * Section headings, which MyST sets one level down from the markdown: a first-level heading in
- * the paper is an h2 here. Sans and blue, then sans and black, then italic serif, as in the PDF.
- * The :has() picks out headings written in the text, leaving the theme's own parts alone.
- */
+/* Section headings, which MyST sets one level down from the markdown: a first-level heading in the
+ * paper is an h2 here. Sans and blue, then sans and black, then italic serif, as in the PDF. The
+ * :has() picks out headings written in the text, leaving the theme's own parts alone. */
 article.article h2:has(> .heading-text) {
   font-family: var(--ark-sans);
   font-size: 1.4rem;
@@ -517,13 +642,9 @@ article.article .myst-code-body {
   background: transparent;
 }
 
-/*
- * A notebook page, which book-theme carries and article-theme will once its compute flags are
- * fixed upstream. The theme reaches the code a reader writes and stopped at what the kernel
- * prints back: cell output ships with Tailwind's own `font-system` and `font-thin`, so the answer
- * arrived in Menlo at weight 100 beside a question set in Fira Mono. Both classes are on the
- * element, which is what carries this past those utilities on specificity.
- */
+/* A notebook page, which book-theme carries. The theme styles the code a reader writes and stops
+ * at the kernel's output: that ships with Tailwind's `font-system` and `font-thin`, so the answer
+ * arrived in Menlo at weight 100 beside a question in Fira Mono. Both classes sit on it. */
 .myst-jp-stream-output.jupyter-output,
 .myst-jp-safe-output-text.jupyter-output {
   font-family: var(--ark-mono);
@@ -534,11 +655,9 @@ article.article .myst-code-body {
   padding: 0.6rem 0.8rem;
 }
 
-/*
- * The control that starts the kernel. Stock, it is a stone glyph held at 60% opacity, which reads
- * as disabled on the one page where running the code is the point. It carries its own label for a
- * screen reader, so the work here is to let it look as available as it is.
- */
+/* The control that starts the kernel. Stock, it is a stone glyph at 60% opacity, which reads as
+ * disabled on the one page where running the code is the point; it already carries its own label
+ * for a screen reader, so the work here is to let it look as available as it is. */
 .myst-jp-nb-toolbar .myst-jp-nb-toolbar-inner {
   border-color: var(--ark-rule);
   background: var(--ark-paper);
@@ -560,7 +679,7 @@ html.dark .myst-jp-nb-toolbar-inner .myst-jp-nb-toolbar-power-btn {
 }
 
 /* Theorems and proofs, run against a blue edge rather than the theme's banded box */
-article.article aside.myst-proof {
+article.article :is(aside, details).myst-proof {
   background: transparent;
   border-left: 2px solid var(--ark-blue);
   border-radius: 0;
@@ -585,11 +704,10 @@ article.article .myst-proof-title {
   color: var(--ark-blue);
 }
 
-/*
- * Admonitions, against a rule in the palette rather than a filled box, as in the PDF.
- * MyST's ten kinds take four colours: the brand blue, then three of the logo curves.
- */
-aside.myst-admonition {
+/* Admonitions, against a rule in the palette rather than a filled box, as in the PDF. MyST's ten
+ * kinds take four colours: the brand blue, then three of the logo curves. Specificity stays at one
+ * class here so the per-kind colours below, which tie with it, keep winning on source order. */
+:is(aside, details).myst-admonition {
   --ark-admonition: var(--ark-blue);
   background: transparent;
   border: 0;
@@ -598,26 +716,33 @@ aside.myst-admonition {
   box-shadow: none;
 }
 
-aside.myst-admonition-tip,
-aside.myst-admonition-hint,
-aside.myst-admonition-seealso {
+/* Under html.dark the theme refills the box and puts the shadow back, both at two classes, which
+ * outranks the rule above. The twin carries an ancestor, so it clears them and leaves colour be. */
+html.dark :is(aside, details).myst-admonition {
+  background: transparent;
+  box-shadow: none;
+}
+
+:is(aside, details).myst-admonition-tip,
+:is(aside, details).myst-admonition-hint,
+:is(aside, details).myst-admonition-seealso {
   --ark-admonition: var(--ark-curve-4);
 }
 
-aside.myst-admonition-attention,
-aside.myst-admonition-caution,
-aside.myst-admonition-warning {
+:is(aside, details).myst-admonition-attention,
+:is(aside, details).myst-admonition-caution,
+:is(aside, details).myst-admonition-warning {
   --ark-admonition: var(--ark-curve-1);
 }
 
-aside.myst-admonition-danger,
-aside.myst-admonition-error {
+:is(aside, details).myst-admonition-danger,
+:is(aside, details).myst-admonition-error {
   --ark-admonition: var(--ark-curve-2);
 }
 
-aside.myst-admonition .myst-admonition-header,
-aside.myst-admonition .myst-admonition-header-text,
-aside.myst-admonition .myst-admonition-header-icon {
+:is(aside, details).myst-admonition .myst-admonition-header,
+:is(aside, details).myst-admonition .myst-admonition-header-text,
+:is(aside, details).myst-admonition .myst-admonition-header-icon {
   background: transparent;
   border: 0;
   padding-bottom: 0;
@@ -627,7 +752,7 @@ aside.myst-admonition .myst-admonition-header-icon {
   color: var(--ark-admonition);
 }
 
-aside.myst-admonition .myst-admonition-body > :first-child {
+:is(aside, details).myst-admonition .myst-admonition-body > :first-child {
   margin-top: 0.3em;
 }
 
@@ -641,11 +766,9 @@ article.article blockquote {
   font-style: normal;
 }
 
-/*
- * Definition lists run the term into its definition in the margin's label style, as in the PDF.
- * The theme sets dt and dd as blocks, so the run-in is rebuilt here: inline both, then a dd::after
- * carries the gap that the lost block margin used to give.
- */
+/* Definition lists run the term into its definition in the margin's label style, as in the PDF. The
+ * theme sets dt and dd as blocks, so the run-in is rebuilt here: inline both, then a dd::after
+ * carries the gap that the lost block margin used to give. */
 article.article dl dt {
   display: inline;
   font-family: var(--ark-sans);
@@ -698,11 +821,9 @@ article.article .myst-backmatter-title,
   border-color: var(--ark-rule);
 }
 
-/*
- * MyST's `summary` part. The theme hardcodes "Plain Language Summary", which, like the PDF's old
- * "Non-technical", tells a reader they are the one needing it simplified. Both halves say
- * "Summary". check-examples.sh fails if the id this hangs on stops being written.
- */
+/* MyST's `summary` part. The theme hardcodes "Plain Language Summary", which, like the PDF's old
+ * "Non-technical", tells a reader they are the one needing it simplified; both now say "Summary".
+ * check-examples.sh fails if the id this hangs on stops being written. */
 article.article h2#summary {
   font-size: 0;
 }
@@ -716,11 +837,9 @@ article.article h2#summary > a {
   font-size: 1rem;
 }
 
-/*
- * MyST's `declaration` part, which the theme gives no backmatter slot and so leaves as a bare
+/* MyST's `declaration` part, which the theme gives no backmatter slot and so leaves as a bare
  * paragraph. plugins/part-wrapper.mjs writes the class; the rules below reproduce the theme's own
- * backmatter row. check-examples.sh fails if the class stops being written.
- */
+ * backmatter row. check-examples.sh fails if the class stops being written. */
 article.article .ark-part-declaration {
   display: grid;
   width: 100%;
@@ -739,11 +858,9 @@ article.article .ark-part-declaration::before {
   opacity: 0.9;
 }
 
-/*
- * A grid rather than a row of flex items, because the part holds however many paragraphs the
- * declarations need and each one is a child of this div. As flex items they became columns beside
- * the label, touching, and each column read correctly on its own, which is what hid it.
- */
+/* A grid rather than a row of flex items, because the part holds however many paragraphs the
+ * declarations need, each a child of this div. As flex items they became columns beside the label,
+ * touching, and each column read correctly on its own, which is what hid the bug. */
 @media (min-width: 768px) {
   article.article .ark-part-declaration {
     grid-template-columns: 200px 1fr;
@@ -760,11 +877,9 @@ article.article .ark-part-declaration::before {
   }
 }
 
-/*
- * MyST's `dedication` and `epigraph`, two more parts the theme leaves as body text. The PDF centres
+/* MyST's `dedication` and `epigraph`, two more parts the theme leaves as body text. The PDF centres
  * the one and sets the other in from the right; these do the same so a reader meets them the same
- * way in both. plugins/part-wrapper.mjs writes both classes.
- */
+ * way in both. plugins/part-wrapper.mjs writes both classes. */
 article.article .ark-part-dedication {
   margin: 1.5rem 0;
   text-align: center;
@@ -779,40 +894,21 @@ article.article .ark-part-epigraph {
   color: var(--ark-grey);
 }
 
-/*
- * The Econ-ARK lockup is wide, four to one, so at the theme's own h-9 it takes 144px of a phone's
- * header. With the site title, the search box, the theme toggle and the action menu beside it the
- * row could not fit 375px and the whole page scrolled sideways by 39px. The header does not wrap,
- * so the mark gives up the height instead.
- */
+/* The Econ-ARK lockup is wide, four to one, so at the theme's own h-9 it takes 144px of a phone's
+ * header; with the site title, search box, theme toggle and action menu beside it, the row missed
+ * 375px and the page scrolled sideways by 39px. The header holds one line, so the mark shrinks. */
 @media (max-width: 30rem) {
   .myst-home-link-logo img {
     height: 1.6rem;
   }
 }
 
-/*
- * Landing pages, which book-theme renders from `+++ { "kind": ... }` blocks. The blocks arrive
- * with Tailwind colours of their own, so the rules below are what put them in the house palette.
- * article-theme carries no landing renderers, which is why the landing site is on book-theme.
- */
-/*
- * A landing hero: the brand field with the copy over it, rather than a band of artwork sitting
- * above the copy and pushing it down the page. `col-screen` on the block makes it full bleed, and
- * the inner padding is trimmed because the stock py-20 sm:py-28 leaves a hero that is mostly empty
- * once the copy is short.
- *
- * The artwork goes behind the copy the way mystmd.org puts its own hero graphic behind its
- * headline: a full-bleed band whose height scales with the viewport, carrying a negative bottom
- * margin nearly as large, so it paints its full height while occupying almost no space in the
- * flow. Whatever follows is pulled up over it. No absolute positioning, so nothing has to be
- * taken out of the document or fought with z-index.
- *
- * The artwork comes from --ark-hero-image so a site can point it somewhere else in one line. Its
- * default expects banner.svg at the site root, which `static_files` in myst.yml puts there; a
- * relative url() would resolve against the stylesheet rather than the site. A site that publishes
- * neither gets the field colour alone, which is a quiet result rather than an error.
- */
+/* Landing pages, which book-theme renders from `+++ { "kind": ... }` blocks. The blocks arrive with
+ * Tailwind colours of their own, so the rules below put them in the house palette. article-theme
+ * carries no landing renderers, which is why the landing site is on book-theme. */
+/* The hero: brand field with copy over it. col-screen makes it full bleed, and the artwork sits
+ * behind via a negative bottom margin near its own height, painting full height while taking no
+ * flow space. --ark-hero-image repoints it; the default wants banner.svg at the site root. */
 article.article .ark-hero {
   position: relative;
   background: var(--ark-banner-field);
@@ -831,12 +927,9 @@ article.article .ark-hero::before {
   opacity: 0.45;
 }
 
-/*
- * The copy sits in the same translucent card article-theme lays over a paper's banner, so a
- * landing and a paper meet a reader the same way: the artwork carries on behind, the words keep
- * a ground of their own. It also gives the copy a measure, which it needs because the block is
- * full bleed and its inner would otherwise run a centred line the width of the screen.
- */
+/* The copy sits in the same translucent card article-theme lays over a paper's banner, so a
+ * landing and a paper meet a reader the same way: artwork behind, words on a ground of their own.
+ * It also gives the copy a measure, which a full-bleed block otherwise runs the screen's width. */
 article.article .ark-hero .myst-landing-centered-inner {
   position: relative;
   max-width: 46rem;
@@ -856,11 +949,9 @@ article.article .ark-hero::after {
   background: var(--ark-curve-rule);
 }
 
-/*
- * The hero headline needs rank. MyST demotes a landing's `#` to an h2, so without this it took
+/* The hero headline needs rank. MyST demotes a landing's `#` to an h2, so without this rule it took
  * section styling and opened the page at exactly the size of "Life cycle models" further down,
- * measured at a ratio of 1.00. A landing's first line is not one of its section headings.
- */
+ * measured at a ratio of 1.00; a landing's first line is not one of its section headings. */
 article.article .ark-hero h1,
 article.article .ark-hero h2 {
   color: var(--ark-blue);
@@ -871,12 +962,9 @@ article.article .ark-hero h2 {
   margin-bottom: 0.6em;
 }
 
-/*
- * A card written with a `^^^` separator renders as a header and a body, and the theme gives the
- * header its own grey fill, a bottom rule, and 12px of left padding against the body's 16px. The
- * three together made every card read as two stacked boxes with the title misaligned under its own
- * text. The title belongs to the card, so the fill and the rule come off and the padding lines up.
- */
+/* A card written with a `^^^` separator renders as a header and a body, and the theme gives the
+ * header a grey fill, a bottom rule, and 12px of left padding against the body's 16px; together
+ * they read as two stacked boxes. The fill and rule come off and the padding lines up. */
 article.article .myst-card-header {
   background: transparent;
   border-bottom: 0;
@@ -894,17 +982,13 @@ article.article .myst-card-body > p:first-child {
   margin-top: 0.3rem;
 }
 
-/*
- * A page whose title block is hidden still spends h1 and h2 on the title and the hero, so a `##`
- * section arrives as h3 at 17.9px against 16.8px body text: the section headings were legible only
- * as bold. On a landing they are the top-level structure whatever tag they land on, so they get the
- * size to say so. A page opts in with `ark-section` on the block, which leaves every h3 in an
- * ordinary article at the size its level earns.
- */
+/* A page whose title block is hidden still spends h1 and h2 on the title and hero, so a `##`
+ * section arrives as h3 at 17.9px against 16.8px body text, legible only as bold. A landing opts
+ * in with `ark-section` for the size, leaving h3 in an ordinary article at what its level earns. */
 article.article .ark-section h3 {
   font-family: var(--ark-sans);
   /* The hero heading is itself clamped, and at 375px it lands on 30.4px. A flat 1.7rem section
-   * heading came to 27.2px there, so the page had two sizes that read as one. This tracks it down. */
+   * heading came to 27.2px there, so the page had two sizes that read as one. This tracks it. */
   font-size: clamp(1.3rem, 3.2vw, 1.7rem);
   font-weight: 600;
   line-height: 1.15;
@@ -931,12 +1015,9 @@ article.article .ark-section h3 .heading-text {
   color: inherit;
 }
 
-/*
- * Two rows of cards on one page say two different things: the first is a sequence that builds,
- * the second a set of parallel ways in. Giving both the same box made the page read as one
- * undifferentiated grid, so the steps take a counter in the curve colours and the ways in drop
- * the box entirely for a rule in the same four.
- */
+/* Two rows of cards on one page say two different things: the first a sequence that builds, the
+ * second a set of parallel ways in. One box for both read as a single grid, so the steps take a
+ * counter in the curve colours and the ways in trade the box for a rule in the same four. */
 article.article .ark-steps .myst-card {
   counter-increment: ark-step;
   position: relative;
@@ -947,14 +1028,9 @@ article.article .ark-steps {
   counter-reset: ark-step;
 }
 
-/*
- * The four curve colours are chart fills, and setting a numeral in them put amber at 1.73 to 1 on
- * paper, cyan at 2.38 and green at 2.51: three of the four failed even the 3 to 1 a numeral this
- * size is held to. They keep the job they are good at. Each colour fills a disc and the numeral
- * goes on top of it in near-black, which is 5.2 to 1 at worst (magenta) and 11.3 at best (amber),
- * and the disc reads the same in both themes because a brand colour has no business following the
- * page.
- */
+/* The four curve colours are chart fills: a numeral set in them measured amber at 1.73 to 1, cyan
+ * at 2.38 and green at 2.51, three of four under the 3 to 1 a numeral this size is held to. Each
+ * now fills a disc with the numeral near-black on top, 5.2 to 1 at worst and 11.3 at best. */
 article.article .ark-steps .myst-card::before {
   content: counter(ark-step);
   position: absolute;
@@ -1005,60 +1081,49 @@ article.article .ark-hero p {
   color: var(--ark-ink);
 }
 
-/*
- * The theme paints a button in its own blue and the house link colour lands on top of it, which
- * left brand blue on Tailwind's blue-500 at 2.6 to 1. The field colour carries paper text at about
- * nine to one instead.
- *
- * The second button is the quieter one: a reader who wants the whole library is not the reader
- * this page is built for, so it keeps the shape and gives up the fill. Giving up the fill is what
- * makes the dark rule below necessary: without a fill of its own the label sits on the card, and
- * the card follows the page while the field colour does not, which is 1.6 to 1 in dark mode. Both
- * buttons switch to --ark-blue there, which does follow, for about seven to one either way.
- */
+/* The fill and its white text come from --myst-color-primary above, reaching every button on every
+ * page; only the border is added here, giving the second button a shape to keep once it gives up
+ * the fill. Its label follows the card, which follows the page, so it takes --ark-blue. */
+/* The fill, from the same token the theme will read once it ships #843: the theme's own white
+ * label sits on it, which blue-500 carried at 3.68 to 1 and the field colour carries at about
+ * nine. The selector list is the theme's own, so this ties on specificity and wins on order. */
+a.button,
+button.button,
+span.button,
+cite.button a {
+  background-color: var(--myst-color-primary);
+
+  /* Nested, as the theme nests its own hover. `&` carries the specificity of the widest selector
+   * in the list above, cite.button a, so this lands at two classes and two elements and ties the
+   * theme's. A flat a.button:hover is one element short and loses however late it loads. */
+  &:hover {
+    background-color: var(--myst-color-primary-hover);
+  }
+}
+
 article.article .ark-hero .button {
-  background: var(--ark-banner-field);
-  color: var(--ark-paper);
-  border: 1px solid var(--ark-banner-field);
+  border: 1px solid var(--myst-color-primary);
 }
 
-article.article .ark-hero .button + .button {
+/* The general sibling combinator, because the adjacent one does not survive the page: Remix injects
+ * a <link rel="prefetch"> between the two buttons when the first is hovered, and `+` stops matching
+ * there, flashing this button to the filled brand colour. `~` ties it at the same specificity. */
+article.article .ark-hero .button ~ .button {
   background: transparent;
-  color: var(--ark-banner-field);
-}
-
-html.dark article.article .ark-hero .button {
-  background: var(--ark-blue);
-  color: var(--ark-tint);
+  color: var(--ark-blue);
   border-color: var(--ark-blue);
 }
 
-html.dark article.article .ark-hero .button + .button {
-  background: transparent;
-  color: var(--ark-blue);
-}
-
-/*
- * The card has to follow the theme, because the ink on it does. --ark-paper holds one colour in
+/* The card has to follow the theme, because the ink on it does: --ark-paper holds one colour in
  * both modes while --ark-ink and --ark-blue each flip, so leaving the card alone put pale text on
- * a near-white ground at about 1.1 to 1 once the page went dark. The field behind stays as it is,
- * being the artwork's own.
- */
+ * a near-white ground at about 1.1 to 1 once the page went dark. The field behind is the art's. */
 html.dark article.article .ark-hero .myst-landing-centered-inner {
   background-color: rgb(from var(--ark-tint) r g b / 0.9);
 }
 
-/*
- * The banner across the head of the landing page. article-theme paints a project banner behind the
- * article header; book-theme draws none, so the landing carries it as an image and holds it here
- * to a band. The height tracks the viewport, so a wide window gets a taller band; at full width a
- * 1600x445 file would otherwise stand nearly 400px tall. The bounds hold it between a readable
- * strip on a phone and 18rem on a desktop.
- *
- * The fill matches the article header, where the same artwork stretches to its box. banner.svg
- * carries preserveAspectRatio="none", so the fan reaches the corners of the band at every width
- * and nothing of it is cropped away.
- */
+/* The banner across the head of the landing page: article-theme paints one behind the article
+ * header and book-theme draws none, so the landing carries it as an image in a band whose height
+ * tracks the viewport; a 1600x445 file would otherwise stand nearly 400px tall at full width. */
 article.article img.ark-banner {
   height: clamp(7rem, 16vw, 18rem);
   width: 100%;
@@ -1083,10 +1148,8 @@ article.article img.ark-banner {
   color: var(--ark-grey);
 }
 
-/*
- * The split panel ships as bg-stone-900, and the reading colour set on article.article lands
- * inside it, which leaves near-black text on a near-black ground. Both are set here instead.
- */
+/* The split panel ships as bg-stone-900, and the reading colour set on article.article lands inside
+ * it, leaving near-black text on a near-black ground; both are set here instead. */
 .myst-landing-split-img {
   background: var(--ark-blue);
 }
