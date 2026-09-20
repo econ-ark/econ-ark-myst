@@ -118,13 +118,14 @@ check_pdf() {
     bad "$name: $pdf was not written"
     return
   fi
+  local info
   check_text "$name" "$(pdftotext "$pdf" - 2>/dev/null)" "$@"
   # A file that is not a PDF at all clears the size test above and gives pdfinfo nothing, which the
   # bare grep read as the absence of a timestamp. check_text fails beside it, so the run still goes
   # red, but this line was printing ok about a file it had not read.
-  if ! pdfinfo "$pdf" >/dev/null 2>&1; then
+  if ! info=$(pdfinfo "$pdf" 2>/dev/null); then
     bad "$name: $pdf is not a readable PDF, so the timestamp check proved nothing"
-  elif pdfinfo "$pdf" 2>/dev/null | grep -q '^CreationDate'; then
+  elif grep -q '^CreationDate' <<<"$info"; then
     bad "$name: PDF carries a creation timestamp, so rebuilds will not be byte-identical"
   else
     ok "$name: no creation timestamp"
@@ -364,6 +365,13 @@ check_font() {
 # over-reach, since a subset tag and an XMP instance id can differ between two identical renders.
 check_tracked() {
   local name=$1 fresh=$2 committed=$3 scratch pages p differing digits total=0
+  # Every comparison below reports a match on two absent files: they extract the same empty text,
+  # cmp calls two empty ones identical, and a page walk over no pages counts no differing pixels.
+  # A git show that wrote nothing is how $committed arrives empty.
+  if [ ! -s "$fresh" ] || [ ! -s "$committed" ]; then
+    bad "$name: $fresh or $committed is missing or empty, so the tracked PDF went unchecked"
+    return
+  fi
   if ! diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$fresh" - 2>/dev/null) >/dev/null; then
     bad "$name: the tracked PDF's text differs from the fresh build; commit the rebuilt file:"
     diff <(pdftotext -layout "$committed" - 2>/dev/null) <(pdftotext -layout "$fresh" - 2>/dev/null) | head -20
@@ -420,6 +428,53 @@ check_bundle() {
   rm -f "$fresh"
 }
 
+# grep exits 2 on a file that is not there, which every caller reads as no match and so as good
+# news. The checks below take a SERVED stylesheet, which a build that rendered its pages can still
+# fail to copy, so each one asks before reading.
+require_file() {
+  local name=$1 path=$2 what=$3
+  [ -s "$path" ] && return 0
+  bad "$name: $path is missing or empty, so $what went unchecked"
+  return 1
+}
+
+# A class is styled only when its own block declares something and its name ends where the selector
+# does. `.ark-hero` matched a stylesheet that had renamed it `.ark-hero-image`, `.ark-section { }`
+# matched one declaring nothing, and a bare grep matched a name left in a comment.
+css_declares() {
+  local css=$1 cls=$2
+  CLS=$cls perl -0777 -ne 'my $c = $ENV{CLS};
+    s{/\*.*?\*/}{}gs;
+    while (/([^{}]*)\{([^{}]*)\}/g) {
+      my ($sel, $body) = ($1, $2);
+      next unless $body =~ /[a-z-]+\s*:\s*[^;\s]/;
+      exit 0 if $sel =~ /\.\Q$c\E(?![\w-])/;
+    }
+    exit 1' "$css"
+}
+
+# The page carries a JSON copy of its own config, which repeats every class name, so a class the
+# markup stopped writing is still in the file. Drop the scripts, then match the whole token inside
+# a class attribute rather than anywhere on the line.
+page_uses_class() {
+  local html=$1 cls=$2
+  CLS=$cls perl -0777 -ne 'my $c = $ENV{CLS};
+    s{<script\b.*?</script>}{}gs;
+    exit !/class="([^"]* )?\Q$c\E( [^"]*)?"/' "$html" 2>/dev/null
+}
+
+# A leading slash means the site root, not the stylesheet's directory. Skipping that branch left
+# --ark-hero-image: url("/banner.svg") unchecked on a landing that never served the file, so both
+# readers of a url() resolve it here rather than each keeping a copy of the rule.
+resolve_css_url() {
+  local dir=$1 sheet=$2 url=$3 target
+  case "$url" in
+    /*) target="$dir/${url#/}" ;;
+    *) target="$(dirname "$sheet")/$url" ;;
+  esac
+  printf '%s\n' "${target%%[?#]*}"
+}
+
 # A stylesheet naming a file the site does not serve fails silently: the browser drops that face
 # and paints the next one down. Temml's own sheet asks for a script-capital woff2 by name, which is
 # how this repository shipped a dangling reference until a consumer building from it noticed.
@@ -431,13 +486,7 @@ check_css_urls() {
       # A fragment is an id in the same document, and %23 is how one reads inside a data URI
       case "$url" in data:*|http:*|https:*|'#'*|%23*) continue ;; esac
       seen=$((seen + 1))
-      # A leading slash means the site root, not the stylesheet's directory. Skipping those left
-      # --ark-hero-image: url("/banner.svg") unchecked on a landing that never served the file.
-      case "$url" in
-        /*) target="$dir/${url#/}" ;;
-        *) target="$(dirname "$sheet")/$url" ;;
-      esac
-      target="${target%%[?#]*}"
+      target=$(resolve_css_url "$dir" "$sheet" "$url")
       [ -f "$target" ] || { bad "$name: $sheet asks for $url, which the site does not serve"; missing=1; }
       # A data URI carries its own url() inside it, so drop those before looking for real ones
     done < <(sed -E 's/url\("data:[^"]*"\)//g; s/url\(data:[^)]*\)//g' "$sheet" |
@@ -455,9 +504,10 @@ check_css_urls() {
 # still passes. Both ends of each class are asserted.
 check_landing_classes() {
   local name=$1 dir=$2 css=$3 cls missing_html="" missing_css=""
+  require_file "$name" "$css" "the landing classes" || return
   for cls in ark-hero ark-section ark-steps ark-ways; do
-    grep -q "$cls" "$dir/index.html" 2>/dev/null || missing_html="$missing_html $cls"
-    grep -q "\.$cls" "$css" 2>/dev/null || missing_css="$missing_css $cls"
+    page_uses_class "$dir/index.html" "$cls" || missing_html="$missing_html $cls"
+    css_declares "$css" "$cls" || missing_css="$missing_css $cls"
   done
   if [ -z "$missing_html" ] && [ -z "$missing_css" ]; then
     ok "$name: the page and the stylesheet agree on all four landing classes"
@@ -476,6 +526,7 @@ check_dropdown_tags() {
     bad "$name: no dropdown admonition in the built pages, so the tag split goes untested"
     return
   fi
+  require_file "$name" "$css" "the admonition tag split" || return
   if grep -qE '(^|[ ,])aside\.myst-(admonition|proof)' "$css"; then
     bad "$name: $css qualifies an admonition or proof with aside, which misses every dropdown"
   else
@@ -494,14 +545,19 @@ check_blue_coverage() {
     bad "$name: no blue utility in the built pages, so the override list goes untested"
     return
   fi
+  require_file "$name" "$css" "the blue override list" || return
   # A selector counts only when its block declares something: .text-blue-600 { } matched the old
   # read of selector strings alone and painted nothing. Pairing each selector list with its body
   # here is also what lets a stylesheet escape its colons, which the sed then strips off.
-  overridden=$(perl -0777 -ne 'while (/([^{}]*)\{([^{}]*)\}/g) {
+  overridden=$(perl -0777 -ne 's{/\*.*?\*/}{}gs;
+    while (/([^{}]*)\{([^{}]*)\}/g) {
       my ($sel, $body) = ($1, $2);
       next unless $body =~ /[a-z-]+\s*:\s*[^;\s]/;
-      while ($sel =~ /\.([a-z0-9\\:\/-]*blue-[0-9]+(?:\\\/[0-9]+)?)/g) { print "$1\n" }
-    }' "$css" | sed 's/\\//g' | sort -u)
+      while ($sel =~ /\.([a-z0-9\\:\/-]*blue-[0-9]+(?:\\\/[0-9]+)?)/g) {
+        (my $c = $1) =~ s/\\//g;
+        print "$c\n";
+      }
+    }' "$css" | sort -u)
   missing=$(comm -23 <(echo "$rendered") <(echo "$overridden") | tr '\n' ' ')
   if [ -n "${missing// /}" ]; then
     bad "$name: $css leaves the theme's blue on: $missing"
@@ -518,10 +574,14 @@ check_landing_button() {
   # Split on the block wrapper and require a button in a block that is not the hero: the old guard
   # took any class holding the letters, which the two hero buttons and the nav's own
   # myst-top-nav-menu-button each satisfied. The page's JSON blob repeats every class, so it goes.
-  if ! perl -0777 -pe 's{<script\b.*?</script>}{}gs' "$dir/index.html" 2>/dev/null |
-    awk -v RS='myst-landing-block' '
-      !/ark-hero/ && /class="([^"]* )?button( [^"]*)?"/ { found = 1 }
-      END { exit !found }'; then
+  if ! perl -0777 -ne '
+      s{<script\b.*?</script>}{}gs;
+      for my $block (split /myst-landing-block/) {
+        next if $block =~ /ark-hero/;
+        $found = 1 if $block =~ /class="([^"]* )?button( [^"]*)?"/;
+      }
+      exit !$found;
+    ' "$dir/index.html" 2>/dev/null; then
     bad "$name: the landing page renders no button outside the hero, so the fill rule goes untested"
     return
   fi
@@ -598,13 +658,12 @@ check_tokens_defined() {
 # The faces are built rather than tracked, so a site can be published complete in every other way
 # and still fall back to the system sans, which no page of it would report
 check_faces_served() {
-  local name=$1 dir=$2 sheet="$2/myst-theme.css" url target n=0
+  local name=$1 dir=$2 sheet="$2/myst-theme.css" url n=0
   # Only a face the served sheet names, at a path the site serves, reaches a reader. Counting woff2
   # anywhere under the build counted the template's own cache copies too, so a landing serving none
   # of them to its pages still cleared four.
   while IFS= read -r url; do
-    case "$url" in /*) target="$dir/${url#/}" ;; *) target="$(dirname "$sheet")/$url" ;; esac
-    [ -f "${target%%[?#]*}" ] && n=$((n + 1))
+    [ -f "$(resolve_css_url "$dir" "$sheet" "$url")" ] && n=$((n + 1))
   done < <(sed -nE "s@.*url\((['\"]?)([^'\")]*FiraSans-[^'\")]*\.woff2)\1\).*@\2@p" "$sheet" 2>/dev/null |
     sort -u)
   if [ "$n" -ge 4 ]; then
@@ -871,6 +930,25 @@ self_test() {
     bad "self-test: a stale tracked PDF went undetected"
   fi
 
+  # The no-evidence pair, which this check reported ok about until 2026-09-20: two empty files are
+  # byte-identical and two absent ones extract the same empty text. An empty $committed is what a
+  # git show that wrote nothing leaves, and it reached the "byte for byte" line.
+  local empties
+  empties=$(mktemp -d)
+  : >"$empties/a.pdf"
+  : >"$empties/b.pdf"
+  if grep -q 'FAIL.*went unchecked' <<<"$(check_tracked seeded "$empties/a.pdf" "$empties/b.pdf")"; then
+    ok "self-test: two empty PDFs do not pass for a tracked file matching its sources"
+  else
+    bad "self-test: two empty PDFs passed as byte for byte identical"
+  fi
+  if grep -q 'FAIL.*went unchecked' <<<"$(check_tracked seeded "$empties/gone.pdf" "$empties/also-gone.pdf")"; then
+    ok "self-test: two absent PDFs do not pass for a tracked file matching its sources"
+  else
+    bad "self-test: two absent PDFs passed as rendering identically"
+  fi
+  rm -rf "$empties"
+
   # The same words at another weight: the text check reads them as equal, so only the pages differ
   local weights
   weights=$(mktemp -d)
@@ -948,20 +1026,51 @@ self_test() {
   local lc lcss
   lc=$(mktemp -d)
   lcss="$lc/theme.css"
-  printf '.ark-hero{}\n.ark-section{}\n.ark-steps{}\n.ark-ways{}\n' >"$lcss"
+  # Each rule declares something: an empty one was the fixture here until 2026-09-20, which taught
+  # the check that a class declaring nothing counts as styled.
+  printf '.ark-hero{color:red}\n.ark-section{color:red}\n.ark-steps{color:red}\n.ark-ways{color:red}\n' >"$lcss"
   printf '<div class="ark-hero ark-section ark-steps ark-ways"></div>\n' >"$lc/index.html"
   if grep -q '^ok' <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
     ok "self-test: a page and stylesheet that agree on the landing classes pass"
   else
     bad "self-test: the landing-class check fails a page that does carry all four"
   fi
+  # The four shapes this check passed until 2026-09-20, each a way a rule goes inert while its name
+  # stays in the file. The page side is last: its JSON config blob repeats every class.
+  printf '.ark-hero-image{color:red}\n.ark-section{color:red}\n.ark-steps{color:red}\n.ark-ways{color:red}\n' >"$lcss"
+  if grep -q "FAIL.*absent from $lcss: ark-hero" <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
+    ok "self-test: a renamed class does not answer for the one it was renamed from"
+  else
+    bad "self-test: .ark-hero-image passed for .ark-hero"
+  fi
+  printf '.ark-hero{ }\n.ark-section{color:red}\n.ark-steps{color:red}\n.ark-ways{color:red}\n' >"$lcss"
+  if grep -q "FAIL.*absent from $lcss: ark-hero" <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
+    ok "self-test: a landing rule that declares nothing does not count as styled"
+  else
+    bad "self-test: an empty landing rule passed as styled"
+  fi
+  printf '/* .ark-hero used to be here */\n.ark-section{color:red}\n.ark-steps{color:red}\n.ark-ways{color:red}\n' >"$lcss"
+  if grep -q "FAIL.*absent from $lcss: ark-hero" <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
+    ok "self-test: a class surviving only in a comment does not count as styled"
+  else
+    bad "self-test: a commented-out landing class passed as styled"
+  fi
+  printf '.ark-hero{color:red}\n.ark-section{color:red}\n.ark-steps{color:red}\n.ark-ways{color:red}\n' >"$lcss"
+  printf '<div class="ark-section ark-steps ark-ways"></div>\n%s\n' \
+    '<script>{"class":"ark-hero col-screen"}</script>' >"$lc/index.html"
+  if grep -q 'FAIL.*absent from the page: ark-hero' <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
+    ok "self-test: a class left only in the page's JSON blob does not answer for the markup"
+  else
+    bad "self-test: the config blob passed for a class the markup stopped writing"
+  fi
+  printf '<div class="ark-hero ark-section ark-steps ark-ways"></div>\n' >"$lc/index.html"
   printf '<div class="ark-hero ark-section ark-steps"></div>\n' >"$lc/index.html"
   if grep -q 'FAIL.*absent from the page: ark-ways' <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
     ok "self-test: a landing page that stopped asking for a class is caught"
   else
     bad "self-test: a landing page that stopped asking for a class went undetected"
   fi
-  printf '.ark-hero{}\n.ark-section{}\n.ark-steps{}\n' >"$lcss"
+  printf '.ark-hero{color:red}\n.ark-section{color:red}\n.ark-steps{color:red}\n' >"$lcss"
   printf '<div class="ark-hero ark-section ark-steps ark-ways"></div>\n' >"$lc/index.html"
   if grep -q "FAIL.*absent from $lcss: ark-ways" <<<"$(check_landing_classes seeded "$lc" "$lcss")"; then
     ok "self-test: a stylesheet that dropped a landing class is caught"
@@ -1024,6 +1133,13 @@ self_test() {
     ok "self-test: an override whose rule declares nothing is caught"
   else
     bad "self-test: an empty rule passed for an override"
+  fi
+  # A comment sits in the text a selector is read out of, so a class named in one used to count
+  printf '.hover\\:text-blue-700:hover{color:red}\n/* .bg-blue-50 was here */\n.x{color:red}\n' >"$bc/comment.css"
+  if grep -q 'FAIL.*bg-blue-50' <<<"$(check_blue_coverage seeded "$bc" "$bc/comment.css")"; then
+    ok "self-test: an override surviving only in a comment is caught"
+  else
+    bad "self-test: a commented-out override passed as covering a rendered blue"
   fi
   printf '<a class="text-gray-500">x</a>\n' >"$bc/index.html"
   if grep -q 'FAIL.*no blue utility' <<<"$(check_blue_coverage seeded "$bc" "$bc/ok.css")"; then
@@ -1465,7 +1581,7 @@ else
     book-theme) othername=article-theme ;;
     *) othername="" ;;
   esac
-  sed -i -E "s/^(  template:).*/\1 $othername/" "$other/myst.yml"
+  [ -n "$othername" ] && sed -i -E "s/^(  template:).*/\1 $othername/" "$other/myst.yml"
   if [ -z "$othername" ] || ! grep -qx "  template: $othername" "$other/myst.yml"; then
     bad "site (other theme): $other/myst.yml does not name the second theme, so it went unbuilt"
   else
