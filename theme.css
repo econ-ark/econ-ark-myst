@@ -645,6 +645,93 @@ article.article .myst-code-body {
   background: transparent;
 }
 
+/* Syntax colours. The theme ships XCode for light and Dark+ for dark: 17 token groups from
+ * neither palette, applied by highlight.js in the browser. Three roles stay and the rest fall
+ * back to body ink, since a listing with six accents fights the four-curve mark. */
+:root {
+  --ark-code-keyword: var(--ark-blue);
+  --ark-code-comment: var(--ark-grey);
+  /* curve-2 deepened until it clears 4.5 to 1 on --ark-tint; the identity pink reads 3.42 there */
+  --ark-code-string: #ce1160;
+}
+
+html.dark {
+  /* On the dark tint the identity pink is 3.85, so this one lightens instead. The other two
+     tokens follow --ark-blue and --ark-grey, which already flip. */
+  --ark-code-string: #f04f92;
+}
+
+/* Everything the two themes colour and this palette does not: back to the body ink it sits in */
+article.article .hljs-tag,
+article.article .hljs-attribute,
+article.article .hljs-attr,
+article.article .hljs-selector-tag,
+article.article .hljs-selector-id,
+article.article .hljs-selector-class,
+article.article .hljs-variable,
+article.article .hljs-template-variable,
+article.article .hljs-regexp,
+article.article .hljs-link,
+article.article .hljs-title,
+article.article .hljs-symbol,
+article.article .hljs-bullet,
+article.article .hljs-number,
+article.article .hljs-section,
+article.article .hljs-meta,
+article.article .hljs-type,
+article.article .hljs-built_in,
+article.article .hljs-params,
+article.article .hljs-subst,
+article.article .hljs-class .hljs-title,
+article.article .hljs-title.class_ {
+  color: inherit;
+}
+
+article.article .hljs-keyword,
+article.article .hljs-literal,
+article.article .hljs-name {
+  color: var(--ark-code-keyword);
+}
+
+article.article .hljs-comment,
+article.article .hljs-quote,
+article.article .hljs-doctag {
+  color: var(--ark-code-comment);
+}
+
+article.article .hljs-string,
+article.article .hljs-code,
+article.article .hljs-meta .hljs-string {
+  color: var(--ark-code-string);
+}
+
+/* These three carry a background rather than a colour, so they survive the block above and arrive
+ * in XCode's own greens and pinks. The diff pair keeps its meaning and takes the palette's. */
+article.article .hljs-formula {
+  background-color: var(--ark-tint);
+}
+
+article.article .hljs-addition {
+  background-color: rgb(from var(--ark-curve-4) r g b / 0.18);
+}
+
+article.article .hljs-deletion {
+  background-color: rgb(from var(--ark-curve-2) r g b / 0.18);
+}
+
+/* The line a reader is pointed at, and the numbers beside it, both ship a blue of their own */
+article.article pre > code > span[data-highlight="true"]::after {
+  background: var(--ark-blue);
+}
+
+article.article pre > code > span > .linenumber {
+  color: var(--ark-rule);
+}
+
+article.article pre > code > span[data-highlight="true"] > .linenumber {
+  color: var(--ark-blue);
+}
+
 /* A notebook page, which book-theme carries. The theme styles the code a reader writes and stops
  * at the kernel's output: that ships with Tailwind's `font-system` and `font-thin`, so the answer
  * arrived in Menlo at weight 100 beside a question in Fira Mono. Both classes sit on it. */
