@@ -16,7 +16,7 @@ tags:
   - D14
   - E21
 exports:
-  - id: econark-pdf
+  - id: econ-ark-pdf
     format: typst
     template: ..
     output: exports/paper.pdf
@@ -143,10 +143,10 @@ The closed one stays grey until it is opened.
 :label: fig-solution
 
 (fig-policy)=
-![The consumption function](../logo.png)
+![The consumption function](../brand/logo.png)
 
 (fig-value)=
-![The value function](../logo.png)
+![The value function](../brand/logo.png)
 
 Solution at the calibration of @tbl-calibration, over the same range of market resources.
 :::

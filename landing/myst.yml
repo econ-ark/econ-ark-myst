@@ -7,25 +7,26 @@ project:
   # Only book-theme carries landing blocks, and it paints no banner the way article-theme does.
   # This still earns its place: it is what fills og:image, the card a shared link renders. The
   # banner a reader sees is the image at the top of index.md.
-  banner: ../banner.svg
+  banner: ../brand/banner.svg
   # The equations in the blocks below are set in Fira Math by the same plugin the paper uses
   plugins:
     - ../plugins/fira-math.mjs
   static_files:
     - ../fonts
-    # theme.css paints the hero with url("/banner.svg"), so the file has to reach the site root.
-    - ../banner.svg
+    # theme.css paints the hero with url("/banner.svg"); a static file is served at its basename,
+    # so this reaches the site root as /banner.svg despite the directory it is listed from.
+    - ../brand/banner.svg
   toc:
     - file: index.md
 site:
   template: book-theme
   options:
-    logo: ../logo.png
-    logo_dark: ../logo-dark.png
+    logo: ../brand/logo.png
+    logo_dark: ../brand/logo-dark.png
     logo_text: Econ-ARK
     logo_url: https://econ-ark.org
     logo_alt: Econ-ARK
-    favicon: ../favicon.png
+    favicon: ../brand/favicon.png
     style: ../theme.css
   # The two demos are separate MyST projects, so nav cannot reach them without naming the host.
   # The buttons in the hero link them relatively, which works locally and under the Pages prefix.

@@ -5,9 +5,19 @@ description: Econ-ARK working paper and technical report template
 template: template.typ
 files:
   - template.typ
-  - econark.typ
-  - ark-subpar.typ
-  - logo.png
+  - econ-ark.typ
+  # MyST copies a listed file into the build directory with its prefix intact, so every path here
+  # resolves in the build exactly as it is written in the file that imports it.
+  - ark/subpar.typ
+  - ark/brand.typ
+  - ark/layout.typ
+  - ark/figures.typ
+  - ark/tables.typ
+  - ark/frontmatter.typ
+  - ark/blocks.typ
+  - ark/typography.typ
+  - ark/floats.typ
+  - brand/logo.png
 authors:
   - name: Alan Lujan
     github: alanlujan91
@@ -21,7 +31,7 @@ tags:
   - article
   - paper
   - economics
-thumbnail: ./thumbnail.png
+thumbnail: ./brand/thumbnail.png
 github: https://github.com/econ-ark/econ-ark-myst
 doc:
   - id: title

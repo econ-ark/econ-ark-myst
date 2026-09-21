@@ -31,7 +31,7 @@ A build against a stale clone exits 0 and writes a well-formed PDF, typeset from
 Two ways to see which version of the template produced a file. `pdffonts` on the export lists the faces it embedded. Reading the downloaded copy says it outright, before you have any theory about the cause:
 
 ```sh
-grep '#let serifFont' _build/templates/typst/*/*/econark.typ
+grep '#let serifFont' _build/templates/typst/*/*/ark/palette.typ
 ```
 
 ## Requirements
@@ -52,15 +52,15 @@ grep '#let serifFont' _build/templates/typst/*/*/econark.typ
 
 ## Brand assets
 
-Two sources set the palette. econ-ark.org uses `#1f476b` throughout its own stylesheet, which the template takes for headings, labels and rules. The four logo curves are authored in CMYK inside the Econ-ARK logo EPS: 0/35/85/0 orange, 0/95/20/0 pink, 75/0/100/0 green, 100/0/0/0 cyan. `econark.typ` and `theme.css` carry that set converted to RGB. Read them from the EPS if you ever need them again, because the site's stylesheet holds none of the four and its raster logo rounds them.
+Two sources set the palette. econ-ark.org uses `#1f476b` throughout its own stylesheet, which the template takes for headings, labels and rules. The four logo curves are authored in CMYK inside the Econ-ARK logo EPS: 0/35/85/0 orange, 0/95/20/0 pink, 75/0/100/0 green, 100/0/0/0 cyan. `ark/palette.typ` and `theme.css` carry that set converted to RGB. Read them from the EPS if you ever need them again, because the site's stylesheet holds none of the four and its raster logo rounds them.
 
 Econ-ARK draws its logo in two lockups.
 
-The horizontal one sets the wordmark on a single line at 4:1, with the curves tucked between "Econ" and "ARK". It survives wherever height is short, which is why the site header and the landing header both take it, and why `logo.png` is that lockup.
+The horizontal one sets the wordmark on a single line at 4:1, with the curves tucked between "Econ" and "ARK". It survives wherever height is short, which is why the site header and the landing header both take it, and why `brand/logo.png` is that lockup.
 
 Its partially stacked companion runs 2:1, curves sweeping well above the wordmark, wanting vertical room to work: covers, posters, slides, heroes. Getting a stacked asset here means rendering one from the EPS.
 
-The margin rail of the PDF takes the horizontal lockup too. That is the one place the stacked one would suit. `econark.typ` measures the key points from the foot of the logo, so a lockup twice as tall would push them out of the margin more often than happens now.
+The margin rail of the PDF takes the horizontal lockup too. That is the one place the stacked one would suit. `econ-ark.typ` measures the key points from the foot of the logo, so a lockup twice as tall would push them out of the margin more often than happens now.
 
 A site built from here carries one OpenGraph tag, `og:title`, which leaves a shared link with a bare preview. Setting `thumbnail` in `myst.yml` adds `og:image`. A paper wanting a preview card should point it at a raster around 1200x630. MyST writes that image as both a png and a webp and puts the webp in the tag, which X reads and some other unfurlers refuse. The `social` key is carried into the page data and article-theme draws nothing from it, so a Twitter handle set there reaches no reader.
 
@@ -293,7 +293,7 @@ Every article of an `articles:` export, the first included, is a separate file t
 
 ```text
 :::{raw:typst}
-#import "econark.typ": arkTablex
+#import "econ-ark.typ": arkTablex
 #let tablex = arkTablex.with(tablex)
 :::
 ```
@@ -310,16 +310,16 @@ The running header of an `articles:` export takes the `short_title` of the proje
 site:
   template: article-theme
   options:
-    logo: logo.png
-    logo_dark: logo-dark.png
+    logo: brand/logo.png
+    logo_dark: brand/logo-dark.png
     logo_text: Econ-ARK
     logo_url: https://econ-ark.org
     logo_alt: Econ-ARK
-    favicon: favicon.png
+    favicon: brand/favicon.png
     style: theme.css
 ```
 
-`logo.png` is the wide website lockup, and `logo-dark.png` is the same lockup with a white wordmark, which the themes swap in at night. `favicon.png` is the four curves alone on the brand blue, because the wordmark is illegible at 16 pixels. Paths are relative to the `myst.yml` that holds them. This repository keeps its own at the root, beside the template and the stylesheet.
+`logo.png` is the wide website lockup, and `logo-dark.png` is the same lockup with a white wordmark, which the themes swap in at night. `favicon.png` is the four curves alone on the brand blue, because the wordmark is illegible at 16 pixels. The block above is this repository's own, where the three live under `brand/`. Paths are relative to the `myst.yml` that holds them, so a site that copies the files beside its own `myst.yml` drops the prefix.
 
 article-theme draws its downloads panel from the project, not from the paper whose page it is showing, so a paper that lists `downloads` in its own frontmatter still reaches the site with no link to its PDF. Name them under `project:` as well, with `file:` rather than `url:`, and the site copies each one in and links it:
 
@@ -403,7 +403,7 @@ An eyebrow line
 
 ## A heading
 
-![alt text](../thumbnail.png)
+![alt text](../brand/thumbnail.png)
 
 Body text.
 ````
@@ -434,8 +434,9 @@ The site side does need copying. Every site option that gives a file path, `styl
 `theme.css` alone is enough for the typography and the palette. The other four are the site chrome. To refresh them later:
 
 ```sh
-for f in theme.css logo.png logo-dark.png favicon.png banner.svg; do
-  curl -sLO "https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/$f"
+curl -sLO "https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/theme.css"
+for f in logo.png logo-dark.png favicon.png banner.svg; do
+  curl -sLO "https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/brand/$f"
 done
 ```
 
@@ -482,7 +483,7 @@ The site's navigation, sidebar and search keep the theme's own typeface, which t
 myst build --typst
 ```
 
-![](thumbnail.png)
+![](brand/thumbnail.png)
 
 ## The site half, in use
 

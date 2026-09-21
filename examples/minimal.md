@@ -5,7 +5,7 @@ authors:
 math:
   '\E': '\mathbb{E}'
 exports:
-  - id: econark-minimal
+  - id: econ-ark-minimal
     format: typst
     template: ..
     output: _build/exports/minimal.pdf

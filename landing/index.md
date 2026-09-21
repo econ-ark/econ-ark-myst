@@ -25,7 +25,7 @@ The PDF
 
 ## A paper that reproduces
 
-![The first page of the example paper](../thumbnail.png)
+![The first page of the example paper](../brand/thumbnail.png)
 
 The template sets the front matter, the margin rail, the tables and the theorem environments. Every
 weight it asks for has a font file of its own, which is what lets the same sources give the same PDF

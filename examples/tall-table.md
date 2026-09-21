@@ -4,7 +4,7 @@ authors:
   - name: Solo Author
 date: 2026-01-05
 exports:
-  - id: econark-tall-table
+  - id: econ-ark-tall-table
     format: typst
     template: ..
     output: _build/exports/tall-table.pdf
@@ -68,7 +68,7 @@ Text after the table.
 #widenNextFigure()
 :::
 
-:::{figure} ../logo.png
+:::{figure} ../brand/logo.png
 :label: fig-wide
 :width: 100%
 

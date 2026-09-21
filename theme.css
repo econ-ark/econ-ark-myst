@@ -1,4 +1,4 @@
-/* The website's half of the Econ-ARK house style; econark.typ holds the PDF's half, sharing the
+/* The website's half of the Econ-ARK house style; econ-ark.typ holds the PDF's half, sharing the
  * palette, Fira family, tables, captions, and the four-curve rule. Fonts live in fonts/ beside this
  * file, named under static_files in myst.yml with a system-sans fallback; both themes reach the text through article.article. */
 
@@ -7,7 +7,7 @@
 @import url("fonts/temml.css");
 
 /* The PDF's own typefaces, subset to Latin and served beside this file (Fira Math whole: see
- * scripts/fonts.sh). Ask only for a weight declared here, as econark.typ does: CSS answers an
+ * scripts/fonts.sh). Ask only for a weight declared here, as econ-ark.typ does: CSS answers an
  * undeclared weight with a neighbour, so 600 would silently get Bold. Emphasis is 500, bold 700. */
 @font-face {
   font-family: "Fira Math";
@@ -558,7 +558,7 @@ article.article h2:has(> .heading-text) {
   margin-top: 2.2em;
 }
 
-/* Both sit at body size, as they do in the PDF: econark.typ sets level 1 at 13pt over an 11pt body
+/* Both sit at body size, as they do in the PDF: econ-ark.typ sets level 1 at 13pt over an 11pt body
  * and leaves levels 2 and 3 at 11pt, separating them by weight and italic rather than by size. The
  * 1.12 and 1.06 here were a step of 5 percent that matched neither the PDF nor a reader's eye. */
 article.article h3:has(> .heading-text) {

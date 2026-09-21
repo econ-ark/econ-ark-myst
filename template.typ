@@ -1,16 +1,16 @@
 [#- macro s(value) -#]"[- value | replace("\\", "\\\\") | replace('"', '\\"') -]"[#- endmacro -#]
-#import "econark.typ": *
+#import "econ-ark.typ": *
 
 [-IMPORTS-]
 
-// MyST sets figure breakability from this binding; econark.typ keeps a figure that fits a page whole
+// MyST sets figure breakability from this binding; econ-ark.typ keeps a figure that fits a page whole
 #let breakableDefault = true
 // Theorem-like blocks in flow, replacing the floating boxes defined in the imports above
 #let proof = arkProof
 
 #let tableStyle = arkTableStyle
 // Admonitions, replacing the boxes defined in the imports above. The names are what MyST looks
-// up; arkAdmonitions in econark.typ is which colour each kind takes.
+// up; arkAdmonitions in econ-ark.typ is which colour each kind takes.
 #let noteBlock = arkAdmonitions.note
 #let importantBlock = arkAdmonitions.important
 #let tipBlock = arkAdmonitions.tip
@@ -21,12 +21,12 @@
 #let warningBlock = arkAdmonitions.warning
 #let dangerBlock = arkAdmonitions.danger
 #let errorBlock = arkAdmonitions.error
-// MyST's own imports above bind tablex for a document with a table, leaving econark.typ's none
+// MyST's own imports above bind tablex for a document with a table, leaving econ-ark.typ's none
 // standing for one without. subpar arrives the same way but is called as a field, so the wrapper
 // has to be a module, and a module can only come from a file.
 [# if IMPORTS #]
 #let tablex = if tablex != none { arkTablex.with(tablex) }
-#import "ark-subpar.typ" as subpar
+#import "ark/subpar.typ" as subpar
 [# endif #]
 
 // Every frontmatter string goes through s(), which escapes backslashes and double quotes for a Typst string
