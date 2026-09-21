@@ -431,6 +431,13 @@ article.article math {
   color: var(--ark-ink);
 }
 
+/* A raw `\begin{align}` comes back from Temml numbered from a counter in fonts/temml.css, beside
+ * the number MyST gives the same equation and a cross-reference resolves to. Two printed together.
+ * Temml's goes; docs/known-gaps.md carries what that costs a multi-line environment. */
+article.article .tml-eqn::before {
+  content: none;
+}
+
 
 @media (min-width: 640px) {
   article.article p {
@@ -457,10 +464,10 @@ article.article a:focus-visible,
   outline-offset: 2px;
 }
 
-/* Links leave the document, so they carry the blue; so do citations. A button is excluded because
- * styles/button.css sets its text white over --myst-color-primary, and this rule would outrank
- * that at two classes to one, leaving brand blue on the button's own fill at 2.63 to 1. */
-article.article a:not(.button),
+/* Links leave the document, so they carry the blue, and so do citations. The button is excluded
+ * because styles/button.css sets its label white over the fill, the card because the theme makes
+ * the whole card an anchor that asks for body ink. Both lost to this; see docs/known-gaps.md. */
+article.article a:not(.button):not(.myst-card),
 article.article cite:not(.button) a {
   color: var(--myst-color-link);
   text-decoration-thickness: 1px;
@@ -551,6 +558,50 @@ article.article h4:has(> .heading-text) {
   font-style: italic;
   font-weight: 400;
   color: var(--ark-ink);
+}
+
+/* Tables, which the PDF sets booktabs: horizontal rules only, heavier at the top and foot than
+ * under the header, and no verticals. ark/tables.typ draws that with arkGrey at 0.75pt and 0.5pt,
+ * so the same two weights and the same grey here, over the theme's own boxed grey-200 grid. */
+article.article table {
+  border-collapse: collapse;
+  border-top: 1.5px solid var(--ark-grey);
+  border-bottom: 1.5px solid var(--ark-grey);
+}
+
+article.article table th {
+  font-family: var(--ark-sans);
+  font-weight: 500;
+  border-bottom: 1px solid var(--ark-grey);
+}
+
+article.article table td,
+article.article table tr {
+  border: 0;
+}
+
+/* MyST prints an equation it cannot parse as a bare `pre` holding the parser's message and the TeX
+ * behind it, and the theme paints that stone-800: a near-black slab, the loudest thing on the page,
+ * where nine of them sit across three DemARK notebooks. Pink is the palette's error colour. */
+article.article pre[title] {
+  background: var(--ark-tint);
+  color: var(--ark-code-ink);
+  border-left: 2px solid var(--ark-curve-2);
+  border-radius: 0;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.86em;
+}
+
+/* A card carries a hairline in the house grey and no shadow, the one filled-and-shadowed box left
+ * in a stylesheet where a filled box means code. The theme writes border-gray-100 and a Tailwind
+ * blue on hover, both one class, so these take the border at two classes and an element. */
+article.article .myst-card {
+  border-color: var(--ark-rule);
+  box-shadow: none;
+}
+
+article.article .myst-card:hover {
+  border-color: var(--ark-blue);
 }
 
 /* Captions: sans and small, with the number in blue, set left under a figure and over a table */
@@ -744,6 +795,9 @@ article.article pre > code > span[data-highlight="true"] > .linenumber {
   font-family: var(--ark-mono);
   font-weight: 400;
   font-size: 0.86em;
+  /* The same ink as the cell above it, where the answer arrived in pure black against the code's
+     own #48464e. A question and its answer sit adjacent, so the two inks were visible together. */
+  color: var(--ark-code-ink);
   background: var(--ark-tint);
   border-radius: 2px;
   padding: 0.6rem 0.8rem;
@@ -1116,6 +1170,13 @@ article.article .ark-section h3 {
  * more room to clear one than it does to clear a row of cards. */
 article.article .ark-hero + .ark-section h3 {
   margin-top: 4.5rem;
+}
+
+/* A landing section is laid out for its cards, which want the outset width, and its standfirst
+ * inherited it: 94 characters against the 87 a notebook paragraph reads at. The cards keep the
+ * outset width, the sentence under the heading takes the measure of the prose it introduces. */
+article.article .ark-section > p {
+  max-width: 42.4rem;
 }
 
 /* The theme wraps heading text in its own span and sets size and colour there, so the rule above

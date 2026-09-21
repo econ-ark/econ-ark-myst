@@ -41,6 +41,45 @@ Confirm any replacement by hovering and measuring, never by reading the built HT
 in no file. `:nth-of-type(2)` survives this injection and fails the first time an anchor is
 injected instead.
 
+## The card that is a link, and the one rule that cannot reach it
+
+myst-theme makes a whole card one anchor, `<a class="myst-card ... text-inherit">`. The site's link
+rule therefore painted every word inside it in `--ark-blue`, title and body copy alike, which on a
+grouped index of twenty-two demonstrations is most of the page in the accent. `theme.css` excludes
+`.myst-card` from that rule so the body reads in page ink and the card itself carries the affordance,
+its border answering a pointer.
+
+A link inside a card body loses its colour along with the prose. It is already inside an anchor, so
+it cannot be one itself, and `myst-to-react` gives it no class of its own to catch. A card points at one
+destination and its body should carry prose alone, which makes this a constraint on the content; a
+stylesheet cannot announce it.
+
+The card's own chrome comes from Tailwind utilities the theme's markup writes, `shadow`,
+`border-gray-100` and `hover:border-blue-500`, which 1.4.0 still defines even where it paints its
+chrome through tokens. They are classes on the element rather than tokens, which puts them outside
+what `check_token_coverage` can read. `theme.css` overrides all three on
+`article.article .myst-card`; nothing measures that it still does.
+
+## Two equation numbers that can disagree
+
+Temml numbers a display itself. `\begin{align}` emits one `<span class="tml-eqn">` per row, filled by
+a CSS counter in `fonts/temml.css`:
+
+```css
+.tml-eqn::before { counter-increment: tmlEqnNo; content: "(" counter(tmlEqnNo) ")" }
+```
+
+MyST numbers the same block through its own anchor, from its own count of labelled equations. The two
+counters run over different populations. A page holding one unlabelled display therefore prints two
+numbers on every equation after it; the gap between them widens down the page. `theme.css` sets
+`content: none` on the Temml span and leaves MyST's, which is the number a `{eq}` reference resolves
+to.
+
+A multi-row environment pays for that. Temml gave each `mtr` a number of its own where MyST gives the
+block one, so the rows of an `align` now share a single number. No option separates the two counters.
+The suite compares them nowhere either, since both numbers are right against their own count and
+neither build here renders a display Temml would number.
+
 ## The proof kind, which no stylesheet can read
 
 The PDF italicises six of the fifteen `prf:` kinds, amsthm's plain style: theorem, lemma,
@@ -95,12 +134,26 @@ from these rules rather than from the theme's tokens.
 ## Rules whose class no example renders
 
 A rule counts as checked only where some example renders its class, which is why
-`examples/site-only.md` exists. Counted against both built sites, ten rules are still in that
+`examples/site-only.md` exists. Counted against both built sites, twelve rules are still in that
 state, in the three groups below.
 
 Needs a page this repo has no way to produce: `.font-system` and the five `.myst-jp-*` rules want
 executed kernel output, and `p[data-line-number].line::before` wants a LaTeX algorithm environment,
 since that node comes from `tex-to-myst/src/algorithms.ts` and no MyST directive emits it.
+
+Needs content this repo declines to carry. `article.article .tml-eqn::before` wants a display Temml
+numbers, which means an `align` in `examples/paper.md`; adding one there would rebuild the tracked
+PDF for one site-only line. `article.article pre[title]` wants a math error, which is what MyST puts
+on the page when a macro or an environment fails to resolve. Both are live rather than dead. DemARK
+renders four `.tml-eqn` spans on one notebook page; it rendered eight of those error blocks until
+the `eqnarray` and macro fixes of 2026-09-21.
+
+A consumer reaches the notebook six. DemARK builds twenty-two executed notebooks against this theme.
+One of its pages carries `.font-system` on a stream output, both output rules, fifty
+`.myst-jp-nb-block`s and the three toolbar rules, all painting as intended. That measurement is on
+another repository's build, which leaves the suite here unable to see them. It still tells us the
+rules are live rather than dead. Reading that page is also how we caught the ink on a cell output at
+the browser default.
 
 Needs content of a shape the examples happen not to carry: `.sphinx-desc-signature` wants an API
 signature converted from Sphinx, and `.myst-landing-centered-subtitle` wants a subtitle on a
