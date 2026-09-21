@@ -664,8 +664,9 @@ check_template_files() {
       case "$abs" in *.typ) queue+=("$abs") ;; esac
     # Three ways a typst file names another: an import, an image, and the syntax theme a raw block
     # is highlighted from. A fourth would go unlisted here and unnoticed until a consumer's build.
-    done < <(rg -o '#import "([^@"]+)"|image\("([^"]+)"\)|theme: "([^"]+)"' -r '$1$2$3' \
-      "$root/$f" 2>/dev/null)
+    # Each match holds one quoted path, which the sed then takes out of whichever form it came in.
+    done < <(grep -ohE '#import "[^@"]+"|image\("[^"]+"\)|theme: "[^"]+"' "$root/$f" 2>/dev/null |
+      sed -E 's/.*"([^"]+)".*/\1/')
   done
   while IFS= read -r dep; do
     [ -n "$dep" ] || continue
@@ -813,8 +814,8 @@ check_token_coverage() {
   fi
   # The theme names a class for its utility and its token, so bg-myst-bg-secondary paints through
   # --myst-color-bg-secondary; stripping the utility off the front leaves the token to look up
-  painted=$(rg -o --no-filename \
-    '(?:bg|text|border|ring|outline|divide|placeholder|decoration|fill|stroke)-myst-[a-z0-9-]+' \
+  painted=$(grep -ohE \
+    '(bg|text|border|ring|outline|divide|placeholder|decoration|fill|stroke)-myst-[a-z0-9-]+' \
     "$dir"/index.html "$dir"/*/index.html 2>/dev/null |
     sed -E 's/^[a-z]+-myst-//' | grep -vE "^($kinds)(-|$)" | sort -u)
   if [ -z "$painted" ]; then
@@ -1850,9 +1851,10 @@ self_test() {
   unset -f "$canary" sweep_fixtures
 }
 
-# python3, rg and perl are as load bearing as the PDF tools: a missing interpreter would leave
-# pdf_runs and css_rules emitting nothing, which reads downstream as an artifact carrying nothing
-for tool in myst pdftotext pdfinfo pdffonts pdftoppm convert python3 rg perl; do
+# python3 and perl are as load bearing as the PDF tools: a missing interpreter would leave pdf_runs
+# and css_rules emitting nothing, which reads downstream as an artifact carrying nothing. The
+# searches are grep's, since a runner carrying every tool above still had no rg.
+for tool in myst pdftotext pdfinfo pdffonts pdftoppm convert python3 perl; do
   command -v "$tool" >/dev/null || { echo "missing required tool: $tool"; exit 2; }
 done
 
