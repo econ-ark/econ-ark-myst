@@ -397,6 +397,34 @@ for m in re.finditer(r"<text[^>]*font=\"(\d+)\"[^>]*>(.*?)</text>", x, re.S):
 '
 }
 
+# brand/ark.mplstyle holds the palette a third time, for the figures a notebook draws, where neither
+# CSS nor Typst reaches. Nothing renders matplotlib here, so the tie is to the hexes theme.css
+# authors: a colour in the style file that no --ark-* token declares is one that drifted.
+check_mplstyle() {
+  local name=$1 style=$2 declared used stray cycle
+  require_file "$name" "$style" "the figure palette" || return
+  # Bare six-digit hexes, as a style file writes them, against the tokens with the # stripped and
+  # any three-digit form expanded, which is how --ark-ink is written
+  declared=$(grep -oE -- '--ark-[a-z0-9-]+:[[:space:]]*#[0-9a-fA-F]{3,6}' "$ROOT/theme.css" |
+    grep -oE '#[0-9a-fA-F]{3,6}$' | tr -d '#' | tr 'A-F' 'a-f' |
+    awk '{ print (length($0) == 3 ? substr($0,1,1) substr($0,1,1) substr($0,2,1) substr($0,2,1) substr($0,3,1) substr($0,3,1) : $0) }' |
+    sort -u)
+  used=$(sed 's/#.*//' "$style" | grep -oiE '\b[0-9a-f]{6}\b' | tr 'A-F' 'a-f' | sort -u)
+  if [ -z "$used" ]; then
+    bad "$name: no colour in $style, so the figure palette went unchecked"
+    return
+  fi
+  stray=$(comm -23 <(echo "$used") <(echo "$declared") | tr '\n' ' ')
+  cycle=$(grep -oE "cycler\('color', \[[^]]*\]" "$style" | grep -oE "[0-9a-f]{6}" | tr '\n' ' ')
+  if [ -n "${stray// /}" ]; then
+    bad "$name: $style paints with colours theme.css never declares: $stray"
+  elif [ "$cycle" != "fbaf3f ed2a7b 00adef 38b449 1f476b " ]; then
+    bad "$name: the figure cycle is not the four curves and the blue, in order: ${cycle:-none}"
+  else
+    ok "$name: every colour a figure is drawn in is one theme.css declares ($(wc -l <<<"$used"))"
+  fi
+}
+
 # Typst highlights a listing from its own theme unless given one, and brand/code.tmTheme is that
 # theme. Its four foregrounds are authored in theme.css, so this reads them from there and asserts
 # the PDF prints each in a mono face; an unexercised role would otherwise go unnoticed.
@@ -1809,6 +1837,25 @@ self_test() {
     check_brand seeded "$brand"
   rm -rf "$brand"
 
+  # check_mplstyle, against a colour the palette never declares, a cycle that stops being the four
+  # curves and the blue, and a style file carrying no colour at all
+  local mpl
+  mpl=$(mktemp -d)
+  expect '^ok' 'the tracked figure palette passes unseeded' \
+    check_mplstyle seeded "$ROOT/brand/ark.mplstyle"
+  sed 's/text.color: 48464e/text.color: 112233/' "$ROOT/brand/ark.mplstyle" >"$mpl/stray.mplstyle"
+  expect 'FAIL.*never declares: 112233' 'a colour off the palette is caught' \
+    check_mplstyle seeded "$mpl/stray.mplstyle"
+  # The swap is to another palette colour, so the stray test above passes it through and the order
+  # is what fails: a cycle of five declared colours in the wrong order is the way this goes wrong
+  sed "s/'1f476b'/'676470'/" "$ROOT/brand/ark.mplstyle" >"$mpl/cycle.mplstyle"
+  expect 'FAIL.*not the four curves' 'a cycle that swaps the blue for the house grey is caught' \
+    check_mplstyle seeded "$mpl/cycle.mplstyle"
+  printf 'font.size: 10.0\n' >"$mpl/nocolour.mplstyle"
+  expect 'FAIL.*no colour in' 'a style file with no colour at all is caught' \
+    check_mplstyle seeded "$mpl/nocolour.mplstyle"
+  rm -rf "$mpl"
+
   # The two ways the manifest and the imports part: a module the template reaches that the list
   # never names, which builds here and fails in a consumer's checkout, and a name the list carries
   # that nothing imports. The unseeded copy between them shows the seeds are what fail.
@@ -1955,6 +2002,7 @@ else
   check_font paper "$PAPER" FiraMath-Regular-Identity-H
   check_bundle plugin "$ROOT/plugins/fira-math.bundle.mjs"
   check_brand brand "$ROOT/brand"
+  check_mplstyle brand "$ROOT/brand/ark.mplstyle"
   check_template_files manifest "$ROOT"
   check_temml_pin pins "$ROOT/scripts/fonts.sh" "$ROOT/package.json"
   check_documented_config docs "$ROOT/README.md" "$ROOT/myst.yml"

@@ -66,6 +66,31 @@ A site built from here carries one OpenGraph tag, `og:title`, which leaves a sha
 
 Code on a site built from here is read, never run. MyST spells in-page execution `thebe`, which `jupyter` is an alias for, and it wants a kernel to reach, a Binder or a JupyterHub. This template configures none, and offers `binder` instead, which is a link that sends the reader to run the notebook elsewhere. A repository wanting live cells sets `thebe` under its own project.
 
+### Figures drawn in a notebook
+
+`theme.css` cannot reach a plot. It sets the prose, the code listings and the site chrome, and a
+figure beside them arrives in matplotlib's defaults, its series in the Tableau cycle on an opaque
+white rectangle over the page's `#f5f7f9`. `brand/ark.mplstyle` sets the five palette colours as the
+cycle, Fira Sans as the label face, `--ark-code-ink` as the text colour, and a transparent figure
+face for the page to show through.
+
+```python
+import matplotlib.pyplot as plt
+
+plt.style.use("../econ-ark-myst/brand/ark.mplstyle")
+```
+
+matplotlib resolves that path against the kernel's working directory, which under Jupyter is the
+notebook's own directory. The `../` above is for a notebook one level down from the repository root,
+where the theme sits as a submodule.
+
+A figure only changes when its notebook is executed again. MyST renders the outputs stored in the
+`.ipynb`, so adding the line to a notebook whose plots were committed by an earlier run changes
+nothing a reader sees until someone reruns it.
+
+Every colour in the file is authored in `theme.css`, and `check_mplstyle` compares the two. A token
+renamed there fails the suite while this file still holds the old hex.
+
 ## Frontmatter
 
 | Field | Where it appears | When unset |
@@ -440,12 +465,13 @@ The site side does need copying. Every site option that gives a file path, `styl
 | `logo.png`, `logo-dark.png` | The lockup in the site header, day and night |
 | `favicon.png` | The browser tab |
 | `banner.svg` | The default banner behind an article-theme title card |
+| `ark.mplstyle` | The palette in a figure a notebook draws, once that notebook runs again |
 
-`theme.css` alone is enough for the typography and the palette. The other four are the site chrome. To refresh them later:
+`theme.css` alone is enough for the typography and the palette. Three of the rest are the site chrome, `banner.svg` a default for a paper, `ark.mplstyle` the figures. To refresh them later:
 
 ```sh
 curl -sLO "https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/theme.css"
-for f in logo.png logo-dark.png favicon.png banner.svg; do
+for f in logo.png logo-dark.png favicon.png banner.svg ark.mplstyle; do
   curl -sLO "https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/brand/$f"
 done
 ```

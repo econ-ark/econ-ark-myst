@@ -1,0 +1,72 @@
+# Econ-ARK matplotlib style. A figure drawn in a notebook is the last surface the palette did not
+# reach: the prose, the code and the chrome are branded, and the plot beside them arrived in
+# matplotlib's defaults on an opaque white rectangle over the page's own #f5f7f9.
+#
+# Every colour here is authored in theme.css and check_mplstyle holds the two ends together, so a
+# token renamed there fails the suite rather than leaving this file behind.
+#
+# matplotlib resolves the path against the kernel's working directory, the notebook's own directory
+# under Jupyter. From a notebook one level below the root of a repository carrying this one:
+#   import matplotlib.pyplot as plt
+#   plt.style.use("../econ-ark-myst/brand/ark.mplstyle")
+# A figure changes only when its notebook runs again. README, "Figures drawn in a notebook".
+
+# Transparent, so the page colour shows through rather than a white slab sitting on it. A reader
+# saving the png gets no background either, which is why the axes face is transparent too.
+figure.facecolor: none
+figure.edgecolor: none
+axes.facecolor: none
+savefig.facecolor: none
+savefig.edgecolor: none
+savefig.transparent: True
+
+# The four logo curves, then Econ-ARK blue. A plot of five series spends the palette exactly once,
+# in the order the rule under the front matter shows them, so a reader meets them in a known order.
+axes.prop_cycle: cycler('color', ['fbaf3f', 'ed2a7b', '00adef', '38b449', '1f476b'])
+
+# Fira Sans carries the site and the PDF; a figure label in DejaVu was the tell that gave a plot
+# away as pasted in. The fallback is the same stack theme.css names.
+font.family: sans-serif
+font.sans-serif: Fira Sans, Helvetica Neue, Arial, DejaVu Sans, sans-serif
+font.size: 10.0
+axes.titlesize: 11.0
+axes.labelsize: 10.0
+xtick.labelsize: 9.0
+ytick.labelsize: 9.0
+legend.fontsize: 9.0
+
+# Ink and rules from the palette. --ark-code-ink for text rather than --ark-ink, since a plot label
+# sits at the same size as a code listing and pure black reads heavier there than the page does.
+text.color: 48464e
+axes.labelcolor: 48464e
+axes.edgecolor: a4a2a9
+xtick.color: 676470
+ytick.color: 676470
+xtick.labelcolor: 48464e
+ytick.labelcolor: 48464e
+
+# Two spines, as an econ figure is drawn: the box adds two lines that carry nothing.
+axes.spines.top: False
+axes.spines.right: False
+axes.linewidth: 0.8
+
+# A grid in the house tint, under the data rather than over it. Off by default: a consumption
+# function against market resources is read for its shape, and gridlines compete with the curve.
+axes.grid: False
+grid.color: e8edf2
+grid.linewidth: 0.8
+axes.axisbelow: True
+
+# The title sits left over the plot, where a caption sits left under a figure in both media.
+axes.titlelocation: left
+axes.titleweight: 500
+axes.titlepad: 8.0
+
+# A legend explains the series, so it takes no box of its own to compete with the axes.
+legend.frameon: False
+
+lines.linewidth: 1.8
+lines.solid_capstyle: round
+figure.dpi: 110
+savefig.dpi: 160
+savefig.bbox: tight
