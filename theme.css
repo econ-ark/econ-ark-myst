@@ -118,8 +118,10 @@
   /* Ink on a curve fill, held apart from --ark-ink for the same reason: the fills do not change
      with the theme, so the numeral over them must not lighten under html.dark */
   --ark-on-curve: #111;
-  /* The artwork behind a landing hero. A site serving it elsewhere overrides this one line */
-  --ark-hero-image: url("/banner.svg");
+  /* The artwork behind a landing hero, resolved against this stylesheet rather than the server
+     root: a Pages site under /DemARK/ made a leading slash mean econ-ark.github.io/banner.svg,
+     which 404s, and the hero painted flat. A site serving it elsewhere overrides this one line */
+  --ark-hero-image: url("banner.svg");
   /* Paper, then the fills that stay visible on it. Pure white glares in a lit room, so the
      page takes the brand blue at the top of its lightness range and the fills step down far
      enough to hold the separation the PDF has between its white paper and its tint. */
@@ -272,6 +274,13 @@ html.dark .myst-article-header-fm::before {
     grid-column: page-start / body-outset-start;
     min-width: 0;
     max-width: 100%;
+  }
+
+  /* A landing carries its own navigation, so the rail comes off where it would overlay the
+   * full-width blocks. Not through `hide_toc`, which drops the contents from the page, and on a
+   * phone that element is the drawer: taking the rail off here leaves the drawer its links. */
+  body:has(.ark-hero) .myst-primary-sidebar-pointer {
+    display: none;
   }
 }
 
@@ -841,6 +850,21 @@ html:not(.dark) .myst-skip-to-article {
   background-color: var(--ark-paper);
 }
 
+/* The drawer the menu button opens, which React writes at run time rather than into the page, so
+ * the static checks never see its bg-white. It paints over a --ark-paper page on a phone. */
+html:not(.dark) .myst-primary-sidebar-pointer {
+  background-color: var(--ark-paper);
+}
+
+/* book-theme prints the menu button whether or not a page has a table of contents, so a page
+ * without one opened a 281px drawer holding nothing at all. Hidden where the drawer has no link
+ * to offer, which only ever subtracts: the theme keeps deciding the widths the button appears at. */
+@supports selector(:has(a)) {
+  body:not(:has(.myst-primary-sidebar-nav a)) .myst-top-nav-menu-button {
+    display: none;
+  }
+}
+
 html:not(.dark) .myst-jp-nb-block > div.bg-white {
   background-color: var(--ark-paper);
 }
@@ -1103,6 +1127,16 @@ article.article .ark-hero::before {
   position: absolute;
   inset: 0;
   background: var(--ark-hero-image) no-repeat center / 100% 100%;
+}
+
+/* On a phone the copy panel runs the full width, so artwork stretched over the whole hero hides its
+ * curves behind the copy and leaves the strips above and below it on the empty corners of the file.
+ * Banded at the top, the fan reads above the panel and through its upper edge. */
+@media (max-width: 48rem) {
+  article.article .ark-hero::before {
+    bottom: auto;
+    height: clamp(9rem, 40vw, 14rem);
+  }
 }
 
 /* The copy sits in the card article-theme lays over that banner, down to its alpha, its blur and

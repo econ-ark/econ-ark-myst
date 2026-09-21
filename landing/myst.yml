@@ -13,8 +13,8 @@ project:
     - ../plugins/fira-math.mjs
   static_files:
     - ../fonts
-    # theme.css paints the hero with url("/banner.svg"); a static file is served at its basename,
-    # so this reaches the site root as /banner.svg despite the directory it is listed from.
+    # theme.css is served as /myst-theme.css and paints the hero with url("banner.svg"), resolved
+    # against itself. A static file is served at its basename, so this lands beside it.
     - ../brand/banner.svg
   toc:
     - file: index.md

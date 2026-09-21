@@ -2,9 +2,9 @@
 title: Econ-ARK
 description: A Typst template and website theme for Econ-ARK working papers and REMARKs
 site:
-  # A landing carries its own navigation, and the hero below is the title, so the rails and the
-  # frontmatter title block both come off.
-  hide_toc: true
+  # The hero below is the title, so the outline rail and the title block come off. Its twin
+  # hide_toc stays off: it takes the contents out of the page, and a phone reads that same element
+  # as the drawer. theme.css hides the rail at the width it paints, leaving the drawer its links.
   hide_outline: true
   hide_title_block: true
 ---

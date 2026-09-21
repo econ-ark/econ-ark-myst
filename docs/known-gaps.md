@@ -175,7 +175,21 @@ Needs content of a shape the examples happen not to carry: `.sphinx-desc-signatu
 signature converted from Sphinx, and `.myst-landing-centered-subtitle` wants a subtitle on a
 centered block, where the landing puts its subtitle on a split-image one.
 
-Applied by the theme's own JavaScript rather than by markup: `.myst-outline-item-active`.
+Applied by the theme's own JavaScript rather than by markup: `.myst-outline-item-active`, and the
+phone drawer's `.myst-primary-sidebar-pointer`, which React writes at run time carrying a `bg-white`
+of its own. `check_white_chrome` reads built HTML, so a surface that exists only after hydration is
+outside what it can see. That drawer opened white over a `--ark-paper` page with the suite green,
+which took a phone to notice. The same limit covers `.myst-top-nav-menu-button`, which book-theme
+prints whether or not the page has a table of contents.
+
+The contents that drawer holds are in the page, so that half is checked. `hide_toc` takes them out
+of it. The drawer is the same element as the desktop rail, so a landing that set the flag opened the
+button on nothing. `check_drawer_nav` fails a built page whose `myst-primary-sidebar-toc` is absent
+or empty of links. Both landings here keep their contents and hide the rail from `theme.css`.
+
+That rule reaches the rail through `.ark-hero`, a class of this repository's own. A consumer landing
+that brands its hero some other way therefore keeps the rail, the safer of the two ways to be
+wrong about it.
 
 Two entries have left this list. `article.article img.ark-banner` styled a class this repo never
 emitted anywhere, which made it dead code rather than a gap, and `theme.css` no longer carries it.

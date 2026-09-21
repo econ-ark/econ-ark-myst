@@ -801,6 +801,52 @@ check_css_urls() {
   fi
 }
 
+# The check above resolves against the build root, where a leading slash and a relative path are the
+# same file. A consumer on GitHub Pages serves under /<repo>/, where the slash means the server root
+# instead and the asset 404s: that is what left DemARK's hero flat while every check here passed.
+check_css_root_urls() {
+  local name=$1 dir=$2 sheet rooted="" seen=0
+  while IFS= read -r sheet; do
+    [ -n "$sheet" ] || continue
+    seen=$((seen + 1))
+    rooted="$rooted$(sed -E 's/url\("data:[^"]*"\)//g; s/url\(data:[^)]*\)//g' "$sheet" |
+      sed -nE "s@.*url\((['\"]?)(/[^'\")]+)\1\).*@\2@p")"
+  done < <(find "$dir" -name 'myst-theme.css' -o -path '*/fonts/*.css' 2>/dev/null)
+  if [ "$seen" -eq 0 ]; then
+    bad "$name: no stylesheet under $dir to read, so this check proved nothing"
+  elif [ -n "$rooted" ]; then
+    bad "$name: served CSS points at the server root, which 404s under a base path: $(tr '\n' ' ' <<<"$rooted")"
+  else
+    ok "$name: every url() in the served stylesheets is relative, so a base path still resolves them"
+  fi
+}
+
+# On a phone the menu button opens the primary sidebar, and that drawer is the same element as the
+# desktop rail: `hide_toc` takes it out of the page at every width, so a landing that sets it opens
+# the drawer on nothing. Hiding the rail is a stylesheet job, which is what this asserts is left to.
+check_drawer_nav() {
+  local name=$1 dir=$2 page rc missing="" linkless="" seen=0
+  for page in "$dir"/index.html "$dir"/*/index.html; do
+    [ -f "$page" ] || continue
+    seen=$((seen + 1))
+    perl -0777 -ne 'm{myst-primary-sidebar-toc(.*?)</nav>}s or exit 1; exit($1 =~ /<a[ >]/ ? 0 : 2)' "$page"
+    rc=$?
+    case $rc in
+      1) missing="$missing $(basename "$(dirname "$page")")" ;;
+      2) linkless="$linkless $(basename "$(dirname "$page")")" ;;
+    esac
+  done
+  if [ "$seen" -eq 0 ]; then
+    bad "$name: no built page under $dir, so this check proved nothing"
+  elif [ -n "$missing" ]; then
+    bad "$name: these pages ship no contents, so the menu button opens an empty drawer:$missing"
+  elif [ -n "$linkless" ]; then
+    bad "$name: the contents on these pages hold no link, so the drawer opens on nothing:$linkless"
+  else
+    ok "$name: every page ships the contents the menu button opens ($seen of them)"
+  fi
+}
+
 # The landing branding is opt-in by class, which is why it needs its own check: the stylesheet can
 # define .ark-hero and the page can stop asking for it, or the reverse, and every other check here
 # still passes. Both ends of each class are asserted.
@@ -1177,6 +1223,7 @@ check_site() {
     bad "$name: no bare <dt> or <blockquote> under $dir, so those rules are inert and the site drifts from the PDF"
   fi
   check_css_urls "$name" "$dir"
+  check_css_root_urls "$name" "$dir"
   if grep -qE 'myst-fm-parts|id="skip-to-article"' <<<"$html"; then
     ok "$name: the front matter carries the anchor the four-colour rule hangs on"
   else
@@ -1439,6 +1486,20 @@ self_test() {
   : >"$cssdir/banner.svg"
   expect 'ok.*resolves \(2 references\)' 'a root-relative url() the site serves passes, and is counted' \
     check_css_urls seeded "$cssdir"
+  # check_css_root_urls, against the file the one above happily passes: both urls resolve here, and
+  # the leading slash is still what 404s once a consumer serves the site under /<repo>/
+  expect 'FAIL.*points at the server root' 'a url() the base path would break is caught' \
+    check_css_root_urls seeded "$cssdir"
+  printf '@font-face { src: url("Temml.woff2") format("woff2"); }\n.h{background:url("banner.svg")}\n' >"$cssdir/myst-theme.css"
+  expect 'ok.*is relative' 'the same stylesheet written relatively passes' \
+    check_css_root_urls seeded "$cssdir"
+  # A data URI carries slashes of its own inside base64, which must not read as a root path
+  printf '.i{background:url("data:image/png;base64,iVBOR/w0KGgo=")}\n' >"$cssdir/myst-theme.css"
+  expect 'ok.*is relative' 'a data URI is not mistaken for a root path' \
+    check_css_root_urls seeded "$cssdir"
+  rm "$cssdir/myst-theme.css"
+  expect 'FAIL.*proved nothing' 'a directory with no stylesheet to read is caught' \
+    check_css_root_urls seeded "$cssdir"
   rm -rf "$cssdir"
 
   expect "FAIL.*package.json 'none'" 'Temml pins that disagree are caught' \
@@ -1533,6 +1594,25 @@ self_test() {
     check_token_coverage seeded "$bc" "$bc/prefix.css"
   expect 'FAIL.*is missing or empty' 'a census against a stylesheet that was never served is caught' \
     check_token_coverage seeded "$bc" "$bc/never-copied.css"
+  # check_drawer_nav, against the shape the landing shipped: a page whose contents nav left the DOM
+  # under hide_toc, one whose nav is there and empty, and the page beside it that carries links.
+  dn=$(mktemp -d)
+  mkdir -p "$dn/fishertwoperiod"
+  printf '%s\n' '<nav class="myst-primary-sidebar-toc"><a href="/x">x</a></nav>' >"$dn/index.html"
+  cp "$dn/index.html" "$dn/fishertwoperiod/index.html"
+  expect '^ok.*2 of them' 'pages that ship the contents the drawer opens pass' \
+    check_drawer_nav seeded "$dn"
+  printf '%s\n' '<nav class="myst-primary-sidebar-topnav"></nav>' >"$dn/index.html"
+  expect 'FAIL.*empty drawer' 'a landing that dropped its contents is caught' \
+    check_drawer_nav seeded "$dn"
+  printf '%s\n' '<nav class="myst-primary-sidebar-toc"><span>x</span></nav>' >"$dn/index.html"
+  expect 'FAIL.*hold no link' 'contents rendered without a link is caught' \
+    check_drawer_nav seeded "$dn"
+  rm -r "$dn/index.html" "$dn/fishertwoperiod"
+  expect 'FAIL.*proved nothing' 'a directory holding no built page is caught' \
+    check_drawer_nav seeded "$dn"
+  rm -rf "$dn"
+
   # With no theme sheet to read the kinds out of, every kind token would read as one this sheet
   # owes, so the census has to say it could not be taken rather than demand nine more tokens
   rm -r "$bc/build"
@@ -2074,6 +2154,7 @@ else
   if [ "$primarytheme" = book-theme ]; then
     check_home_link "$primary" "$ROOT/_build/html"
     check_sidebar_footer "$primary" "$ROOT/_build/html"
+    check_drawer_nav "$primary" "$ROOT/_build/html"
   elif [ "$primarytheme" != article-theme ]; then
     bad "$primary: myst.yml names neither theme, so the header and sidebar went unread"
   fi
@@ -2108,6 +2189,7 @@ else
     if [ "$othername" = book-theme ]; then
       check_home_link "site ($othername)" "$other/_build/html"
       check_sidebar_footer "site ($othername)" "$other/_build/html"
+      check_drawer_nav "site ($othername)" "$other/_build/html"
     fi
     check_css_last "site ($othername)" "$other/_build/html"
     check_dropdown_tags "site ($othername)" "$other/_build/html" "$other/_build/html/myst-theme.css"
@@ -2131,7 +2213,10 @@ else
   check_token_coverage landing "$landdir" "$landdir/myst-theme.css"
   check_white_chrome landing "$landdir" "$landdir/myst-theme.css"
   check_landing_classes landing "$landdir" "$landdir/myst-theme.css"
+  # The one that found this: a landing is exactly the page tempted to drop its contents
+  check_drawer_nav landing "$landdir"
   check_css_urls landing "$landdir"
+  check_css_root_urls landing "$landdir"
   check_faces_served landing "$landdir"
   check_weights_served landing "$landdir/myst-theme.css"
   check_theme_css_served landing "$landdir"
