@@ -67,7 +67,11 @@ ARK_BLUE='#1F476B'
 # renders are kept. The key carries the file's size and mtime, so a rebuilt PDF misses rather than
 # serving the image of the file it replaced.
 RASTER_CACHE=$(mktemp -d)
-trap 'rm -rf "$RASTER_CACHE"' EXIT
+# Sampling the logo curves costs about seventeen seconds an asset, and the self-test runs the brand
+# check four times over seeded copies. The generator reads one tracked input, so its pair of svgs is
+# the same every call: built once here and compared against, the way the rasters above are kept.
+BRAND_CACHE=$(mktemp -d)
+trap 'rm -rf "$RASTER_CACHE" "$BRAND_CACHE"' EXIT
 
 raster_page() {
   local pdf=$1 page=$2 key png
@@ -78,6 +82,15 @@ raster_page() {
 }
 
 fail=0
+# Pixels differing between two images, in AE_COUNT, with what compare said in AE_RAW. compare prints
+# its own failures on stdout in place of a count, and a count read from one of those is empty rather
+# than a number, which every caller would otherwise read as a clean match. Non-zero exit says so.
+ae_pixels() {
+  AE_RAW=$(compare -metric AE "$1" "$2" null: 2>&1)
+  AE_COUNT=${AE_RAW%%[!0-9]*}
+  [ -n "$AE_COUNT" ]
+}
+
 ok()  { printf 'ok    %s\n' "$*"; }
 bad() { printf 'FAIL  %s\n' "$*"; fail=1; }
 # Empty rather than zero when the file is not a PDF, so a caller's loop runs no iterations
@@ -364,7 +377,7 @@ check_font() {
 # pages are what gets compared. Text alone misses a weight or a colour that changed; bytes alone
 # over-reach, since a subset tag and an XMP instance id can differ between two identical renders.
 check_tracked() {
-  local name=$1 fresh=$2 committed=$3 scratch pages p differing digits total=0
+  local name=$1 fresh=$2 committed=$3 scratch pages p total=0
   # Every comparison below reports a match on two absent files: they extract the same empty text,
   # cmp calls two empty ones identical, and a page walk over no pages counts no differing pixels.
   # A git show that wrote nothing is how $committed arrives empty.
@@ -386,19 +399,17 @@ check_tracked() {
   pdftoppm -png -r 150 "$fresh" "$scratch/new" 2>/dev/null
   pages=$(page_count "$fresh")
   # pdftoppm pads a page number to the width of the last one, so a paper reaching ten pages writes
-  # old-01.png. compare prints its own failures on stdout, and a count read from one of those is
-  # empty: that aborts the arithmetic and, with it, every check after this one.
+  # old-01.png. An unparseable count would abort the arithmetic and, with it, every check after
+  # this one, so ae_pixels reports that rather than letting it through as a zero.
   for ((p = 1; p <= ${pages:-0}; p++)); do
-    differing=$(compare -metric AE \
+    if ! ae_pixels \
       "$(printf '%s/old-%0*d.png' "$scratch" "${#pages}" "$p")" \
-      "$(printf '%s/new-%0*d.png' "$scratch" "${#pages}" "$p")" null: 2>&1)
-    digits=${differing%%[!0-9]*}
-    if [ -z "$digits" ]; then
+      "$(printf '%s/new-%0*d.png' "$scratch" "${#pages}" "$p")"; then
       rm -rf "$scratch"
-      bad "$name: page $p of the tracked PDF could not be compared, so it is unchecked: $differing"
+      bad "$name: page $p of the tracked PDF could not be compared, so it is unchecked: $AE_RAW"
       return
     fi
-    total=$((total + digits))
+    total=$((total + AE_COUNT))
   done
   rm -rf "$scratch"
   if [ "$total" -eq 0 ]; then
@@ -426,6 +437,102 @@ check_bundle() {
     bad "$name: $bundle differs from a fresh build, so the published plugin is stale"
   fi
   rm -f "$fresh"
+}
+
+# No build step runs scripts/gen-banner.py, so an edit to it or to scripts/curves-crop.svg leaves
+# banner.svg, favicon.svg and the favicon.png rasterised from it standing, with every other check
+# here still passing. The svgs compare as bytes; the png as pixels, which every rasteriser agrees on.
+
+# Fills BRAND_CACHE with the svgs the tracked curves produce, on the first call that needs them.
+brand_reference() {
+  [ -s "$BRAND_CACHE/banner.svg" ] && [ -s "$BRAND_CACHE/favicon.svg" ] && return 0
+  # gen-banner.py declares its own dependencies inline, so uv resolves them and this names none
+  command -v uv >/dev/null 2>&1 || return 1
+  (cd "$ROOT" && uv run --no-project scripts/gen-banner.py scripts/curves-crop.svg \
+    "$BRAND_CACHE/") >/dev/null 2>&1 || return 1
+  [ -s "$BRAND_CACHE/banner.svg" ] && [ -s "$BRAND_CACHE/favicon.svg" ]
+}
+
+check_brand() {
+  local name=$1 dir=$2 scratch asset comparable
+  if ! brand_reference; then
+    bad "$name: gen-banner.py did not run, so the generated assets went unchecked"
+    return
+  fi
+  scratch=$(mktemp -d)
+  for asset in banner favicon; do
+    if cmp -s "$dir/$asset.svg" "$BRAND_CACHE/$asset.svg"; then
+      ok "$name: the tracked $asset.svg is what the curves and the generator produce"
+    else
+      bad "$name: $asset.svg differs from a fresh run of gen-banner.py; commit the regenerated file"
+    fi
+  done
+  if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert "$dir/favicon.svg" -o "$scratch/favicon.png" 2>/dev/null
+  elif command -v inkscape >/dev/null 2>&1; then
+    inkscape "$dir/favicon.svg" --export-type=png \
+      --export-filename="$scratch/favicon.png" >/dev/null 2>&1
+  else
+    bad "$name: no rsvg-convert or inkscape, so favicon.png went unchecked against its svg"
+    rm -rf "$scratch"
+    return
+  fi
+  if [ ! -s "$scratch/favicon.png" ]; then
+    bad "$name: rasterising favicon.svg wrote nothing, so favicon.png went unchecked"
+    rm -rf "$scratch"
+    return
+  fi
+  # Two images of different sizes reach ae_pixels as an unparseable count rather than a difference
+  ae_pixels "$dir/favicon.png" "$scratch/favicon.png"
+  comparable=$?
+  rm -rf "$scratch"
+  if [ "$comparable" -ne 0 ]; then
+    bad "$name: favicon.png could not be compared with its svg, so it is unchecked: $AE_RAW"
+  elif [ "$AE_COUNT" -eq 0 ]; then
+    ok "$name: the tracked favicon.png renders identically to favicon.svg"
+  else
+    bad "$name: favicon.png differs from favicon.svg by $AE_COUNT pixels; re-export it"
+  fi
+}
+
+# Nothing in a build here reads template.yml's files: list, so a module this repository imports but
+# never lists builds clean from the working tree and fails only in a consumer's checkout, where MyST
+# copies what the list names and nothing else. This walks the imports out from the entry instead.
+check_template_files() {
+  local name=$1 root=$2 listed dep abs f missing=0 extra
+  local -a queue=(template.typ)
+  local seen="" needed=""
+  listed=$(awk '/^files:/ { on = 1; next } on && /^[a-z]/ { exit } on && /^  - / { print $2 }' \
+    "$root/template.yml")
+  if [ -z "$listed" ]; then
+    bad "$name: found no files: list in template.yml, so this check proved nothing"
+    return
+  fi
+  while [ ${#queue[@]} -gt 0 ]; do
+    f=${queue[0]}
+    queue=("${queue[@]:1}")
+    case " $seen " in *" $f "*) continue ;; esac
+    seen="$seen $f"
+    needed="$needed$f"$'\n'
+    while IFS= read -r dep; do
+      [ -n "$dep" ] || continue
+      # Each path is written relative to the file that names it, which is how it resolves in the
+      # build directory too, so -m resolves it back to a repository-relative name here
+      abs=$(realpath -m --relative-to="$root" "$root/$(dirname "$f")/$dep")
+      needed="$needed$abs"$'\n'
+      case "$abs" in *.typ) queue+=("$abs") ;; esac
+    done < <(rg -o '#import "([^@"]+)"|image\("([^"]+)"\)' -r '$1$2' "$root/$f" 2>/dev/null)
+  done
+  while IFS= read -r dep; do
+    [ -n "$dep" ] || continue
+    grep -qxF "$dep" <<<"$listed" || { bad "$name: template.yml does not list $dep, which the template imports"; missing=1; }
+  done < <(sort -u <<<"$needed")
+  extra=$(comm -23 <(sort -u <<<"$listed") <(sort -u <<<"$needed") | tr '\n' ' ')
+  if [ "$missing" -eq 0 ] && [ -n "${extra// /}" ]; then
+    bad "$name: template.yml lists what the template never reaches: $extra"
+  elif [ "$missing" -eq 0 ]; then
+    ok "$name: template.yml lists every file the template imports ($(sort -u <<<"$needed" | grep -c .))"
+  fi
 }
 
 # grep exits 2 on a file that is not there, which every caller reads as no match and so as good
@@ -969,7 +1076,10 @@ self_test() {
   # a class the markup dropped that the JSON config blob still carries.
   local pred
   pred=$(mktemp -d)
+  # expect calls these through "$@", which shellcheck's reachability pass cannot follow
+  # shellcheck disable=SC2317,SC2329
   declares_says() { css_declares "$1" "$2" && echo yes || echo no; }
+  # shellcheck disable=SC2317,SC2329
   uses_says() { page_uses_class "$1" "$2" && echo yes || echo no; }
   printf '.ark-hero-image{color:red}\n.ark-section{ }\n/* .ark-ways */\n.ark-steps{color:red}\n' >"$pred/css"
   printf '<div class="ark-steps"></div><script>{"class":"ark-hero"}</script>\n' >"$pred/index.html"
@@ -1162,14 +1272,14 @@ self_test() {
   # A log carrying a warning about a file of this template, beside the packages' own noise
   local log
   log=$(mktemp)
-  printf 'warning: unknown variable\n  ┌─ econark.typ:12:3\nwarning: no whitespace\n  ┌─ @preview/scienceicons:0.1.0/index.typ:2:20\n' >"$log"
+  printf 'warning: unknown variable\n  ┌─ econ-ark.typ:12:3\nwarning: no whitespace\n  ┌─ @preview/scienceicons:0.1.0/index.typ:2:20\n' >"$log"
   expect 'FAIL.*name files of this template' 'a build warning about this template is caught' \
     check_warnings seeded "$log"
   printf 'warning: no whitespace\n  ┌─ @preview/scienceicons:0.1.0/index.typ:2:20\n' >"$log"
   expect 'ok.*imported packages' "a package's own warnings pass" check_warnings seeded "$log"
   # Real progress output, never an empty file: a build writing nothing is broken, and the guard
   # below says so rather than counting zero warnings on it.
-  printf '📖 Built econark.md in 412 ms.\n🖨 Exported paper.pdf in 1.2 s.\n' >"$log"
+  printf '📖 Built econ-ark.md in 412 ms.\n🖨 Exported paper.pdf in 1.2 s.\n' >"$log"
   expect 'ok.*\(0 from imported packages\)' 'a build with no warnings passes and counts none' \
     check_warnings seeded "$log"
   # An empty log is what a build that died before writing leaves, and both log checks have to say so
@@ -1203,7 +1313,7 @@ self_test() {
   # the ratio wrong: the regression a regenerated file reintroduces without moving a coordinate.
   local ratiodir
   ratiodir=$(mktemp -d)
-  sed 's/ preserveAspectRatio="none"//' "$ROOT/banner.svg" >"$ratiodir/banner-seeded.svg"
+  sed 's/ preserveAspectRatio="none"//' "$ROOT/brand/banner.svg" >"$ratiodir/banner-seeded.svg"
   expect 'FAIL.*letterbox rather than fill' 'a banner that preserves its ratio is caught' \
     check_site seeded "$ratiodir"
   rm -rf "$ratiodir"
@@ -1215,6 +1325,44 @@ self_test() {
   expect 'FAIL.*is stale' 'a bundle that no longer matches the plugin source is caught' \
     check_bundle seeded "$stale"
   rm -f "$stale"
+
+  # The two ways the brand assets rot: an svg left behind by an edit to the curves or the generator,
+  # and a favicon.png that stopped being the raster of the svg beside it. The unseeded tree passes,
+  # which is what proves the two failures below come from the seed rather than the check.
+  local brand
+  brand=$(mktemp -d)
+  cp "$ROOT/brand/banner.svg" "$ROOT/brand/favicon.svg" "$ROOT/brand/favicon.png" "$brand/"
+  expect 'ok.*renders identically to favicon.svg' 'the tracked brand assets pass unseeded' \
+    check_brand seeded "$brand"
+  sed 's/#1f476b/#ff0000/' "$ROOT/brand/banner.svg" >"$brand/banner.svg"
+  expect 'FAIL.*banner.svg differs from a fresh run' 'a stale banner.svg is caught' \
+    check_brand seeded "$brand"
+  cp "$ROOT/brand/banner.svg" "$brand/banner.svg"
+  convert -size 256x256 xc:red "$brand/favicon.png"
+  expect 'FAIL.*favicon.png differs from favicon.svg' 'a favicon.png that is not its svg is caught' \
+    check_brand seeded "$brand"
+  rm -rf "$brand"
+
+  # The two ways the manifest and the imports part: a module the template reaches that the list
+  # never names, which builds here and fails in a consumer's checkout, and a name the list carries
+  # that nothing imports. The unseeded copy between them shows the seeds are what fail.
+  local manifestdir
+  manifestdir=$(mktemp -d)
+  mkdir -p "$manifestdir/ark" "$manifestdir/brand"
+  cp "$ROOT/template.typ" "$ROOT/econ-ark.typ" "$manifestdir/"
+  cp "$ROOT"/ark/*.typ "$manifestdir/ark/"
+  cp "$ROOT/brand/logo.png" "$manifestdir/brand/"
+  grep -v '^  - ark/blocks.typ$' "$ROOT/template.yml" >"$manifestdir/template.yml"
+  expect 'FAIL.*does not list ark/blocks.typ' 'a module missing from template.yml is caught' \
+    check_template_files seeded "$manifestdir"
+  cp "$ROOT/template.yml" "$manifestdir/template.yml"
+  expect 'ok.*lists every file' 'the tracked manifest passes unseeded' \
+    check_template_files seeded "$manifestdir"
+  sed 's|^  - brand/logo.png$|  - ark/nowhere.typ\n  - brand/logo.png|' "$ROOT/template.yml" \
+    >"$manifestdir/template.yml"
+  expect 'FAIL.*never reaches' 'a manifest entry nothing imports is caught' \
+    check_template_files seeded "$manifestdir"
+  rm -rf "$manifestdir"
 
   # Equations that came out of KaTeX after all, then a theme that renamed the article class while
   # still serving the stylesheet, which is why that match has to be an exact token
@@ -1237,7 +1385,7 @@ self_test() {
     check_mathml seeded "$sites/katex"
   printf '<article class="article-grid subgrid-gap">no article token</article>\n' >"$sites/renamed/index.html"
   cp "$ROOT/theme.css" "$sites/renamed/theme-0.css"
-  cp "$ROOT/banner.svg" "$sites/renamed/banner-0.svg"
+  cp "$ROOT/brand/banner.svg" "$sites/renamed/banner-0.svg"
   expect 'FAIL.*rule is inert' 'a theme that dropped the article class is caught' \
     check_site seeded "$sites/renamed"
   rm -rf "$sites"
@@ -1337,10 +1485,12 @@ else
   check_weight_files fonts "$variants" "Fira Math" Normal 400
   check_font paper "$PAPER" FiraMath-Regular-Identity-H
   check_bundle plugin "$ROOT/plugins/fira-math.bundle.mjs"
+  check_brand brand "$ROOT/brand"
+  check_template_files manifest "$ROOT"
   check_temml_pin pins "$ROOT/scripts/fonts.sh" "$ROOT/package.json"
   check_documented_config docs "$ROOT/README.md" "$ROOT/myst.yml"
   check_no_aliases docs "$ROOT/myst.yml" "$ROOT/landing/myst.yml" "$ROOT"/examples/*.md
-  check_italic_kinds docs "$ROOT/econark.typ"
+  check_italic_kinds docs "$ROOT/ark/blocks.typ"
   check_rail_overflow rail
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   primary="site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))"

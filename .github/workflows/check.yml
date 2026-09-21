@@ -17,6 +17,9 @@ jobs:
         with:
           node-version: 22
 
+      # gen-banner.py declares its own dependencies inline, so uv is all the brand check needs
+      - uses: astral-sh/setup-uv@v6
+
       # Versions match the local builds that produced the tracked example PDF
       - name: Install mystmd and Typst
         run: |
@@ -31,7 +34,9 @@ jobs:
       - name: Install fonts and poppler
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends poppler-utils imagemagick unzip
+          # librsvg rasterises favicon.svg for the brand check, which compares it with the png
+          sudo apt-get install -y --no-install-recommends \
+            poppler-utils imagemagick unzip librsvg2-bin
           pip install --quiet fonttools brotli
           scripts/fonts.sh install
           scripts/fonts.sh webfonts
