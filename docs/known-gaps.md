@@ -4,6 +4,22 @@
 it misses is below, each one found by hand after the suite was green. This file records them so the
 next person reads them as known. They also mark where a check would only look like coverage.
 
+## The theme version, which nothing pins and no check can read
+
+`myst.yml` names `book-theme`, never a version, so `myst build` fetches whatever the registry serves
+and caches it under `_build/templates/`. A cache filled on one day and never cleared keeps serving
+that release. On 2026-09-21 this repository built on `@myst-theme/book` 1.4.1 while DemARK, whose
+cache dated from the 19th, built on 1.3.1, and the two releases paint chrome differently: 1.3.1
+writes `bg-white/80` on the header bar and `bg-white/95` on the outline, 1.4.1 writes
+`myst-bg-translucent` over `--myst-color-bg`. A site therefore looked one way here and another way
+in a consumer, from the same stylesheet and the same commit.
+
+`theme.css` now covers both, repainting the four 1.3 surfaces from `--ark-paper` at the alphas that
+release chose. `check_white_chrome` reads the built pages for a `bg-white` utility on a `myst-`
+element and fails when `theme.css` names none of them; on 1.4 it finds nothing and passes on that
+stated ground, which is coverage conditional on the release the cache holds. Clearing
+`_build/templates/` is what moves a site forward. Nothing reports that a site is behind.
+
 ## Hover, and anything resolved through CSS nesting
 
 myst-theme sets its button hover with nesting:

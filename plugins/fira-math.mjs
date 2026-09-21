@@ -59,8 +59,15 @@ function pageMacros(file) {
   if (pageCache.has(source)) return pageCache.get(source);
   let macros = {};
   try {
-    const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(fs.readFileSync(source, 'utf8'));
-    macros = asMacros(yaml.load(frontmatter?.[1] ?? '')?.math);
+    const text = fs.readFileSync(source, 'utf8');
+    if (source.endsWith('.ipynb')) {
+      // A notebook opens with a brace, so it has no --- block to find. MyST takes its page
+      // frontmatter from the top-level metadata, filtered to the page keys, and math is one.
+      macros = asMacros(JSON.parse(text)?.metadata?.math);
+    } else {
+      const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+      macros = asMacros(yaml.load(frontmatter?.[1] ?? '')?.math);
+    }
   } catch (error) {
     file.message(`fira-math: no macros read from ${source} (${error.message})`, undefined, 'fira-math');
   }

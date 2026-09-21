@@ -15835,8 +15835,13 @@ function pageMacros(file) {
   if (pageCache.has(source)) return pageCache.get(source);
   let macros2 = {};
   try {
-    const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(fs.readFileSync(source, "utf8"));
-    macros2 = asMacros(yaml.load(frontmatter?.[1] ?? "")?.math);
+    const text2 = fs.readFileSync(source, "utf8");
+    if (source.endsWith(".ipynb")) {
+      macros2 = asMacros(JSON.parse(text2)?.metadata?.math);
+    } else {
+      const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text2);
+      macros2 = asMacros(yaml.load(frontmatter?.[1] ?? "")?.math);
+    }
   } catch (error) {
     file.message(`fira-math: no macros read from ${source} (${error.message})`, void 0, "fira-math");
   }

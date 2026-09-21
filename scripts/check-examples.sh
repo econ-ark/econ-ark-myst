@@ -879,6 +879,31 @@ check_token_coverage() {
   fi
 }
 
+# The theme paints some chrome with a bg-white utility rather than a token, where check_token_coverage
+# is blind by construction: a white header bar and a white contents box passed a green suite. Every
+# myst- element wearing one has to be named in theme.css, the only way this sheet reaches it.
+check_white_chrome() {
+  local name=$1 dir=$2 css=$3 wearing missing
+  require_file "$name" "$css" "the chrome overrides" || return
+  wearing=$(grep -ohE 'class="[^"]*\bbg-white(/[0-9]+)?\b[^"]*"' \
+    "$dir"/index.html "$dir"/*/index.html 2>/dev/null |
+    grep -oE 'myst-[a-z0-9-]+' | sort -u)
+  # book-theme 1.4 moved these to myst-bg-translucent over --myst-color-bg, so a site on it has
+  # none of them and the rules in theme.css are cover for a consumer whose cache holds 1.3
+  if [ -z "$wearing" ]; then
+    ok "$name: the theme paints no myst- chrome with a bg-white utility, so none is left white"
+    return
+  fi
+  missing=$(while read -r class; do
+    grep -qF ".$class" "$css" || echo "$class"
+  done <<<"$wearing" | tr '\n' ' ')
+  if [ -n "${missing// /}" ]; then
+    bad "$name: these paint white and $css never names them: $missing"
+  else
+    ok "$name: every chrome surface the theme paints white is repainted here ($(wc -l <<<"$wearing") of them)"
+  fi
+}
+
 # styles/button.css sets the label white over --myst-color-primary, so the fill has to keep coming
 # from that token. The landing page carries a button outside the hero for this: one inside would sit
 # on the banner field, where a theme colour reaching the fill would read as deliberate.
@@ -1522,6 +1547,28 @@ self_test() {
     check_token_coverage seeded "$bc" "$bc/ok.css"
   rm -rf "$bc"
 
+  # check_white_chrome, against a sheet that names both white surfaces, one that forgets the
+  # outline, a page where nothing wears the utility, and the alpha form bg-white/95 on its own
+  local wc
+  wc=$(mktemp -d)
+  printf '%s\n' '<div class="myst-top-nav bg-white/80">a</div>' \
+    '<nav class="myst-outline bg-white/95">b</nav>' >"$wc/index.html"
+  printf '%s\n' 'html:not(.dark) .myst-top-nav{background:red}' \
+    'html:not(.dark) .myst-outline{background:red}' >"$wc/ok.css"
+  printf '%s\n' 'html:not(.dark) .myst-top-nav{background:red}' >"$wc/bad.css"
+  expect '^ok' 'a sheet repainting every white surface passes' \
+    check_white_chrome seeded "$wc" "$wc/ok.css"
+  expect 'FAIL.*myst-outline' 'a white surface the sheet never names is caught' \
+    check_white_chrome seeded "$wc" "$wc/bad.css"
+  expect 'FAIL.*is missing or empty' 'a white census against a stylesheet never served is caught' \
+    check_white_chrome seeded "$wc" "$wc/never-copied.css"
+  # A site on book-theme 1.4 wears none of them, which passes on the stated ground that there is
+  # nothing white to repaint. The message has to say so, or the pass reads as coverage it is not.
+  printf '%s\n' '<div class="myst-top-nav bg-myst-bg">a</div>' >"$wc/index.html"
+  expect 'ok.*paints no myst- chrome' 'a site whose theme writes the token instead passes, saying so' \
+    check_white_chrome seeded "$wc" "$wc/ok.css"
+  rm -rf "$wc"
+
   # check_landing_button: the fill leaving the token, and the fixture guard behind it. A hero-only
   # page and the theme's own nav control, whose class merely ends in the word, are one case each.
   local lb
@@ -2036,6 +2083,7 @@ else
   check_tokens_defined "$primary" "$ROOT/_build/html/myst-theme.css"
   check_fm_label_size "$primary" "$ROOT/_build/html/myst-theme.css"
   check_token_coverage "$primary" "$ROOT/_build/html" "$ROOT/_build/html/myst-theme.css"
+  check_white_chrome "$primary" "$ROOT/_build/html" "$ROOT/_build/html/myst-theme.css"
   check_dropdown_tags "$primary" "$ROOT/_build/html" "$ROOT/_build/html/myst-theme.css"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
   other=$(mktemp -d)
@@ -2064,6 +2112,7 @@ else
     check_css_last "site ($othername)" "$other/_build/html"
     check_dropdown_tags "site ($othername)" "$other/_build/html" "$other/_build/html/myst-theme.css"
     check_token_coverage "site ($othername)" "$other/_build/html" "$other/_build/html/myst-theme.css"
+    check_white_chrome "site ($othername)" "$other/_build/html" "$other/_build/html/myst-theme.css"
   fi
   rm -rf "$other"
   # The landing page carries no paper, so check_site's banner, equation and download checks do not
@@ -2080,6 +2129,7 @@ else
   check_css_last landing "$landdir"
   check_tokens_defined landing "$landdir/myst-theme.css"
   check_token_coverage landing "$landdir" "$landdir/myst-theme.css"
+  check_white_chrome landing "$landdir" "$landdir/myst-theme.css"
   check_landing_classes landing "$landdir" "$landdir/myst-theme.css"
   check_css_urls landing "$landdir"
   check_faces_served landing "$landdir"

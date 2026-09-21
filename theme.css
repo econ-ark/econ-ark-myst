@@ -826,6 +826,25 @@ html.dark .myst-jp-nb-toolbar-inner .myst-jp-nb-toolbar-power-btn {
   color: var(--ark-curve-3);
 }
 
+/* Four chrome surfaces the theme paints with a bg-white utility rather than a token, which left a
+ * white header bar, contents box, skip link and cell-toolbar plate on a --ark-paper page. Each
+ * keeps the theme's alpha; light only, since --ark-paper does not follow the theme. */
+html:not(.dark) .myst-top-nav {
+  background-color: rgb(from var(--ark-paper) r g b / 0.8);
+}
+
+html:not(.dark) .myst-outline {
+  background-color: rgb(from var(--ark-paper) r g b / 0.95);
+}
+
+html:not(.dark) .myst-skip-to-article {
+  background-color: var(--ark-paper);
+}
+
+html:not(.dark) .myst-jp-nb-block > div.bg-white {
+  background-color: var(--ark-paper);
+}
+
 /* Theorems and proofs, run against a blue edge rather than the theme's banded box */
 article.article :is(aside, details).myst-proof {
   background: transparent;
@@ -1067,42 +1086,35 @@ article.article .ark-part-epigraph {
 /* Landing pages, which book-theme renders from `+++ { "kind": ... }` blocks. The blocks arrive with
  * Tailwind colours of their own, so the rules below put them in the house palette. article-theme
  * carries no landing renderers, which is why the landing site is on book-theme. */
-/* The hero: brand field with copy over it. col-screen makes it full bleed, and the artwork sits
- * behind via a negative bottom margin near its own height, painting full height while taking no
- * flow space. --ark-hero-image repoints it; the default wants banner.svg at the site root. */
+/* The hero: brand field with copy over it. col-screen makes it full bleed, and the artwork fills
+ * the box behind the copy, taking no flow space. --ark-hero-image repoints it; the default wants
+ * banner.svg at the site root. */
 article.article .ark-hero {
   position: relative;
   background: var(--ark-banner-field);
   overflow: hidden;
 }
 
+/* The five values below are what article-theme gives a paper's banner, read off its own
+ * .myst-article-header-background: the file at full strength, stretched to the box rather than
+ * covering it, which is what preserveAspectRatio="none" in banner.svg is for. */
 article.article .ark-hero::before {
   content: "";
-  display: block;
-  width: 100%;
-  /* One value in two places, since the negative margin has to cancel the height exactly or the
-     hero grows by the artwork. The floor keeps the curves readable on a phone, where 26vw alone
-     gave them a 101px strip; the ceiling stops them running away on an ultrawide. */
-  --ark-hero-art: clamp(9rem, 26vw, 22rem);
-  height: var(--ark-hero-art);
-  margin-bottom: calc(-1 * var(--ark-hero-art));
-  background: var(--ark-hero-image) no-repeat center / cover;
-  /* At full strength the curves cross the headline and win it. Held back, they read as the field
-     the words sit on, which is the job a hero graphic does on mystmd.org's own landing. */
-  opacity: 0.45;
+  position: absolute;
+  inset: 0;
+  background: var(--ark-hero-image) no-repeat center / 100% 100%;
 }
 
-/* The copy sits in the same translucent card article-theme lays over a paper's banner, so a
- * landing and a paper meet a reader the same way: artwork behind, words on a ground of their own.
- * It also gives the copy a measure, which a full-bleed block otherwise runs the screen's width. */
+/* The copy sits in the card article-theme lays over that banner, down to its alpha, its blur and
+ * its square corners, so a landing and a paper meet a reader the same way. It also gives the copy
+ * a measure, which a full-bleed block otherwise runs the screen's width. */
 article.article .ark-hero .myst-landing-centered-inner {
   position: relative;
   max-width: 46rem;
   margin: 3rem auto;
   padding: 2.5rem 2rem;
-  background-color: rgb(from var(--ark-paper) r g b / 0.88);
-  backdrop-filter: blur(6px);
-  border-radius: 2px;
+  background-color: rgb(from var(--ark-paper) r g b / 0.8);
+  backdrop-filter: blur(8px);
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.25);
 }
 
@@ -1221,13 +1233,16 @@ article.article .ark-steps .myst-card::before {
   color: var(--ark-on-curve);
 }
 
-article.article .ark-steps .myst-card:nth-child(2)::before {
+/* By type, since hovering a card makes Remix inject prefetch links between the cards, moving every
+ * nth-child match and repainting the other three discs. A card is an anchor and those nodes are
+ * not, so nth-of-type holds. The numerals held throughout, a counter. docs/known-gaps.md. */
+article.article .ark-steps .myst-card:nth-of-type(2)::before {
   background: var(--ark-curve-2);
 }
-article.article .ark-steps .myst-card:nth-child(3)::before {
+article.article .ark-steps .myst-card:nth-of-type(3)::before {
   background: var(--ark-curve-3);
 }
-article.article .ark-steps .myst-card:nth-child(4)::before {
+article.article .ark-steps .myst-card:nth-of-type(4)::before {
   background: var(--ark-curve-4);
 }
 
@@ -1239,13 +1254,14 @@ article.article .ark-ways .myst-card {
   border-radius: 0;
 }
 
-article.article .ark-ways .myst-card:nth-child(2) {
+/* By type, for the reason the step discs are. */
+article.article .ark-ways .myst-card:nth-of-type(2) {
   border-top-color: var(--ark-curve-2);
 }
-article.article .ark-ways .myst-card:nth-child(3) {
+article.article .ark-ways .myst-card:nth-of-type(3) {
   border-top-color: var(--ark-curve-3);
 }
-article.article .ark-ways .myst-card:nth-child(4) {
+article.article .ark-ways .myst-card:nth-of-type(4) {
   border-top-color: var(--ark-curve-4);
 }
 
