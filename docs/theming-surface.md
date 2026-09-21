@@ -21,22 +21,28 @@ chrome no selector here names: search, navigation, hover, active, focus.
 They arrived in jupyter-book/myst-theme#843, "Expose colors as css custom props to allow override",
 on 2026-06-18.
 
-None of this works on mystmd 1.10.1. Its bundled book-theme carries the version string `1.3.1`, the
-same as the source that has the feature, and zero occurrences of `--myst-color-`. Verify against the
-built artifact, since the version string and the artifact disagree here:
+A site got them on 2026-09-21, when mystmd 1.10.1 began fetching the 1.4.0 themes. Both
+article-theme and book-theme declare all 55 there, and their backgrounds, borders and text now read
+those properties. Until that day the same fetch returned 1.3.1, which wrote Tailwind classes
+throughout and carried the version string of the source that had the feature. A build fetches whatever the registry serves, so this moved under a tree nobody had
+touched. Read the built artifact rather than the version string, which disagreed with it
+throughout 1.3.1.
 
-book-theme is built under `landing/`, since the root build uses article-theme, so the path to read
-is that one:
+Each theme is fetched into the build that uses it. The two counts therefore come from two trees, the
+root build holding article-theme alone:
 
 ```bash
-rg -c -- '--myst-color-' landing/_build/templates/site/myst/book-theme/*/public/build/_assets/app-*.css
+rg -o -- '--myst-color-[a-z-]+:' _build/templates/site/myst/*/public/build/_assets/app-*.css |
+  sort -u | wc -l
+rg -o -- '--myst-color-[a-z-]+:' landing/_build/templates/site/myst/*/public/build/_assets/app-*.css |
+  sort -u | wc -l
 ```
 
-While that count is zero, a rule needing a colour reads the variable from our own `:root`.
-`theme.css` sets link, link-hover, link-underline, focus-ring, focus-outline, primary and
-primary-hover. `check_tokens_defined` holds those two ends together. A token the served stylesheet
-reads and nothing declares resolves to nothing; the property it sets goes unapplied. The button
-fill carried that risk.
+While that count was zero, `theme.css` overrode the theme's own utility classes, `bg-white` and
+`text-blue-600` among them, which 1.4.0 no longer writes. It now sets 18 of the tokens instead, and
+`check_token_coverage` fails when a page paints through one it leaves out. `check_tokens_defined`
+holds the other end. A token the served stylesheet reads and nothing declares falls back to the
+theme's own colour, which is what the button fill would have done.
 
 ## 2. Class hooks
 
@@ -90,7 +96,7 @@ enforces.
 
 ## 3. Template options and parts
 
-Declared in each theme's `template.yml`, and the two themes differ.
+Declared in each theme's `template.yml`. The two themes differ.
 
 | | book-theme | article-theme |
 | --- | --- | --- |
@@ -98,9 +104,10 @@ Declared in each theme's `template.yml`, and the two themes differ.
 | `hide_title_block`, `hide_search` | yes | no |
 | Parts | `footer`, `primary_sidebar_footer`, `navbar_end` | none |
 
-A part replaces a region wholesale. Some regions have no other route in: book-theme renders its
-own "Made with MyST" lockup whenever a site supplies no `primary_sidebar_footer`. No option hides
-it.
+A part replaces a region wholesale. For some regions it is the only route in. book-theme
+renders its own "Made with MyST" lockup whenever a site supplies no `primary_sidebar_footer`. No
+option hides it. `myst.yml` here supplies that part from `brand/powered-by.md`, the Econ-ARK credit the five
+`.myst-primary-sidebar-footer` rules in `theme.css` are written for.
 
 Options shared by both: `hide_toc`, `hide_footer_links`, `hide_outline`, `hide_authors`,
 `outline_maxdepth`, `twitter`, `favicon`, `logo`, `logo_dark`, `logo_text`, `logo_url`, `logo_alt`,

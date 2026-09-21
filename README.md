@@ -274,7 +274,7 @@ After the marker, top-level sections read "Appendix A", "Appendix B" and their s
 
 To keep an appendix in its own file, pull it in after the marker with the `include` directive and list the pages in the project `toc`. Without a `toc` the included file is also a page of its own, and MyST warns about duplicate identifiers.
 
-`@app-proofs` prints the section title. To print "Appendix A", use {raw:typst}`@app-proofs`, which appears in the PDF only. Equations, figures and tables keep one numbering sequence through the appendices, because MyST writes their reference numbers into the text before Typst lays out the page.
+`@app-proofs` prints "Appendix A" in the PDF and the section title on the site. MyST writes a cross-reference as a link carrying the target's title rather than as a Typst reference. The template letters that link in a `show link` rule. Write the sentence to read with either form, the way "@app-proofs works through the algebra" does. A `{raw:typst}` reference also letters the PDF, but the site drops the whole block and renders a sentence with nothing in front of it. Equations, figures and tables keep one numbering sequence through the appendices, because MyST writes their reference numbers into the text before Typst lays out the page.
 
 The template defines no `appendix` part, so write appendices in the body.
 
@@ -312,14 +312,24 @@ site:
   options:
     logo: brand/logo.png
     logo_dark: brand/logo-dark.png
-    logo_text: Econ-ARK
-    logo_url: https://econ-ark.org
     logo_alt: Econ-ARK
     favicon: brand/favicon.png
     style: theme.css
 ```
 
 `logo.png` is the wide website lockup, and `logo-dark.png` is the same lockup with a white wordmark, which the themes swap in at night. `favicon.png` is the four curves alone on the brand blue, because the wordmark is illegible at 16 pixels. The block above is this repository's own, where the three live under `brand/`. Paths are relative to the `myst.yml` that holds them, so a site that copies the files beside its own `myst.yml` drops the prefix.
+
+Two options are deliberately absent. `logo_text` prints a name beside the logo, which the wordmark already carries. `logo_url` gives the logo an address of its own. Left unset, it reaches the site's own home page under whatever prefix the site is served from. A link to econ-ark.org belongs in the sidebar footer below, or in `nav`. Put it in all three places and a reader counts three links to one destination.
+
+The credit at the foot of book-theme's sidebar is a part rather than an option. A site that supplies none of its own gets the theme's "Made with MyST" lockup. `brand/powered-by.md` is the Econ-ARK one. It lives here so that every site wanting the credit points at one file:
+
+```yaml
+project:
+  parts:
+    primary_sidebar_footer: brand/powered-by.md
+```
+
+A part may also be a URL, so a site without this repository beside it reads the same file from `https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/brand/powered-by.md`. Only book-theme draws a sidebar for the credit to appear in. article-theme gives a reader one theme button and no other chrome.
 
 article-theme draws its downloads panel from the project, not from the paper whose page it is showing, so a paper that lists `downloads` in its own frontmatter still reaches the site with no link to its PDF. Name them under `project:` as well, with `file:` rather than `url:`, and the site copies each one in and links it:
 
