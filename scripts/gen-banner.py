@@ -1,4 +1,8 @@
-"""Build banner.svg from the four curves of the official Econ-ARK logo.
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["numpy", "svgelements"]
+# ///
+"""Build banner.svg and favicon.svg from the four curves of the official Econ-ARK logo.
 
 The logo is distributed as EPS (Econ-Ark_Logo_1536x768px.eps, Illustrator 16). Its curves are
 filled ribbons that taper to a point at each end, so two things have to survive the stretch into
@@ -8,14 +12,28 @@ slope. So this reads each ribbon, measures its centreline and its perpendicular 
 every x, stretches the centreline into the banner frame, and rebuilds the ribbon there with the
 half width scaled uniformly.
 
-Run it from the repository root, which is where banner.svg belongs:
+Run it from the repository root. A directory target writes both assets from one reading of the
+curves, which is the whole cost of a run, so this is the way to rebuild them. The dependencies are
+declared above, so uv resolves them and nothing has to name them at the call site:
 
-    uv run --no-project --with numpy --with svgelements \
-        python scripts/gen-banner.py scripts/curves-crop.svg banner.svg
+    uv run --no-project scripts/gen-banner.py scripts/curves-crop.svg brand/
 
 The run is deterministic, so regenerating an unchanged input rewrites the same bytes.
 
-Input: scripts/curves-crop.svg, tracked beside this file so banner.svg can be rebuilt from the
+A file target writes the banner alone, and a third argument `favicon` the square tile alone:
+
+    uv run --no-project scripts/gen-banner.py scripts/curves-crop.svg brand/banner.svg
+    uv run --no-project scripts/gen-banner.py scripts/curves-crop.svg brand/favicon.svg favicon
+
+myst.yml points at the png, so the tile is rasterized at the 256 pixels it is drawn for:
+
+    inkscape brand/favicon.svg --export-type=png --export-filename=brand/favicon.png
+
+Inkscape 1.2.2 writes the same bytes on every run. rsvg-convert and ImageMagick render the tile
+to identical pixels and pack the png differently, so a rebuild with either shows a diff in the
+container alone.
+
+Input: scripts/curves-crop.svg, tracked beside this file so the assets can be rebuilt from the
 repository alone. It came from the official EPS, which is not tracked here because it is a brand
 asset rather than a source this repository owns:
     gs -dEPSCrop -sDEVICE=pdfwrite -o color.pdf Econ-Ark_Logo_1536x768px.eps
@@ -26,6 +44,7 @@ asset rather than a source this repository owns:
 """
 
 import logging
+import os
 import sys
 
 import numpy as np
@@ -116,13 +135,12 @@ def read(source):
     return {colour: profile(curves[colour]) for colour in ORDER}
 
 
-def favicon(source, target, size=256, margin=26, pen=13):
+def favicon(shapes, target, size=256, margin=26, pen=13):
     """A square tile of the curves alone, drawn heavy enough to survive 16 pixels.
 
     The curves fill the square, so their proportions change. The extra height spreads
     their ends apart, which is what makes four lines still read as four at 32px.
     """
-    shapes = read(source)
     every = np.vstack([mid for mid, _ in shapes.values()])
     gx0, gx1 = every[:, 0].min(), every[:, 0].max()
     gy0, gy1 = every[:, 1].min(), every[:, 1].max()
@@ -152,8 +170,7 @@ def favicon(source, target, size=256, margin=26, pen=13):
     log.info("wrote %s, %d bytes", target, len(svg))
 
 
-def main(source, target):
-    shapes = read(source)
+def banner(shapes, target):
     every = np.vstack([mid for mid, _ in shapes.values()])
     gx0, gx1 = every[:, 0].min(), every[:, 0].max()
     gy0, gy1 = every[:, 1].min(), every[:, 1].max()
@@ -203,7 +220,14 @@ def main(source, target):
 
 
 if __name__ == "__main__":
+    # Sampling the curves is the whole cost and both assets need the same result, so it is read
+    # once here. A directory target writes the pair from that one read; a file writes just the one.
+    shapes = read(sys.argv[1])
+    target = sys.argv[2]
     if len(sys.argv) > 3 and sys.argv[3] == "favicon":
-        favicon(sys.argv[1], sys.argv[2])
+        favicon(shapes, target)
+    elif os.path.isdir(target):
+        banner(shapes, os.path.join(target, "banner.svg"))
+        favicon(shapes, os.path.join(target, "favicon.svg"))
     else:
-        main(sys.argv[1], sys.argv[2])
+        banner(shapes, target)
