@@ -21,17 +21,15 @@ project:
 site:
   template: book-theme
   options:
+    # As in ../myst.yml: the wordmark carries the name, and the header's one link belongs to this
+    # site, which is where an unset logo_url sends it
     logo: ../brand/logo.png
     logo_dark: ../brand/logo-dark.png
-    logo_text: Econ-ARK
-    logo_url: https://econ-ark.org
     logo_alt: Econ-ARK
     favicon: ../brand/favicon.png
     style: ../theme.css
   # The two demos are separate MyST projects, so nav cannot reach them without naming the host.
   # The buttons in the hero link them relatively, which works locally and under the Pages prefix.
   nav:
-    - title: Econ-ARK
-      url: https://econ-ark.org
     - title: GitHub
       url: https://github.com/econ-ark/econ-ark-myst

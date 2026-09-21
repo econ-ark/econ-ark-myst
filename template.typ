@@ -241,7 +241,7 @@
 // acknowledgments and data availability but none for declarations, so the declarations render in
 // the body above both and no reordering here can be met on that side.
 #let backMatter = [
-[# for part in [["Declarations", parts.declaration], ["Acknowledgments", parts.acknowledgments], ["Data availability", parts.data_availability]] #]
+[# for part in [["Declarations", parts.declaration], ["Acknowledgments", parts.acknowledgments], ["Data Availability", parts.data_availability]] #]
 [# if part[1] #]
 #heading(numbering: none)[[-part[0]-]]
 

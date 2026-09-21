@@ -6,6 +6,9 @@
 
 // Rules for text in footnotes go here, before the title block: a footnote picks up only rules set before it
 #let arkTypography(heading-numbering, doc) = {
+  // Typst's stock syntax colours are off the palette, and the tokens are unreachable from a show
+  // rule, so the three roles theme.css gives a listing are set from a theme file instead
+  set raw(theme: "../brand/code.tmTheme")
   // Typst reads ' after a digit as a prime, so "Table 1's" would print a prime. Restore the
   // apostrophe, except in code of either kind, which a state marks because a show rule cannot see
   // its surroundings: a listing that lost its ASCII quote is source a reader cannot paste and run.
@@ -24,8 +27,22 @@
   }
   show regex("\d's\b"): it => context if inCode.get() { it } else { it.text.slice(0, -2) + sym.quote.r.single + "s" }
 
-  // Citations and URLs leave the document, so they are blue; internal references stay black
-  show link: it => if type(it.dest) == str { text(fill: arkBlue, it) } else { it }
+  // Citations and URLs leave the document, so they are blue; internal references stay black.
+  // MyST writes a cross-reference as a link carrying the target's title, never as a ref, so the
+  // appendix lettering has to happen here as well as in the ref rule below.
+  show link: it => if type(it.dest) == str {
+    text(fill: arkBlue, it)
+  } else {
+    context {
+      let targets = query(it.dest)
+      let el = if targets.len() > 0 { targets.first() } else { none }
+      let appendix = if el != none and el.func() == heading and el.numbering != none { appendixNumber(el.location()) }
+      // The replacement is a link too, which this same rule matches; comparing against the body it
+      // would build is what stops the second pass from building it again
+      let lettered = [Appendix #appendix]
+      if appendix == none or it.body == lettered { it } else { link(it.dest, lettered) }
+    }
+  }
   show cite: set text(fill: arkBlue)
   // A native reference to an appendix heading reads "Appendix A" rather than "Section 3"
   show ref: it => context {

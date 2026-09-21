@@ -9,7 +9,8 @@
   show raw.where(block: true): (it) => {
     set align(left)
     set par(justify: false)
-    block(sticky: true, fill: arkBlue.lighten(95%), width: 100%, inset: 9pt, radius: 2pt, it)
+    set text(fill: arkCodeInk)
+    block(sticky: true, fill: arkTint, width: 100%, inset: 9pt, radius: 2pt, it)
   }
   show figure.caption: leftCaption
   // MyST emits the string kind; a native table() in a raw typst block gets the function kind.

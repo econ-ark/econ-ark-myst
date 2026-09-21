@@ -50,7 +50,8 @@
   set par(first-line-indent: 0pt, justify: false, leading: 0.5em, spacing: 0.7em)
   set list(marker: text(fill: arkBlue, sym.bullet), indent: 0pt, body-indent: 0.5em, spacing: 0.8em)
   // Label half a point under the text, matching the rail labels and, under the abstract, the keyword labels
-  text(size: size - 0.5pt, fill: arkBlue, weight: 500, "Key points")
+  // Title case, which is what myst-theme labels this part with on the site
+  text(size: size - 0.5pt, fill: arkBlue, weight: 500, "Key Points")
   v(0.6em, weak: true)
   body
 }
@@ -114,8 +115,8 @@
   }
 }
 
-// pubmatter sets the authors in "semibold", which resolves by discovery order wherever the text
-// face carries no file at that weight. This is its title block with the authors pinned to the
+// pubmatter sets the authors in "semibold", which resolves by discovery order at any weight the
+// text face lacks a file for. This is its title block with the authors pinned to the
 // weight the rest of the template asks for.
 
 // Footnote marks for an author's note. Typst's own "*" sequence runs * then a dagger, and

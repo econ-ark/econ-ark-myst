@@ -102,6 +102,11 @@ If income risk is present, the consumption function is strictly concave. Its slo
 See @Carroll1997 for the argument under constant relative risk aversion.
 :::
 
+:::{prf:definition} Target wealth
+:label: def-target
+Target wealth is the level at which a household expects its wealth to stay where it is. The template sets this block upright, as amsthm sets its definition style, where the proposition above is italic.
+:::
+
 :::{note}
 Admonitions take a rule in the palette rather than the filled box MyST draws by default. Econ-ARK blue carries this kind and `important`.
 :::
@@ -162,11 +167,16 @@ Perfect foresight
 ```python
 from HARK.ConsumptionSaving.ConsIndShockModel import IndShockConsumerType
 
-agent = IndShockConsumerType()  # the 1990's calibration of Table 1
+agent = IndShockConsumerType(name="baseline")  # the 1990's calibration of Table 1
+agent.assign_parameters(DiscFac=0.96, CRRA=2.0)
 agent.solve()
+
+def target_wealth(agent):
+    """Target wealth, read off the solved policy."""
+    return float(agent.solution[0].mNrmStE)
 ```
 
-{raw:typst}`@app-euler` derives the Euler equation.
+@app-euler works through the algebra.
 
 :::{raw:typst}
 #metadata("appendix") <appendix>

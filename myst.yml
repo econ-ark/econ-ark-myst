@@ -59,6 +59,11 @@ project:
       title: Latest PDF
     - file: examples/paper.bib
       title: BibTeX
+  # book-theme prints its own "Made with MyST" lockup in the sidebar unless a site supplies this
+  # part, and no option hides it. article-theme reads no parts, so this reaches a page only in the
+  # book-theme build the deploy and the checks make from this file. README, "The site".
+  parts:
+    primary_sidebar_footer: brand/powered-by.md
   # Without a table of contents MyST would take the README for a page of the site
   toc:
     - file: examples/paper.md
@@ -87,13 +92,14 @@ project:
 site:
   template: article-theme
   options:
+    # The logo is the wordmark, so logo_text would print the name a second time beside it, and
+    # logo_url would send the one link in the header off the site. Unset, it reaches this site's
+    # own home page under whatever prefix the site is served from.
     logo: brand/logo.png
     logo_dark: brand/logo-dark.png
-    logo_text: Econ-ARK
-    logo_url: https://econ-ark.org
     logo_alt: Econ-ARK
     favicon: brand/favicon.png
     style: theme.css
   nav:
-    - title: Econ-ARK
-      url: https://econ-ark.org
+    - title: GitHub
+      url: https://github.com/econ-ark/econ-ark-myst

@@ -41,6 +41,16 @@
   font-display: swap;
 }
 
+/* The landing's own weight. Without this face a request for 600 resolves to 700, which is two
+   steps above the 500 the paper and the PDF set their headings at. */
+@font-face {
+  font-family: "Fira Sans";
+  src: url("fonts/FiraSans-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 @font-face {
   font-family: "Fira Sans";
   src: url("fonts/FiraSans-Bold.woff2") format("woff2");
@@ -53,6 +63,15 @@
   font-family: "Fira Mono";
   src: url("fonts/FiraMono-Regular.woff2") format("woff2");
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The weight a class or function name takes in a listing, on both halves */
+@font-face {
+  font-family: "Fira Mono";
+  src: url("fonts/FiraMono-Bold.woff2") format("woff2");
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
@@ -96,14 +115,15 @@
   /* The field the banner artwork is drawn on. Held apart from --ark-blue, which switches to a
      light blue under html.dark, while the artwork's own field does not change with the theme */
   --ark-banner-field: #1f476b;
+  /* Ink on a curve fill, held apart from --ark-ink for the same reason: the fills do not change
+     with the theme, so the numeral over them must not lighten under html.dark */
+  --ark-on-curve: #111;
   /* The artwork behind a landing hero. A site serving it elsewhere overrides this one line */
   --ark-hero-image: url("/banner.svg");
   /* Paper, then the fills that stay visible on it. Pure white glares in a lit room, so the
      page takes the brand blue at the top of its lightness range and the fills step down far
      enough to hold the separation the PDF has between its white paper and its tint. */
   --ark-paper: #f5f7f9;
-  /* The same colour as channels, for the surfaces the themes paint at partial opacity */
-  --ark-paper-rgb: 245 247 249;
   --ark-tint: #e8edf2;
   --ark-rule: #a4a2a9;
   --ark-ink: #000;
@@ -111,11 +131,14 @@
   --ark-serif: "Fira Sans", "Helvetica Neue", Arial, sans-serif;
   --ark-mono: "Fira Mono", ui-monospace, "DejaVu Sans Mono", monospace;
   --ark-math: "Fira Math", math;
+  /* The blue label on a front matter part. The summary's label is drawn by a pseudo-element, which
+     cannot inherit a size from the heading it replaces, so both read this rather than a number */
+  --ark-fm-label: 0.95rem;
 }
 
-/* myst-theme recolours its chrome through --myst-color-* vars (#843, 2026-06-18). INERT on what we
- * ship: mystmd 1.10.1's book-theme predates it (1.3.1, zero --myst-color- in the built app-*.css),
- * so the rules below read the variable from here instead. */
+/* myst-theme recolours its chrome through --myst-color-* vars (#843, 2026-06-18). 1.4.0 is the
+ * first release to declare all 55 and paint through them, where 1.3.1 wrote Tailwind classes.
+ * check_token_coverage fails on a painted token left to the theme. */
 :root {
   --myst-color-link: var(--ark-blue);
   --myst-color-link-hover: var(--ark-blue);
@@ -126,6 +149,29 @@
      --ark-banner-field does in both themes; --ark-blue turns light under html.dark and would not */
   --myst-color-primary: var(--ark-banner-field);
   --myst-color-primary-hover: #163550;
+  /* Ink, then the greys under it. The theme carries two body greys and two rule greys where this
+     palette has one of each, so each pair resolves to the same value here. */
+  --myst-color-text: var(--ark-ink);
+  --myst-color-text-secondary: var(--ark-grey);
+  --myst-color-text-tertiary: var(--ark-grey);
+  --myst-color-border: var(--ark-rule);
+  --myst-color-border-strong: var(--ark-rule);
+  /* The fills that step off the page: a secondary surface and a hover both take the tint the PDF
+     puts behind code, and the hover steps one notch toward the rule so the two stay apart. */
+  --myst-color-bg-secondary: var(--ark-tint);
+  --myst-color-surface: var(--ark-tint);
+  --myst-color-surface-hover: color-mix(in srgb, var(--ark-tint) 82%, var(--ark-rule));
+  /* The contents entry a reader is on: the theme marks it in its own accent over a pale wash of
+     the same, where this palette carries the wash as the tint and the mark as the blue. */
+  --myst-color-active: var(--ark-blue);
+  --myst-color-active-bg: var(--ark-tint);
+}
+
+/* The page colour every other surface is derived from: the theme reads this token for the header
+ * bar at four fifths opacity and the outline panel at nineteen twentieths, so softening it here
+ * reaches both. --ark-paper has no night value, the themes' own dark surfaces standing in. */
+html:not(.dark) {
+  --myst-color-bg: var(--ark-paper);
 }
 
 html.dark {
@@ -136,21 +182,11 @@ html.dark {
   --ark-ink: #e7e9ec;
 }
 
-/* Both themes paint their surfaces white: the page, header bars and title card at four fifths
- * opacity, the outline panel at nineteen twentieths. Softening the page alone leaves those floating
- * above it, so each is caught at its own class, which the checks watch for survival. */
+/* The page and the search dialog, which the themes reach as elements rather than through a class.
+ * Every other surface they paint now derives from --myst-color-bg, set below. */
 html:not(.dark) body,
-html:not(.dark) .bg-white,
 html:not(.dark) dialog {
   background-color: var(--ark-paper);
-}
-
-html:not(.dark) .bg-white\/80 {
-  background-color: rgb(var(--ark-paper-rgb) / 0.8);
-}
-
-html:not(.dark) .bg-white\/95 {
-  background-color: rgb(var(--ark-paper-rgb) / 0.95);
 }
 
 /* book-theme's search box is a shade off its own white; keep it a shade off this one */
@@ -241,68 +277,6 @@ html.dark .myst-article-header-fm::before {
 
 .myst-toc a {
   overflow-wrap: anywhere;
-}
-
-/* The theme's accent reaches a page through Tailwind utilities, so each override mirrors the built
- * selector exactly and wins on source order; check_blue_coverage derives the list from the pages.
- * Blue alone: the theme's greys carry structure, and a brand blue on a grey rule would mislead. */
-.text-blue-400,
-.text-blue-500,
-.text-blue-600,
-.hover\:text-blue-400:hover,
-.hover\:text-blue-500:hover,
-.hover\:text-blue-600:hover,
-.hover\:text-blue-700:hover,
-.dark\:hover\:text-blue-400:hover:is(.dark *) {
-  color: var(--ark-blue);
-}
-
-/* Blue-500 fills a solid surface; blue-50 is a tinted strip behind text, so it takes the tint
- * instead. Painting both with the accent would put white-on-navy where the theme wanted a wash. */
-.bg-blue-500 {
-  background-color: var(--ark-blue);
-}
-
-/* Pale fills: admonition, exercise and proof headers, and book-theme's active contents link. The
- * header rules further down clear the first three at two classes and outrank this, so those three
- * stand as the backstop that keeps a theme blue off them if one of those rules is ever dropped. */
-.bg-blue-50,
-.bg-blue-50\/80,
-.bg-blue-300\/30 {
-  background-color: var(--ark-tint);
-}
-
-/* All four sides only where the theme set all four. The directional utilities pair with a grey box
- * on the same element, so a shorthand here would repaint the three sides the theme left grey. */
-.border-blue-500,
-.hover\:border-blue-500:hover,
-.hover\:border-blue-600:hover,
-.dark\:hover\:border-blue-400:hover:is(.dark *),
-.dark\:hover\:border-blue-500:hover:is(.dark *) {
-  border-color: var(--ark-blue);
-}
-
-.dark\:border-blue-500\/60:is(.dark *) {
-  border-color: color-mix(in srgb, var(--ark-blue) 60%, transparent);
-}
-
-.border-b-blue-600 {
-  border-bottom-color: var(--ark-blue);
-}
-
-.border-l-blue-400,
-.border-l-blue-500 {
-  border-left-color: var(--ark-blue);
-}
-
-.ring-blue-500,
-.hover\:ring-blue-500:hover,
-.dark\:hover\:ring-blue-500:hover:is(.dark *) {
-  --tw-ring-color: var(--ark-blue);
-}
-
-.outline-blue-200 {
-  outline-color: var(--ark-blue);
 }
 
 /* Every face on the page is one of the three the PDF sets. `font-system` names a monospace stack
@@ -485,7 +459,7 @@ article.article a:focus-visible,
 
 /* Links leave the document, so they carry the blue; so do citations. A button is excluded because
  * styles/button.css sets its text white over --myst-color-primary, and this rule would outrank
- * that at two classes to one, leaving brand blue on the theme's blue-500 at 2.63 to 1. */
+ * that at two classes to one, leaving brand blue on the button's own fill at 2.63 to 1. */
 article.article a:not(.button),
 article.article cite:not(.button) a {
   color: var(--myst-color-link);
@@ -530,7 +504,7 @@ article.article:has(.ark-hero) #skip-to-article::after {
  * theme's box is dropped so a filled block means one thing on the page: code. */
 article.article .myst-abstract-title {
   font-family: var(--ark-sans);
-  font-size: 0.95rem;
+  font-size: var(--ark-fm-label);
   font-weight: 500;
   color: var(--ark-blue);
   margin-bottom: 0.4rem;
@@ -551,14 +525,16 @@ article.article .myst-abstract-box li::marker {
  * :has() picks out headings written in the text, leaving the theme's own parts alone. */
 article.article h2:has(> .heading-text) {
   font-family: var(--ark-sans);
-  font-size: 1.4rem;
+  /* 1.18 of the 1.05rem body, the ratio ark/typography.typ sets with 13pt over 11pt. A flat
+     1.4rem was 1.33 and gave the site a scale the PDF of the same paper does not have. */
+  font-size: 1.24rem;
   font-weight: 500;
   line-height: 1.25;
   color: var(--ark-blue);
   margin-top: 2.2em;
 }
 
-/* Both sit at body size, as they do in the PDF: econ-ark.typ sets level 1 at 13pt over an 11pt body
+/* Both sit at body size, as in the PDF: ark/typography.typ sets level 1 at 13pt over an 11pt body
  * and leaves levels 2 and 3 at 11pt, separating them by weight and italic rather than by size. The
  * 1.12 and 1.06 here were a step of 5 percent that matched neither the PDF nor a reader's eye. */
 article.article h3:has(> .heading-text) {
@@ -636,6 +612,7 @@ article.article :not(pre) > code {
 
 article.article .myst-code {
   background: var(--ark-tint);
+  color: var(--ark-code-ink);
   border: 0;
   border-radius: 2px;
   box-shadow: none;
@@ -645,20 +622,31 @@ article.article .myst-code-body {
   background: transparent;
 }
 
-/* Syntax colours. The theme ships XCode for light and Dark+ for dark: 17 token groups from
- * neither palette, applied by highlight.js in the browser. Three roles stay and the rest fall
- * back to body ink, since a listing with six accents fights the four-curve mark. */
+/* Syntax colours. The theme ships XCode for light and Dark+ for dark, 17 token groups from neither
+ * palette. Four roles stay and the rest fall back to body ink, since a listing with every accent
+ * lit fights the four-curve mark. brand/code.tmTheme carries the same four for the PDF. */
 :root {
   --ark-code-keyword: var(--ark-blue);
   --ark-code-comment: var(--ark-grey);
   /* curve-2 deepened until it clears 4.5 to 1 on --ark-tint; the identity pink reads 3.42 there */
   --ark-code-string: #ce1160;
+  /* curve-4 deepened the same way, for the numbers a calibration listing is read for. The identity
+     green reads 2.29 on --ark-tint; this is 4.58, and green keeps it clear of the blue keyword */
+  --ark-code-number: #1f7a33;
+  /* Everything unscoped, in arkGrey's own hue. Body ink reads 17.8 on --ark-tint against the blue
+     keyword's 8.2, so a listing set in it put its least meaningful token on top, and a bold name
+     in it more so. At 7.9 the name is marked by weight and sits level with the keyword. */
+  --ark-code-ink: #48464e;
 }
 
 html.dark {
   /* On the dark tint the identity pink is 3.85, so this one lightens instead. The other two
      tokens follow --ark-blue and --ark-grey, which already flip. */
   --ark-code-string: #f04f92;
+  /* The identity green needs no deepening here: it reads 5.76 on the dark tint */
+  --ark-code-number: var(--ark-curve-4);
+  /* Lightened instead, to 7.2 against the dark keyword's 7.1 */
+  --ark-code-ink: #b2b0b8;
 }
 
 /* Everything the two themes colour and this palette does not: back to the body ink it sits in */
@@ -703,6 +691,22 @@ article.article .hljs-string,
 article.article .hljs-code,
 article.article .hljs-meta .hljs-string {
   color: var(--ark-code-string);
+}
+
+/* The numbers a reader checks a listing against the calibration table for */
+article.article .hljs-number {
+  color: var(--ark-code-number);
+}
+
+/* Class and function names are the structure a reader scans a listing for, and colour is spent at
+ * four roles, so weight carries this one. brand/code.tmTheme sets bold on the same scopes for the
+ * PDF. Keywords keep one weight: they already hold the strongest colour in the palette. */
+article.article .hljs-title,
+article.article .hljs-title.class_,
+article.article .hljs-title.function_,
+article.article .hljs-built_in,
+article.article .hljs-type {
+  font-weight: 700;
 }
 
 /* These three carry a background rather than a colour, so they survive the block above and arrive
@@ -920,11 +924,11 @@ article.article h2#summary {
 
 article.article h2#summary::before {
   content: "Summary";
-  font-size: 1.05rem;
+  font-size: var(--ark-fm-label);
 }
 
 article.article h2#summary > a {
-  font-size: 1.05rem;
+  font-size: var(--ark-fm-label);
 }
 
 /* MyST's `declaration` part, which the theme gives no backmatter slot and so leaves as a bare
@@ -984,9 +988,16 @@ article.article .ark-part-epigraph {
   color: var(--ark-grey);
 }
 
+/* With no logo_text set, the theme puts "Made with MyST" in the home link, hidden from the page and
+ * read aloud, where the logo's alt text already names the site. A site that does set logo_text
+ * renders the same span without the class, so that text goes on showing. */
+.myst-home-link > span.sr-only {
+  display: none;
+}
+
 /* The Econ-ARK lockup is wide, four to one, so at the theme's own h-9 it takes 144px of a phone's
- * header; with the site title, search box, theme toggle and action menu beside it, the row missed
- * 375px and the page scrolled sideways by 39px. The header holds one line, so the mark shrinks. */
+ * header; with the search box, theme toggle and action menu beside it, the row missed 375px and
+ * the page scrolled sideways by 39px. The header holds one line, so the mark shrinks. */
 @media (max-width: 30rem) {
   .myst-home-link-logo img {
     height: 1.6rem;
@@ -1049,9 +1060,9 @@ article.article .ark-hero::after {
   background: var(--ark-curve-rule);
 }
 
-/* The hero headline needs rank. MyST demotes a landing's `#` to an h2, so without this rule it took
- * section styling and opened the page at exactly the size of "Life cycle models" further down,
- * measured at a ratio of 1.00; a landing's first line is not one of its section headings. */
+/* The hero headline needs rank. MyST demotes a landing's `#` to an h2, so without this rule it
+ * opened the page at section size, a ratio of 1.00. The landing is a second register by choice:
+ * 600 and negative tracking against the paper's 500 and none, for a reader still deciding. */
 article.article .ark-hero h1,
 article.article .ark-hero h2 {
   color: var(--ark-blue);
@@ -1146,7 +1157,7 @@ article.article .ark-steps .myst-card::before {
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1;
-  color: #111;
+  color: var(--ark-on-curve);
 }
 
 article.article .ark-steps .myst-card:nth-child(2)::before {
@@ -1181,12 +1192,9 @@ article.article .ark-hero p {
   color: var(--ark-ink);
 }
 
-/* The fill and its white text come from --myst-color-primary above, reaching every button on every
- * page; only the border is added here, giving the second button a shape to keep once it gives up
- * the fill. Its label follows the card, which follows the page, so it takes --ark-blue. */
-/* The fill, from the same token the theme will read once it ships #843: the theme's own white
- * label sits on it, which blue-500 carried at 3.68 to 1 and the field colour carries at about
- * nine. The selector list is the theme's own, so this ties on specificity and wins on order. */
+/* The fill, from --myst-color-primary above, which the theme now reads for itself. Its own white
+ * label sits on this: the field colour carries that at about nine to one, where the theme's old
+ * blue-500 carried 3.68. The selector list is the theme's, so this ties and wins on order. */
 a.button,
 button.button,
 span.button,

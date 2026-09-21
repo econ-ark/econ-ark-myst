@@ -42,9 +42,13 @@ ANCHORS=(
   'References'
   'The Quarterly Journal of Economics 112 (1): 1'
   'zenodo.0000000'
-  'Appendix A derives the Euler'
+  # A plain MyST cross-reference, lettered by the link rule rather than by a raw typst block, so
+  # this line also proves the site gets a readable reference instead of an empty span
+  'Appendix A works through'
   'Appendix A Derivation'
-  'Key points'
+  # Title case in both media: myst-theme labels the part this way on the site
+  'Key Points'
+  'Data Availability'
   'Cite as'
   'Working paper'
   'arXiv:2609.00000'
@@ -60,8 +64,20 @@ ANCHORS=(
 )
 
 PRIME=$(printf '\342\200\262')
-# The one colour asserted often enough to drift: a retuned blue must fail every one of these
-ARK_BLUE='#1F476B'
+# theme.css's :root is the palette's one authored home, and ark/brand.typ carries the same values
+# for the PDF, one of them computed rather than written. Reading the expected colour from the
+# stylesheet ties the halves: html.dark redefines four lower down, so the first match is the light.
+ark_colour() {
+  local raw
+  raw=$(sed -nE "s/^[[:space:]]*--ark-$1:[[:space:]]*(#[0-9a-fA-F]{3,8}|var\(--ark-[a-z0-9-]+\))[[:space:]]*;.*/\1/p" \
+    "$ROOT/theme.css" | head -1)
+  # A token may name another rather than a hex, as --ark-code-keyword names --ark-blue
+  case "$raw" in
+    var*) ark_colour "$(sed -E 's/var\(--ark-(.*)\)/\1/' <<<"$raw")" ;;
+    *) printf '%s\n' "$raw" | tr 'a-f' 'A-F' ;;
+  esac
+}
+ARK_BLUE=$(ark_colour blue)
 
 # Rasterising a page costs about a quarter second and seven colour checks land on two pages, so the
 # renders are kept. The key carries the file's size and mtime, so a rebuilt PDF misses rather than
@@ -235,6 +251,12 @@ check_myst_errors() {
 # draws a rule, and check_ink over the word itself, where the branding is the ink.
 check_swatch() {
   local name=$1 pdf=$2 word=$3 colour=$4 mode=$5 hit page x0 y0 w h n
+  # The colour arrives from ark_colour, which comes back empty for a token theme.css no longer
+  # declares, and the pixel count below greps for it: an empty needle matches every line
+  if [ -z "$colour" ]; then
+    bad "$name: no colour to check '$word' against, so this check proved nothing"
+    return
+  fi
   hit=$(pdftotext -bbox "$pdf" - 2>/dev/null | awk -v w=">$word</word>" '
     /<page / { p++ }
     index($0, w) { print p, $0; exit }')
@@ -332,6 +354,125 @@ check_italic_kinds() {
   else
     bad "$name: italicKinds is not amsthm's plain style; found $(grep -F '#let italicKinds' "$file" | head -1)"
   fi
+}
+
+# The list above is intent; this is what a reader gets. A plain-style statement takes a face of its
+# own, so the words after its "(Title)." carry a font id the run itself does not, at the same size;
+# a definition-style one carries the same id. pdftohtml reports only the opaque subset tag.
+
+# pdftohtml -xml is the one view of a PDF that pairs a glyph run with the face and the colour it was
+# drawn in, which three checks below read different columns of. One parser, so a quirk of that XML
+# is answered once: a run per line, as font id, family, colour, size and text with its tags off.
+pdf_runs() {
+  pdftohtml -xml -stdout "$1" 2>/dev/null | python3 -c '
+import re, sys
+x = sys.stdin.read()
+# Attributes by name rather than in the order pdftohtml happens to write them
+spec = {}
+for tag in re.finditer(r"<fontspec\b([^>]*)>", x):
+    a = dict(re.findall(r"(\w+)=\"([^\"]*)\"", tag.group(1)))
+    spec[a.get("id", "")] = a
+for m in re.finditer(r"<text[^>]*font=\"(\d+)\"[^>]*>(.*?)</text>", x, re.S):
+    a = spec.get(m.group(1), {})
+    # A run holds <b> and <i> tags around its text, and a tab would split a field
+    text = re.sub(r"<[^>]+>", "", m.group(2)).replace("\t", " ")
+    print("\t".join([m.group(1), a.get("family", ""), a.get("color", "").upper(),
+                     a.get("size", ""), text]))
+'
+}
+
+# Typst highlights a listing from its own theme unless given one, and brand/code.tmTheme is that
+# theme. Its four foregrounds are authored in theme.css, so this reads them from there and asserts
+# the PDF prints each in a mono face; an unexercised role would otherwise go unnoticed.
+check_code_palette() {
+  local name=$1 pdf=$2 role want printed missing=0
+  printed=$(pdf_runs "$pdf" |
+    awk -F'\t' '$2 ~ /Mono/ && $5 ~ /[^[:space:]]/ { print $3 }' | sort -u | tr '\n' ' ')
+  if [ -z "${printed// /}" ]; then
+    bad "$name: no mono text in the PDF, so the code palette went unchecked"
+    return
+  fi
+  for role in keyword comment string number ink; do
+    want=$(ark_colour "code-$role")
+    if [ -z "$want" ]; then
+      bad "$name: theme.css declares no --ark-code-$role, so the PDF has nothing to match"
+      missing=1
+    elif ! grep -qw -- "$want" <<<"$printed"; then
+      bad "$name: no $role in the PDF at $want, which theme.css sets; it printed $printed"
+      missing=1
+    fi
+  done
+  [ "$missing" -eq 0 ] &&
+    ok "$name: the listing prints its five code colours"
+}
+
+# Which tokens take the weight, not merely that a bold face got embedded. highlight.js scopes a
+# name only where it is defined and leaves a call site unscoped, while Typst's grammar scopes the
+# call site too, so the PDF can carry weight the site cannot; see docs/known-gaps.md.
+check_code_weight() {
+  local name=$1 pdf=$2 verdict bold
+  shift 2
+  # pdftohtml reports both weights as family "FiraMono" and tells them apart only by the subset tag
+  # it prefixes, so the tag of the bold face is what a run has to be matched against. One subset per
+  # face is the assumption: a PDF splitting the bold mono over two would read the second as plain.
+  bold=$(pdffonts "$pdf" 2>/dev/null | awk '$1 ~ /Mono-Bold$/ { sub(/\+.*/, "", $1); print $1; exit }')
+  if [ -z "$bold" ]; then
+    bad "$name: no bold mono face in the PDF, so a definition name carries no weight"
+    return
+  fi
+  # An unscoped token shares a run with its neighbours, so a run is searched rather than matched
+  verdict=$(pdf_runs "$pdf" | awk -F'\t' -v bold="$bold+" -v wants="$*" '
+    $2 ~ /Mono/ { weight[++n] = (index($2, bold) == 1 ? "bold" : "plain"); text[n] = $5 }
+    END {
+      count = split(wants, want, " ")
+      for (i = 1; i <= count; i++) {
+        at = index(want[i], ":")
+        kind = substr(want[i], 1, at - 1)
+        token = substr(want[i], at + 1)
+        got = ""
+        for (r = 1; r <= n; r++) {
+          if (index(text[r], token) && index(got, weight[r]) == 0) {
+            got = got (got ? "/" : "") weight[r]
+          }
+        }
+        if (got == "") print "absent", kind, token
+        else if (got != kind) print got, kind, token
+      }
+    }')
+  if [ -n "$verdict" ]; then
+    bad "$name: the listing gives the wrong weight to a token, want kind and got:"
+    head -5 <<<"$verdict"
+  else
+    ok "$name: weight falls on the definitions and the builtins, the tokens the site can mark too ($#)"
+  fi
+}
+
+check_proof_style() {
+  local name=$1 pdf=$2 title=$3 want=$4 verdict
+  # The face of the statement against the face of its own title run, at the same size: a plain-style
+  # kind switches to the italic and a definition-style kind stays in the body face
+  verdict=$(pdf_runs "$pdf" | awk -F'\t' -v mark="($title)." '
+    { fid[++n] = $1; size[n] = $4; text[n] = $5 }
+    END {
+      for (i = 1; i <= n; i++) {
+        if (!index(text[i], mark)) continue
+        for (j = i + 1; j <= n; j++) {
+          if (text[j] ~ /[^[:space:]]/ && size[j] == size[i]) {
+            print (fid[j] == fid[i] ? "same" : "differs")
+            exit
+          }
+        }
+        print "nothing follows"
+        exit
+      }
+      print "absent"
+    }')
+  case "$verdict:$want" in
+    differs:italic) ok "$name: the $title statement is set in a face of its own, as a plain-style kind is" ;;
+    same:upright) ok "$name: the $title statement is set in the body face, as a definition-style kind is" ;;
+    absent:*) bad "$name: no '($title).' run in the PDF, so its proof style went unchecked" ;;
+    *) bad "$name: the $title statement came out $verdict where $want was expected" ;;
+  esac
 }
 
 # Before asking which file serves a weight, ask whether the family is there at all. A missing one
@@ -521,7 +662,10 @@ check_template_files() {
       abs=$(realpath -m --relative-to="$root" "$root/$(dirname "$f")/$dep")
       needed="$needed$abs"$'\n'
       case "$abs" in *.typ) queue+=("$abs") ;; esac
-    done < <(rg -o '#import "([^@"]+)"|image\("([^"]+)"\)' -r '$1$2' "$root/$f" 2>/dev/null)
+    # Three ways a typst file names another: an import, an image, and the syntax theme a raw block
+    # is highlighted from. A fourth would go unlisted here and unnoticed until a consumer's build.
+    done < <(rg -o '#import "([^@"]+)"|image\("([^"]+)"\)|theme: "([^"]+)"' -r '$1$2$3' \
+      "$root/$f" 2>/dev/null)
   done
   while IFS= read -r dep; do
     [ -n "$dep" ] || continue
@@ -545,19 +689,23 @@ require_file() {
   return 1
 }
 
-# A class is styled only when its own block declares something and its name ends where the selector
-# does. `.ark-hero` matched a stylesheet that had renamed it `.ark-hero-image`, `.ark-section { }`
-# matched one declaring nothing, and a bare grep matched a name left in a comment.
-css_declares() {
-  local css=$1 cls=$2
-  CLS=$cls perl -0777 -ne 'my $c = $ENV{CLS};
-    s{/\*.*?\*/}{}gs;
+# One walk of a stylesheet, comments stripped and a rule per line as its selector list, a tab, and
+# its body. The checks that read rules take a column each, so neither carries a tokenizer of its
+# own. Newlines inside either half collapse to spaces, since a line here is one rule.
+css_rules() {
+  perl -0777 -ne 's{/\*.*?\*/}{}gs;
     while (/([^{}]*)\{([^{}]*)\}/g) {
       my ($sel, $body) = ($1, $2);
-      next unless $body =~ /[a-z-]+\s*:\s*[^;\s]/;
-      exit 0 if $sel =~ /\.\Q$c\E(?![\w-])/;
-    }
-    exit 1' "$css"
+      for ($sel, $body) { s/\s+/ /g; s/^ //; s/ $//; }
+      print "$sel\t$body\n";
+    }' "$1"
+}
+
+# A class is styled only when its own block declares something and its name ends where the selector
+# does: a renamed `.ark-hero-image`, an empty `.ark-section { }` and a name left in a comment each
+# passed once. Fed rather than piped: `grep -q` leaves early, and pipefail reads SIGPIPE as absent.
+css_declares() {
+  grep -qP "^[^\t]*\.\Q$2\E(?![\w-])[^\t]*\t[^\t]*[a-z-]\s*:\s*[^;\s]" < <(css_rules "$1")
 }
 
 # The page carries a JSON copy of its own config, which repeats every class name, so a class the
@@ -641,35 +789,46 @@ check_dropdown_tags() {
   fi
 }
 
-# The theme's accent arrives as Tailwind utilities, so the override list in theme.css is only as
-# good as the census it was written from. Deriving both sides here turns a guessed list into a
-# checked one: a theme upgrade that paints with a new blue fails instead of leaking.
-check_blue_coverage() {
-  local name=$1 dir=$2 css=$3 rendered overridden missing
-  rendered=$(rg -o --no-filename '[a-z:/-]*blue-[0-9]+(/[0-9]+)?' \
-    "$dir"/index.html "$dir"/*/index.html 2>/dev/null | sort -u)
-  if [ -z "$rendered" ]; then
-    bad "$name: no blue utility in the built pages, so the override list goes untested"
+# myst-theme 1.4.0 paints its chrome through --myst-color-* tokens, where 1.3.1 wrote Tailwind
+# classes, so this census is over tokens. The kinds are left out, painted by per-kind rules that
+# check_rule reads off the PDF alone; the site side of those goes unread, see docs/known-gaps.md.
+check_token_coverage() {
+  local name=$1 dir=$2 css=$3 painted declared missing kinds theme
+  # The kinds are read out of the theme's own stylesheet rather than listed here, a kind being a
+  # token carrying both a -bg and a -text beside it, so a tenth one upstream needs no edit
+  theme=$(find "$dir/build/_assets" -name 'app-*.css' 2>/dev/null | head -1)
+  kinds=$(grep -oE -- '--myst-color-[a-z0-9-]+[[:space:]]*:' "$theme" 2>/dev/null |
+    sed -E 's/--myst-color-//; s/[[:space:]]*:$//' | sort -u |
+    awk '{ seen[$0] = 1; order[NR] = $0 }
+      END {
+        for (i = 1; i <= NR; i++) {
+          k = order[i]
+          if (seen[k "-bg"] && seen[k "-text"]) out = out (out ? "|" : "") k
+        }
+        print out
+      }')
+  if [ -z "$kinds" ]; then
+    bad "$name: no token family in the theme's own stylesheet under $dir, so the kinds it paints by rule are unknown"
     return
   fi
-  require_file "$name" "$css" "the blue override list" || return
-  # A selector counts only when its block declares something: .text-blue-600 { } matched the old
-  # read of selector strings alone and painted nothing. Pairing each selector list with its body
-  # here is also what lets a stylesheet escape its colons, which the sed then strips off.
-  overridden=$(perl -0777 -ne 's{/\*.*?\*/}{}gs;
-    while (/([^{}]*)\{([^{}]*)\}/g) {
-      my ($sel, $body) = ($1, $2);
-      next unless $body =~ /[a-z-]+\s*:\s*[^;\s]/;
-      while ($sel =~ /\.([a-z0-9\\:\/-]*blue-[0-9]+(?:\\\/[0-9]+)?)/g) {
-        (my $c = $1) =~ s/\\//g;
-        print "$c\n";
-      }
-    }' "$css" | sort -u)
-  missing=$(comm -23 <(echo "$rendered") <(echo "$overridden") | tr '\n' ' ')
+  # The theme names a class for its utility and its token, so bg-myst-bg-secondary paints through
+  # --myst-color-bg-secondary; stripping the utility off the front leaves the token to look up
+  painted=$(rg -o --no-filename \
+    '(?:bg|text|border|ring|outline|divide|placeholder|decoration|fill|stroke)-myst-[a-z0-9-]+' \
+    "$dir"/index.html "$dir"/*/index.html 2>/dev/null |
+    sed -E 's/^[a-z]+-myst-//' | grep -vE "^($kinds)(-|$)" | sort -u)
+  if [ -z "$painted" ]; then
+    bad "$name: the built pages paint through no --myst-color- token, so this check proved nothing"
+    return
+  fi
+  require_file "$name" "$css" "the token overrides" || return
+  declared=$(grep -oE -- '--myst-color-[a-z0-9-]+[[:space:]]*:' "$css" |
+    sed -E 's/--myst-color-//; s/[[:space:]]*:$//' | sort -u)
+  missing=$(comm -23 <(echo "$painted") <(echo "$declared") | tr '\n' ' ')
   if [ -n "${missing// /}" ]; then
-    bad "$name: $css leaves the theme's blue on: $missing"
+    bad "$name: $css leaves the theme's own colour on: $missing"
   else
-    ok "$name: every blue utility the pages render is overridden ($(wc -l <<<"$rendered") classes)"
+    ok "$name: every token the pages paint through is declared here ($(wc -l <<<"$painted") of them)"
   fi
 }
 
@@ -743,9 +902,9 @@ check_css_last() {
   fi
 }
 
-# The bundled theme predates --myst-color-* (#843), so the stylesheet has to declare every one of
-# those it reads. Gut its :root block and the button fill resolves to nothing: the theme's white
-# label lands on the page with no fill under it, which nothing else here reads.
+# A token this stylesheet reads and never declares falls back to the theme's own colour, which is a
+# quiet way to lose the palette: gut the :root block and the button fill goes back to the theme's
+# blue under a white label, with every other rule here still passing.
 check_tokens_defined() {
   local name=$1 sheet=$2 used declared missing
   used=$(grep -oE 'var\(--myst-color-[a-z-]+' "$sheet" 2>/dev/null | sed 's/^var(//' | sort -u)
@@ -762,8 +921,64 @@ check_tokens_defined() {
   fi
 }
 
+# Abstract, Key Points and Summary stack as one row of blue labels, but the summary's is drawn by a
+# pseudo-element, which cannot inherit a size from the heading it stands in for. Authored twice, it
+# drifted 1.6px from its two neighbours, so the size has to reach all three from one place.
+check_fm_label_size() {
+  local name=$1 sheet=$2 sizes rules
+  require_file "$name" "$sheet" "the front matter label size" || return
+  rules=$(css_rules "$sheet" 2>/dev/null |
+    awk -F'\t' '$1 ~ /myst-abstract-title|h2#summary/ && match($2, /font-size: *[^;]+/) {
+      size = substr($2, RSTART, RLENGTH)
+      sub(/^font-size: */, "", size)
+      sub(/ +$/, "", size)
+      print size
+    }' | grep -v '^0$')
+  sizes=$(sort -u <<<"$rules" | grep . )
+  if [ "$(grep -c . <<<"$rules")" -lt 3 ]; then
+    bad "$name: fewer than three front matter labels take a size in $sheet, so one of them is unset"
+  elif [ "$(wc -l <<<"$sizes")" -ne 1 ]; then
+    bad "$name: the front matter labels are sized from $(wc -l <<<"$sizes") values: $(tr '\n' ' ' <<<"$sizes")"
+  elif [[ $sizes != var\(* ]]; then
+    bad "$name: the front matter labels each name the literal $sizes, so one can be changed alone"
+  else
+    ok "$name: Abstract, Key Points and Summary take one label size, from $sizes"
+  fi
+}
+
 # The faces are built rather than tracked, so a site can be published complete in every other way
 # and still fall back to the system sans, which no page of it would report
+
+# A weight with no @font-face of its own resolves to the nearest one that has a file, so the sheet
+# can ask for 600 and a reader see 700 with nothing said. Counting faces never catches that: it
+# reads what the sheet serves, never what it asks for.
+check_weights_served() {
+  local name=$1 sheet=$2 defined requested w missing=0
+  require_file "$name" "$sheet" "the weights the sheet asks for" || return
+  # One pass, reading the value after the property rather than every digit on the line, which took
+  # the 2 out of an h2 selector, and numeric weights only, since the sheet writes no `bold`. The
+  # weight goes into a variable: a gsub over $0 left the /}/ test on stripped digits, never closing.
+  local tagged
+  tagged=$(awk '/@font-face/ { f = 1 }
+    /font-weight:[[:space:]]*[0-9]/ {
+      w = $0; sub(/.*font-weight:[[:space:]]*/, "", w); sub(/[^0-9].*/, "", w)
+      print (f ? "def" : "req"), w
+    }
+    /}/ { f = 0 }' "$sheet" | sort -u)
+  defined=$(sed -n 's/^def //p' <<<"$tagged")
+  requested=$(sed -n 's/^req //p' <<<"$tagged")
+  if [ -z "$requested" ]; then
+    bad "$name: found no font-weight outside an @font-face, so this check proved nothing"
+    return
+  fi
+  for w in $requested; do
+    grep -qxF "$w" <<<"$defined" ||
+      { bad "$name: the sheet asks for font-weight $w and serves no face at it, so a reader gets the nearest weight that has a file"; missing=1; }
+  done
+  [ "$missing" -eq 0 ] &&
+    ok "$name: every weight the sheet asks for has a face it serves ($(grep -c . <<<"$requested"))"
+}
+
 check_faces_served() {
   local name=$1 dir=$2 sheet="$2/myst-theme.css" url n=0
   # Only a face the served sheet names, at a path the site serves, reaches a reader. Counting woff2
@@ -832,6 +1047,7 @@ check_site() {
     bad "$name: no <article class=\"... article ...\"> under $dir, so every article.article rule is inert"
   fi
   check_faces_served "$name" "$dir"
+  check_weights_served "$name" "$dir/myst-theme.css"
   # Fira Math and Temml's stylesheet travel together: the font is what a browser lays the symbols
   # out from, the stylesheet is what draws the parts of MathML that Chromium leaves undrawn
   if find "$dir" -name 'FiraMath-Regular*.woff2' 2>/dev/null | grep -q . &&
@@ -848,12 +1064,15 @@ check_site() {
   else
     bad "$name: no paper-*.pdf under $dir, so a reader of the site cannot reach the PDF"
   fi
-  # The softer page is painted over the theme's own white, which the theme writes as a utility
-  # class. A theme that renamed it would take its whites back and leave the page half soft.
-  if grep -qE 'class="[^"]*bg-white' <<<"$html"; then
-    ok "$name: the theme still paints its surfaces with the class the softer page overrides"
+  # The softer page reaches every surface through one token, the theme deriving its translucent
+  # header and outline panel from the same one. Two ends, reported apart: a theme that stopped
+  # reading the token, and a sheet that stopped setting it, are different repairs.
+  if ! grep -qE 'class="[^"]*bg-myst-bg' <<<"$html"; then
+    bad "$name: no bg-myst-bg class under $dir, so the token the page is softened through is unread"
+  elif ! grep -q -- '--myst-color-bg:' "$dir/myst-theme.css" 2>/dev/null; then
+    bad "$name: the sheet served under $dir sets no --myst-color-bg, so the theme's whites stand"
   else
-    bad "$name: no bg-white class under $dir, so the rules that soften the theme's whites are inert"
+    ok "$name: the page and its derived surfaces are painted through --myst-color-bg"
   fi
   # theme.css relabels the summary part by hanging on an id the theme writes. A rename upstream
   # would leave the rule inert and the site back to "Plain Language Summary", with nothing said.
@@ -890,6 +1109,46 @@ check_site() {
     ok "$name: the front matter carries the anchor the four-colour rule hangs on"
   else
     bad "$name: neither myst-fm-parts nor skip-to-article under $dir, so the four-colour rule is missing"
+  fi
+}
+
+# The header holds one link and it stays on this site. logo_url sends the whole lockup off site,
+# logo_text prints the name beside a wordmark that already carries it, and a nav entry naming
+# Econ-ARK is the third copy of it; the fallback wording is the span theme.css hides.
+check_home_link() {
+  local name=$1 dir=$2 link nav
+  link=$(perl -0777 -ne 'print $1 if /(<a class="myst-home-link.*?<\/a>)/s' "$dir/index.html" 2>/dev/null)
+  nav=$(perl -0777 -ne 'print $1 if /myst-top-nav-bar(.*?)<\/nav>/s' "$dir/index.html" 2>/dev/null)
+  if [ -z "$link" ] || [ -z "$nav" ]; then
+    bad "$name: no myst-home-link or no myst-top-nav-bar under $dir, so the header goes unread"
+  elif grep -qE 'href="[a-z]+:' <<<"$link"; then
+    bad "$name: the header's logo leaves the site, $(grep -oE 'href="[^"]*"' <<<"$link" | head -1)"
+  elif grep -q 'econ-ark\.org' <<<"$nav"; then
+    bad "$name: the header links econ-ark.org again beside a wordmark that already says it"
+  elif ! grep -q 'sr-only">Made with MyST' <<<"$link"; then
+    bad "$name: the theme's fallback wording is not the span theme.css hides, so the header carries it"
+  else
+    ok "$name: the header holds one link, to this site, with no second name beside the wordmark"
+  fi
+}
+
+# book-theme prints its own badge in the sidebar unless the site supplies a primary_sidebar_footer
+# part, and no option hides it. What theme.css sizes is a link holding the favicon and the words,
+# so each of those three is read here; the landing suppresses the footer and is not checked.
+check_sidebar_footer() {
+  local name=$1 dir=$2 lockup
+  lockup=$(perl -0777 -ne 'print $1 if /article footer myst-primary-sidebar-footer"(.*?)<\/a>/s' \
+    "$dir/index.html" 2>/dev/null)
+  if grep -q 'myst-made-with-myst' "$dir/index.html" 2>/dev/null; then
+    bad "$name: the sidebar carries MyST's own badge, so the primary_sidebar_footer part went unread"
+  elif [ -z "$lockup" ]; then
+    bad "$name: no myst-primary-sidebar-footer link under $dir, so its five rules paint nothing"
+  elif ! grep -q 'Powered by Econ-ARK' <<<"$lockup"; then
+    bad "$name: the sidebar footer link is not the Powered by Econ-ARK lockup"
+  elif ! grep -q '<picture' <<<"$lockup" || ! grep -q 'favicon' <<<"$lockup"; then
+    bad "$name: the lockup holds no favicon in a picture, which is the element theme.css sizes"
+  else
+    ok "$name: the sidebar footer is the Powered by Econ-ARK lockup, mark and words in one link"
   fi
 }
 
@@ -985,6 +1244,54 @@ self_test() {
   seeded=${good//Proposition 1 (Concavity)/}
   expect "FAIL.*missing 'Proposition 1" 'a missing anchor is caught' \
     check_text seeded "$seeded" "${ANCHORS[@]}"
+
+  # The minimal example carries no listing, so a check that read its own absence as agreement would
+  # pass here. It has to report that it saw nothing instead, and the same goes for the bold face.
+  expect 'FAIL.*no mono text' 'a PDF with no listing reports the palette unchecked' \
+    check_code_palette seeded "$MINIMAL"
+  expect 'FAIL.*no bold mono face' 'a PDF with no bold mono face is caught' \
+    check_code_weight seeded "$MINIMAL" bold:target_wealth
+
+  # The other two ways the palette goes wrong, both reached through theme.css: ark_colour reads the
+  # tokens from $ROOT, so a scratch root carrying a doctored copy is what seeds them.
+  local cp cpwrong
+  cp=$(mktemp -d)
+  cpwrong=$(mktemp -d)
+  grep -v -- '--ark-code-number:' "$ROOT/theme.css" >"$cp/theme.css"
+  sed -E 's/--ark-code-number:[^;]*/--ark-code-number: #010203/' "$ROOT/theme.css" >"$cpwrong/theme.css"
+  # expect calls this through "$@", which shellcheck's reachability pass cannot follow
+  # shellcheck disable=SC2317,SC2329
+  palette_under_root() { ROOT=$1 check_code_palette seeded "$PAPER"; }
+  expect 'FAIL.*no --ark-code-number' 'a role theme.css stopped declaring is caught' \
+    palette_under_root "$cp"
+  expect 'FAIL.*no number in the PDF' 'a role the PDF prints in another colour is caught' \
+    palette_under_root "$cpwrong"
+  rm -rf "$cp" "$cpwrong"
+
+  # The tint the listing sits on, which moved out of check_code_palette to a pixel read: an empty
+  # colour would have grepped for nothing and matched every line of the crop
+  expect 'FAIL.*proved nothing' 'a rule check with no colour to look for is caught' \
+    check_rule seeded "$PAPER" 'Prudence' ""
+  expect 'FAIL.*pixel beside' 'the tint is not beside a word of the prose' \
+    check_rule seeded "$PAPER" 'Prudence' "$(ark_colour tint)"
+
+  # The weight check judged against each way it can be wrong: a definition read as plain, a call
+  # site read as bold, and a token the listing never carries, which an absence-blind check passes
+  expect 'FAIL.*wrong weight' 'a definition expected plain is caught' \
+    check_code_weight seeded "$PAPER" plain:target_wealth
+  expect 'FAIL.*wrong weight' 'a call site expected bold is caught' \
+    check_code_weight seeded "$PAPER" bold:assign_parameters
+  expect 'FAIL.*wrong weight' 'a token the listing never carries is caught' \
+    check_code_weight seeded "$PAPER" bold:no_such_function
+
+  # The two proof styles judged against each other's expectation, which is the pair the check has
+  # to tell apart, and a title the PDF does not carry at all
+  expect 'FAIL.*came out differs where upright' 'a plain-style statement read as upright is caught' \
+    check_proof_style seeded "$PAPER" Concavity upright
+  expect 'FAIL.*came out same where italic' 'a definition-style statement read as italic is caught' \
+    check_proof_style seeded "$PAPER" 'Target wealth' italic
+  expect 'FAIL.*went unchecked' 'a proof title the PDF never carries is caught' \
+    check_proof_style seeded "$PAPER" 'No Such Block' italic
 
   # The calibration table fits one page and the figure caption sits in the text column, so the
   # full example is itself the seed for these two
@@ -1129,23 +1436,40 @@ self_test() {
     check_dropdown_tags seeded "$dt" "$dt/ok.css"
   rm -rf "$dt"
 
-  # check_blue_coverage, including the boundary that makes blue-50 and blue-500 distinct classes.
-  # The empty rule and the commented-out one are the predicate's, seeded above.
+  # check_token_coverage, including the boundary that keeps bg and bg-secondary distinct tokens and
+  # the exclusion that leaves a kind to its own rules. The theme sheet below is what names the
+  # kinds, info being one here because it carries a -bg and a -text, where bg-secondary does not.
   local bc
   bc=$(mktemp -d)
-  printf '<a class="hover:text-blue-700 bg-blue-50">x</a>\n' >"$bc/index.html"
-  printf '.hover\\:text-blue-700:hover{color:red}\n.bg-blue-50{background:red}\n' >"$bc/ok.css"
-  printf '.hover\\:text-blue-700:hover{color:red}\n' >"$bc/bad.css"
-  printf '.hover\\:text-blue-700:hover{color:red}\n.bg-blue-500{background:red}\n' >"$bc/prefix.css"
-  expect '^ok' 'a stylesheet covering every rendered blue passes' \
-    check_blue_coverage seeded "$bc" "$bc/ok.css"
-  expect 'FAIL.*bg-blue-50' 'a blue the stylesheet never overrides is caught' \
-    check_blue_coverage seeded "$bc" "$bc/bad.css"
-  expect 'FAIL.*bg-blue-50' 'bg-blue-500 does not stand in for bg-blue-50' \
-    check_blue_coverage seeded "$bc" "$bc/prefix.css"
-  printf '<a class="text-gray-500">x</a>\n' >"$bc/index.html"
-  expect 'FAIL.*no blue utility' 'pages rendering no blue at all are caught' \
-    check_blue_coverage seeded "$bc" "$bc/ok.css"
+  mkdir -p "$bc/build/_assets"
+  printf '%s\n' ':root{--myst-color-info: a; --myst-color-info-bg: b; --myst-color-info-text: c;' \
+    '--myst-color-bg: d; --myst-color-bg-secondary: e; --myst-color-text-secondary: f}' \
+    >"$bc/build/_assets/app-seeded.css"
+  printf '%s\n' '<div class="bg-myst-bg-secondary text-myst-text-secondary bg-myst-info-bg">x</div>' \
+    >"$bc/index.html"
+  printf '%s\n' ':root{--myst-color-bg-secondary: red; --myst-color-text-secondary: red}' >"$bc/ok.css"
+  printf '%s\n' ':root{--myst-color-bg-secondary: red}' >"$bc/bad.css"
+  printf '%s\n' ':root{--myst-color-bg: red; --myst-color-text-secondary: red}' >"$bc/prefix.css"
+  expect '^ok' 'a sheet declaring every token the pages paint through passes' \
+    check_token_coverage seeded "$bc" "$bc/ok.css"
+  expect 'FAIL.*text-secondary' 'a token left to the theme is caught' \
+    check_token_coverage seeded "$bc" "$bc/bad.css"
+  expect 'FAIL.*bg-secondary' 'the bg token does not stand in for bg-secondary' \
+    check_token_coverage seeded "$bc" "$bc/prefix.css"
+  expect 'FAIL.*is missing or empty' 'a census against a stylesheet that was never served is caught' \
+    check_token_coverage seeded "$bc" "$bc/never-copied.css"
+  # With no theme sheet to read the kinds out of, every kind token would read as one this sheet
+  # owes, so the census has to say it could not be taken rather than demand nine more tokens
+  rm -r "$bc/build"
+  expect 'FAIL.*no token family' 'a site serving no theme stylesheet is caught' \
+    check_token_coverage seeded "$bc" "$bc/ok.css"
+  printf '%s\n' ':root{--myst-color-info: a; --myst-color-info-bg: b; --myst-color-info-text: c}' \
+    >"$bc/theme-again.css"
+  mkdir -p "$bc/build/_assets"
+  cp "$bc/theme-again.css" "$bc/build/_assets/app-seeded.css"
+  printf '%s\n' '<div class="bg-myst-info-bg text-gray-500">x</div>' >"$bc/index.html"
+  expect 'FAIL.*proved nothing' 'pages painting through the kinds alone are caught' \
+    check_token_coverage seeded "$bc" "$bc/ok.css"
   rm -rf "$bc"
 
   # check_landing_button: the fill leaving the token, and the fixture guard behind it. A hero-only
@@ -1172,6 +1496,88 @@ self_test() {
     check_landing_button seeded "$lb"
   rm -rf "$lb"
 
+  # check_home_link, against each way the header regains a second name or an off-site link. The
+  # last case is the one that motivated the check: three labels reading Econ-ARK in one header.
+  local hl navopen='<nav class="myst-top-nav-bar flex">' gh='<a href="https://github.com/econ-ark/econ-ark-myst">GitHub</a></nav>'
+  local fallback='<span class="text-md sr-only">Made with MyST</span></a>'
+  hl=$(mktemp -d)
+  printf '%s%s%s%s\n' "$navopen" '<a class="myst-home-link flex" href="/"><img alt="Econ-ARK"/>' \
+    "$fallback" "$gh" >"$hl/index.html"
+  expect '^ok' 'a header whose logo points at the site home passes' check_home_link seeded "$hl"
+  printf '%s%s%s%s\n' "$navopen" \
+    '<a class="myst-home-link flex" href="https://econ-ark.org"><img alt="Econ-ARK"/>' \
+    "$fallback" "$gh" >"$hl/index.html"
+  expect 'FAIL.*leaves the site' 'a logo_url pointing off the site is caught' check_home_link seeded "$hl"
+  printf '%s%s%s%s\n' "$navopen" '<a class="myst-home-link flex" href="/"><img alt="Econ-ARK"/>' \
+    '<span class="text-md sm:text-xl">Econ-ARK</span></a>' "$gh" >"$hl/index.html"
+  expect 'FAIL.*not the span theme.css hides' 'a logo_text printing the name again is caught' \
+    check_home_link seeded "$hl"
+  printf '%s%s%s%s%s\n' "$navopen" '<a class="myst-home-link flex" href="/"><img alt="Econ-ARK"/>' \
+    "$fallback" '<a href="https://econ-ark.org">Econ-ARK</a>' "$gh" >"$hl/index.html"
+  expect 'FAIL.*links econ-ark.org again' 'a nav entry repeating the wordmark is caught' \
+    check_home_link seeded "$hl"
+  printf '%s%s\n' "$navopen" "$gh" >"$hl/index.html"
+  expect 'FAIL.*goes unread' 'a header with no home link at all is caught' check_home_link seeded "$hl"
+  rm -rf "$hl"
+
+  # check_sidebar_footer: the badge coming back, and each half of the lockup that replaces it going
+  # missing. A part rendering with the wrong mark or words leaves all five rules live.
+  local sf part='<div class="article footer myst-primary-sidebar-footer"><p>'
+  sf=$(mktemp -d)
+  printf '%s\n' '<a class="myst-made-with-myst flex"><span>Made with MyST</span></a>' >"$sf/index.html"
+  expect 'FAIL.*own badge' 'the theme badge standing where the part should be is caught' \
+    check_sidebar_footer seeded "$sf"
+  printf '%s\n' '<div class="myst-primary-sidebar-nav">x</div>' >"$sf/index.html"
+  expect 'FAIL.*paint nothing' 'a sidebar carrying neither badge nor part is caught' \
+    check_sidebar_footer seeded "$sf"
+  printf '%s%s\n' "$part" '<a href="https://econ-ark.org"><picture><img src="/favicon.png"/></picture> Made with MyST</a>' \
+    >"$sf/index.html"
+  expect 'FAIL.*not the Powered by' 'a part supplying the wrong words is caught' \
+    check_sidebar_footer seeded "$sf"
+  printf '%s%s\n' "$part" '<a href="https://econ-ark.org">Powered by Econ-ARK</a>' >"$sf/index.html"
+  expect 'FAIL.*no favicon in a picture' 'a lockup that lost its mark is caught' \
+    check_sidebar_footer seeded "$sf"
+  printf '%s%s\n' "$part" '<a href="https://econ-ark.org"><picture><img src="/favicon.png"/></picture> Powered by Econ-ARK</a>' \
+    >"$sf/index.html"
+  expect '^ok' 'the mark and the words in one link pass' check_sidebar_footer seeded "$sf"
+  rm -rf "$sf"
+
+  # check_fm_label_size, including the drift it was written for: the two sizes the summary's label
+  # carried while its neighbours carried one. A literal repeated three times passes the first test.
+  local fl
+  fl=$(mktemp -d)
+  printf '%s\n%s\n%s\n%s\n' 'article.article .myst-abstract-title{font-size: 0.95rem}' \
+    'article.article h2#summary{font-size:0}' \
+    'article.article h2#summary::before{content:"Summary";font-size: 1.05rem}' \
+    'article.article h2#summary > a{font-size: 1.05rem}' >"$fl/two.css"
+  expect 'FAIL.*from 2 values' 'a summary label sized apart from its neighbours is caught' \
+    check_fm_label_size seeded "$fl/two.css"
+  printf '%s\n%s\n%s\n' 'article.article .myst-abstract-title{font-size: 0.95rem}' \
+    'article.article h2#summary::before{font-size: 0.95rem}' \
+    'article.article h2#summary > a{font-size: 0.95rem}' >"$fl/literal.css"
+  expect 'FAIL.*name the literal' 'three copies of one number are still three copies' \
+    check_fm_label_size seeded "$fl/literal.css"
+  printf '%s\n%s\n' 'article.article .myst-abstract-title{font-size: var(--ark-fm-label)}' \
+    'article.article h2#summary::before{font-size: var(--ark-fm-label)}' >"$fl/few.css"
+  expect 'FAIL.*fewer than three' 'a label left unsized, such as the summary anchor, is caught' \
+    check_fm_label_size seeded "$fl/few.css"
+  printf '%s\n%s\n%s\n%s\n' 'article.article .myst-abstract-title{font-size: var(--ark-fm-label)}' \
+    'article.article h2#summary{font-size:0}' \
+    'article.article h2#summary::before{content:"Summary";font-size: var(--ark-fm-label)}' \
+    'article.article h2#summary > a{font-size: var(--ark-fm-label)}' >"$fl/one.css"
+  expect '^ok' 'one token reaching all three labels passes' check_fm_label_size seeded "$fl/one.css"
+  # css_rules collapses a rule written over several lines, which is how theme.css writes every one
+  # of them, so the one-line fixtures above would pass a walker that only ever saw one line
+  printf '.myst-abstract-title {\n  font-family: var(--ark-sans);\n  font-size: var(--ark-fm-label);\n}\n%s\n%s\n' \
+    'h2#summary::before {'$'\n''  content: "Summary";'$'\n''  font-size: var(--ark-fm-label);'$'\n''}' \
+    'h2#summary > a {'$'\n''  font-size: var(--ark-fm-label);'$'\n''}' >"$fl/multiline.css"
+  expect '^ok' 'a rule written over several lines is read as one' \
+    check_fm_label_size seeded "$fl/multiline.css"
+  rm -f "$fl/multiline.css"
+  expect 'FAIL.*is missing or empty' 'a stylesheet the build never served is caught' \
+    check_fm_label_size seeded "$fl/multiline.css"
+  rm -rf "$fl"
+
   # The two checks three call sites now share, including the looser match the landing copy had
   local sv
   sv=$(mktemp -d)
@@ -1195,6 +1601,21 @@ self_test() {
   mkdir -p "$sv/build/cache" "$sv/fonts"
   local face
   expect 'FAIL.*names only 0' 'a site serving no faces is caught' check_faces_served seeded "$sv"
+
+  # A weight the sheet asks for with no face of its own, which renders as the nearest one that has
+  # a file. The real sheet passes between the two, so the seed is what fails rather than the check.
+  local weights
+  weights=$(mktemp -d)
+  printf '@font-face { font-family: "Fira Sans"; font-weight: 500; }\nh2 { font-weight: 600; }\n' \
+    >"$weights/asks.css"
+  expect 'FAIL.*asks for font-weight 600' 'a weight with no face of its own is caught' \
+    check_weights_served seeded "$weights/asks.css"
+  expect 'ok.*has a face it serves' 'the served sheet asks for nothing it lacks' \
+    check_weights_served seeded "$ROOT/theme.css"
+  printf 'h2 { color: red; }\n' >"$weights/none.css"
+  expect 'FAIL.*proved nothing' 'a sheet with no weight at all reports that' \
+    check_weights_served seeded "$weights/none.css"
+  rm -rf "$weights"
   for face in Regular Italic Medium Bold; do : >"$sv/build/cache/FiraSans-$face.woff2"; done
   expect 'FAIL.*names only 0' 'faces the served stylesheet never names do not count as served' \
     check_faces_served seeded "$sv"
@@ -1302,7 +1723,7 @@ self_test() {
   local want
   out=$(check_site seeded "$(mktemp -d)")
   for want in unstyled 'no banner' 'rule is inert' 'four-colour rule is missing' \
-    'vanishes at night' "MyST's own mark" 'soften the theme' 'cannot reach the PDF' \
+    'vanishes at night' "MyST's own mark" 'no bg-myst-bg class' 'cannot reach the PDF' \
     'system sans' 'system math font' 'Plain Language Summary again'; do
     grep -q "FAIL.*$want" <<<"$out" ||
       bad "self-test: a site serving nothing did not report '$want'"
@@ -1429,7 +1850,9 @@ self_test() {
   unset -f "$canary" sweep_fixtures
 }
 
-for tool in myst pdftotext pdfinfo pdffonts pdftoppm convert; do
+# python3, rg and perl are as load bearing as the PDF tools: a missing interpreter would leave
+# pdf_runs and css_rules emitting nothing, which reads downstream as an artifact carrying nothing
+for tool in myst pdftotext pdfinfo pdffonts pdftoppm convert python3 rg perl; do
   command -v "$tool" >/dev/null || { echo "missing required tool: $tool"; exit 2; }
 done
 
@@ -1452,14 +1875,14 @@ else
   # The ten admonition kinds take four colours, so the example carries one of each and each is read
   # off the page. A kind whose rule went the wrong colour is invisible to every other check here.
   check_rule paper "$PAPER" 'Admonitions' "$ARK_BLUE"
-  check_rule paper "$PAPER" 'Green' '#38B449'
-  check_rule paper "$PAPER" 'Orange' '#FBAF3F'
-  check_rule paper "$PAPER" 'Pink' '#ED2A7B'
+  check_rule paper "$PAPER" 'Green' "$(ark_colour curve-4)"
+  check_rule paper "$PAPER" 'Orange' "$(ark_colour curve-1)"
+  check_rule paper "$PAPER" 'Pink' "$(ark_colour curve-2)"
   # Three elements MyST styles for itself, each branded through its own seam: a show rule for the
   # definition term, a wrapped subpar.grid for the panel label, and a left rule for the quotation
   check_ink paper "$PAPER" 'Perfect' "$ARK_BLUE"
   check_ink paper "$PAPER" '(a)' "$ARK_BLUE"
-  check_rule paper "$PAPER" 'Prudence' '#A4A2A9'
+  check_rule paper "$PAPER" 'Prudence' "$(ark_colour rule)"
   check_left_of tall-table "$TALL" 'Widecaption' 100
   check_left_of tall-table "$TALL" 'Widetablecaption' 100
   committed=$(mktemp)
@@ -1491,15 +1914,33 @@ else
   check_documented_config docs "$ROOT/README.md" "$ROOT/myst.yml"
   check_no_aliases docs "$ROOT/myst.yml" "$ROOT/landing/myst.yml" "$ROOT"/examples/*.md
   check_italic_kinds docs "$ROOT/ark/blocks.typ"
+  check_code_palette paper "$PAPER"
+  # The surface a listing sits on, read off the page rather than out of ark/brand.typ: arkTint and
+  # --ark-tint are one colour authored twice, and only the pixels say whether the two agree
+  check_rule paper "$PAPER" 'HARK.ConsumptionSaving.ConsIndShockModel' "$(ark_colour tint)"
+  check_code_weight paper "$PAPER" bold:target_wealth bold:float \
+    plain:assign_parameters plain:IndShockConsumerType plain:agent.
+  check_proof_style paper "$PAPER" Concavity italic
+  check_proof_style paper "$PAPER" 'Target wealth' upright
   check_rail_overflow rail
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
-  primary="site ($(awk '/^  template:/ { print $2; exit }' "$ROOT/myst.yml"))"
+  primarytheme=$(awk '/^  template:/ { gsub(/["'\'']/, "", $2); print $2; exit }' "$ROOT/myst.yml")
+  primary="site ($primarytheme)"
   check_site "$primary" "$ROOT/_build/html"
+  # article-theme draws no header and no sidebar: its whole chrome is one theme button, so the logo
+  # options and the nav reach a reader only under book-theme, and only there can they be read back
+  if [ "$primarytheme" = book-theme ]; then
+    check_home_link "$primary" "$ROOT/_build/html"
+    check_sidebar_footer "$primary" "$ROOT/_build/html"
+  elif [ "$primarytheme" != article-theme ]; then
+    bad "$primary: myst.yml names neither theme, so the header and sidebar went unread"
+  fi
   check_css_last "$primary" "$ROOT/_build/html"
   # The served copy rather than $ROOT/theme.css throughout: a build that failed to copy the
   # stylesheet leaves the source read passing about a site that carries none of it.
   check_tokens_defined "$primary" "$ROOT/_build/html/myst-theme.css"
-  check_blue_coverage "$primary" "$ROOT/_build/html" "$ROOT/_build/html/myst-theme.css"
+  check_fm_label_size "$primary" "$ROOT/_build/html/myst-theme.css"
+  check_token_coverage "$primary" "$ROOT/_build/html" "$ROOT/_build/html/myst-theme.css"
   check_dropdown_tags "$primary" "$ROOT/_build/html" "$ROOT/_build/html/myst-theme.css"
   # The stylesheet claims to dress either theme, so build the other one from a copy of the tree
   other=$(mktemp -d)
@@ -1509,8 +1950,8 @@ else
   ln -s "$ROOT/node_modules" "$other/node_modules"
   # sed -i exits 0 on no match, so "not article-theme" used to mean book-theme even when myst.yml
   # quoted the value or named neither, and the run then built one theme twice under the other's
-  # heading. Read the value, write its counterpart, and confirm the file now carries it.
-  case "$(awk '/^  template:/ { gsub(/["'\'']/, "", $2); print $2; exit }' "$other/myst.yml")" in
+  # heading. Take the counterpart of the value already read, then confirm the copy carries it.
+  case "$primarytheme" in
     article-theme) othername=book-theme ;;
     book-theme) othername=article-theme ;;
     *) othername="" ;;
@@ -1521,9 +1962,13 @@ else
   else
     (cd "$other" && myst build --html) >/dev/null 2>&1
     check_site "site ($othername)" "$other/_build/html"
+    if [ "$othername" = book-theme ]; then
+      check_home_link "site ($othername)" "$other/_build/html"
+      check_sidebar_footer "site ($othername)" "$other/_build/html"
+    fi
     check_css_last "site ($othername)" "$other/_build/html"
     check_dropdown_tags "site ($othername)" "$other/_build/html" "$other/_build/html/myst-theme.css"
-    check_blue_coverage "site ($othername)" "$other/_build/html" "$other/_build/html/myst-theme.css"
+    check_token_coverage "site ($othername)" "$other/_build/html" "$other/_build/html/myst-theme.css"
   fi
   rm -rf "$other"
   # The landing page carries no paper, so check_site's banner, equation and download checks do not
@@ -1533,15 +1978,17 @@ else
   (cd "$ROOT/landing" && myst build --html) >/dev/null 2>&1
   landdir="$ROOT/landing/_build/html"
   check_landing landing "$landdir"
+  check_home_link landing "$landdir"
   check_landing_button landing "$landdir"
   # The landing loads the plugin too, and now carries the equations that prove it ran
   check_mathml landing "$landdir"
   check_css_last landing "$landdir"
   check_tokens_defined landing "$landdir/myst-theme.css"
-  check_blue_coverage landing "$landdir" "$landdir/myst-theme.css"
+  check_token_coverage landing "$landdir" "$landdir/myst-theme.css"
   check_landing_classes landing "$landdir" "$landdir/myst-theme.css"
   check_css_urls landing "$landdir"
   check_faces_served landing "$landdir"
+  check_weights_served landing "$landdir/myst-theme.css"
   check_theme_css_served landing "$landdir"
 fi
 

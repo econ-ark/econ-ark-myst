@@ -18,6 +18,7 @@ files:
   - ark/typography.typ
   - ark/floats.typ
   - brand/logo.png
+  - brand/code.tmTheme
 authors:
   - name: Alan Lujan
     github: alanlujan91

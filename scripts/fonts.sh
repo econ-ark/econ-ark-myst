@@ -27,12 +27,15 @@ FACES=(
   FiraSans-Bold FiraSans-BoldItalic
   FiraMono-Regular FiraMono-Medium FiraMono-Bold
 )
-# The faces a browser needs, which is fewer: the site sets no semibold and no bold mono
+# The faces a browser needs, which is fewer: the site asks for no semibold italic. Semibold is here
+# because the landing sets it, and bold mono because theme.css weights a definition name in a
+# listing; a weight with no file resolves to the next one up, rendering the hero at 700 for 600.
 WEB_FACES=(
   FiraSans-Regular FiraSans-Italic
   FiraSans-Medium FiraSans-MediumItalic
+  FiraSans-SemiBold
   FiraSans-Bold FiraSans-BoldItalic
-  FiraMono-Regular
+  FiraMono-Regular FiraMono-Bold
 )
 # Served whole beside the subsets, for readers that cannot open a woff2. Matplotlib is the one
 # that matters: a figure drawn in a browser kernel fetches its face over HTTP from this directory.
