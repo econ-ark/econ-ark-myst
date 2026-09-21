@@ -250,9 +250,9 @@ html.dark .myst-article-header-fm::before {
   display: none;
 }
 
-/* The mark sits in a picture inside the link's span; inline-block keeps it on one line, where a
- * block picture would drop the words to their own. Both selectors are needed: the theme's
- * `.article p > a img` outranks one class and one element, and had flattened the favicon. */
+/* The mark reaches the link's span in a picture where MyST wrote a webp beside it and as a bare img
+ * where it could not, so both take the size; inline-block keeps either on one line, where a block
+ * would drop the words to their own. The theme's `.article p > a img` had flattened the favicon. */
 .myst-primary-sidebar-footer picture,
 .article.myst-primary-sidebar-footer img {
   display: inline-block;

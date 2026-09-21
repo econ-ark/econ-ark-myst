@@ -321,6 +321,22 @@ check_documented_config() {
   fi
 }
 
+# `grep -q` leaves on its first match, so a producer still writing takes SIGPIPE, and under the
+# pipefail this script sets that fails the whole pipeline: a condition reads as a class nothing
+# styles or a face the PDF never embedded. No shellcheck release reports it, 0.11.0 included.
+check_no_early_exit_pipes() {
+  local name=$1 script=$2 hits
+  require_file "$name" "$script" "the pipeline shapes" || return
+  # Comments come off first: this check's own explanation names the shape it forbids
+  hits=$(sed 's/#.*//' "$script" | grep -nE '\| *grep +-[a-zA-Z]*q')
+  if [ -z "$hits" ]; then
+    ok "$name: no check ends a pipeline in grep -q, where pipefail would read SIGPIPE as absence"
+  else
+    bad "$name: a pipeline ends in grep -q; feed it with < <(...) instead:"
+    head -5 <<<"$hits"
+  fi
+}
+
 # MyST accepts a pile of aliases for its part and frontmatter names, and a file mixing them with
 # the canonical names reads as though the two named different things. The examples and the configs
 # keep to what PAGE_KNOWN_PARTS and the frontmatter schema call them.
@@ -507,7 +523,9 @@ check_weight_files() {
 # that re-resolution, which otherwise surfaces as an unexplained text diff.
 check_font() {
   local name=$1 pdf=$2 font=$3
-  if pdffonts "$pdf" 2>/dev/null | awk 'NR>2 { print $1 }' | sed 's/^[A-Z]*+//' | grep -qx "$font"; then
+  # Fed rather than piped, as everywhere `grep -q` ends a pipeline here: it leaves on its first
+  # match, and under pipefail a producer still writing then fails the whole condition
+  if grep -qx "$font" < <(pdffonts "$pdf" 2>/dev/null | awk 'NR>2 { print $1 }' | sed 's/^[A-Z]*+//'); then
     ok "$name: the PDF embeds $font"
   else
     bad "$name: $font is not embedded in the PDF, so a weight resolved to another file"
@@ -1030,7 +1048,7 @@ check_site() {
     bad "$name: the served banner preserves its ratio, so the fan will letterbox rather than fill"
   fi
   # The night lockup is a separate file, so a site can serve the day one and still go dark-blind
-  if find "$dir" -name 'logo-dark-*.png' 2>/dev/null | grep -q .; then
+  if [ -n "$(find "$dir" -name 'logo-dark-*.png' 2>/dev/null)" ]; then
     ok "$name: the site serves the night logo"
   else
     bad "$name: no logo-dark-*.png under $dir, so the wordmark vanishes at night"
@@ -1042,7 +1060,7 @@ check_site() {
   fi
   html=$(cat "$dir"/index.html "$dir"/*/index.html 2>/dev/null)
   # The class list must hold "article" as a whole token, which "article-grid" alone does not give
-  if grep -oE '<article[^>]*>' <<<"$html" | grep -qE 'class="([^"]* )?article( [^"]*)?"'; then
+  if grep -qE 'class="([^"]* )?article( [^"]*)?"' < <(grep -oE '<article[^>]*>' <<<"$html"); then
     ok "$name: the paper carries the class the stylesheet styles"
   else
     bad "$name: no <article class=\"... article ...\"> under $dir, so every article.article rule is inert"
@@ -1051,8 +1069,8 @@ check_site() {
   check_weights_served "$name" "$dir/myst-theme.css"
   # Fira Math and Temml's stylesheet travel together: the font is what a browser lays the symbols
   # out from, the stylesheet is what draws the parts of MathML that Chromium leaves undrawn
-  if find "$dir" -name 'FiraMath-Regular*.woff2' 2>/dev/null | grep -q . &&
-    find "$dir" -name 'temml*.css' 2>/dev/null | grep -q .; then
+  if [ -n "$(find "$dir" -name 'FiraMath-Regular*.woff2' 2>/dev/null)" ] &&
+    [ -n "$(find "$dir" -name 'temml*.css' 2>/dev/null)" ]; then
     ok "$name: the site serves the math face and the stylesheet that completes it"
   else
     bad "$name: no FiraMath woff2 or no temml css under $dir, so equations fall back to a system math font"
@@ -1060,7 +1078,7 @@ check_site() {
   check_mathml "$name" "$dir"
   # article-theme takes its downloads from the project, not from the paper's frontmatter, so a
   # paper that lists them still reaches a reader with no way to the PDF unless the project does too
-  if find "$dir" -name 'paper-*.pdf' 2>/dev/null | grep -q .; then
+  if [ -n "$(find "$dir" -name 'paper-*.pdf' 2>/dev/null)" ]; then
     ok "$name: the site serves the paper as a download"
   else
     bad "$name: no paper-*.pdf under $dir, so a reader of the site cannot reach the PDF"
@@ -1146,8 +1164,11 @@ check_sidebar_footer() {
     bad "$name: no myst-primary-sidebar-footer link under $dir, so its five rules paint nothing"
   elif ! grep -q 'Powered by Econ-ARK' <<<"$lockup"; then
     bad "$name: the sidebar footer link is not the Powered by Econ-ARK lockup"
-  elif ! grep -q '<picture' <<<"$lockup" || ! grep -q 'favicon' <<<"$lockup"; then
-    bad "$name: the lockup holds no favicon in a picture, which is the element theme.css sizes"
+  # The mark, however MyST wrapped it: a runner that can write a webp gets a <picture> with a
+  # <source> beside the img and one that cannot gets the img alone, which is why theme.css sizes
+  # both and why asserting the picture here failed on CI against a lockup that was correct.
+  elif ! grep -q '<img' <<<"$lockup" || ! grep -q 'favicon' <<<"$lockup"; then
+    bad "$name: the lockup carries no favicon image, which is the mark theme.css sizes"
   else
     ok "$name: the sidebar footer is the Powered by Econ-ARK lockup, mark and words in one link"
   fi
@@ -1156,7 +1177,7 @@ check_sidebar_footer() {
 # A widened figure's caption starts over the margin rail, left of the text column at x = 153pt
 check_left_of() {
   local name=$1 pdf=$2 word=$3 limit=$4 x
-  x=$(pdftotext -bbox "$pdf" - 2>/dev/null | grep -F -- ">$word</word>" | head -1 | sed -E 's/.*xMin="([0-9.]+)".*/\1/')
+  x=$(pdftotext -bbox "$pdf" - 2>/dev/null | grep -m1 -F -- ">$word</word>" | sed -E 's/.*xMin="([0-9.]+)".*/\1/')
   if [ -n "$x" ] && awk -v x="$x" -v l="$limit" 'BEGIN { exit !(x < l) }'; then
     ok "$name: '$word' starts at x = ${x%%.*}pt, over the margin rail"
   else
@@ -1195,7 +1216,7 @@ check_rail_overflow() {
     rm -rf "$scratch"
     return
   fi
-  x=$(pdftotext -bbox "$scratch/rail.pdf" - 2>/dev/null | grep -F '>Number</word>' | head -1 |
+  x=$(pdftotext -bbox "$scratch/rail.pdf" - 2>/dev/null | grep -m1 -F '>Number</word>' |
     sed -E 's/.*xMin="([0-9.]+)".*/\1/')
   if [ -n "$x" ] && awk -v x="$x" 'BEGIN { exit !(x > 150) }'; then
     ok "$name: a rail it cannot hold moves the reviewers into the text column (x = ${x%%.*}pt)"
@@ -1536,11 +1557,17 @@ self_test() {
   expect 'FAIL.*not the Powered by' 'a part supplying the wrong words is caught' \
     check_sidebar_footer seeded "$sf"
   printf '%s%s\n' "$part" '<a href="https://econ-ark.org">Powered by Econ-ARK</a>' >"$sf/index.html"
-  expect 'FAIL.*no favicon in a picture' 'a lockup that lost its mark is caught' \
+  expect 'FAIL.*no favicon image' 'a lockup that lost its mark is caught' \
     check_sidebar_footer seeded "$sf"
   printf '%s%s\n' "$part" '<a href="https://econ-ark.org"><picture><img src="/favicon.png"/></picture> Powered by Econ-ARK</a>' \
     >"$sf/index.html"
   expect '^ok' 'the mark and the words in one link pass' check_sidebar_footer seeded "$sf"
+  # The form a runner that cannot write a webp leaves, which theme.css sizes through its own img
+  # selector and which this check read as a lockup with no mark at all until CI said so
+  printf '%s%s\n' "$part" '<a href="https://econ-ark.org"><img src="/favicon.png"/> Powered by Econ-ARK</a>' \
+    >"$sf/index.html"
+  expect '^ok' 'the mark outside a picture passes, as the stylesheet takes either' \
+    check_sidebar_footer seeded "$sf"
   rm -rf "$sf"
 
   # check_fm_label_size, including the drift it was written for: the two sizes the summary's label
@@ -1671,6 +1698,23 @@ self_test() {
     check_no_aliases seeded "$al/aliased.yml"
   expect '^ok' 'a config using the canonical names passes' check_no_aliases seeded "$al/clean.yml"
   rm -rf "$al"
+
+  # A script carrying the shape, one carrying the repair, and one naming it in a comment. The flag
+  # letter is assembled rather than written, so the seeded file holds the shape while this line
+  # does not: a fixture holding it verbatim is a hit against the script under test.
+  local ep q=q
+  ep=$(mktemp -d)
+  printf '%s\n' "if find . -name x | grep -$q .; then :; fi" >"$ep/bad.sh"
+  printf '%s\n' 'if grep -q . < <(find . -name x); then :; fi' >"$ep/good.sh"
+  printf '%s\n' '# never write | grep -q here' 'if grep -q . < <(cat x); then :; fi' >"$ep/commented.sh"
+  expect 'FAIL.*ends in grep -q' 'a pipeline ending in grep -q is caught' \
+    check_no_early_exit_pipes seeded "$ep/bad.sh"
+  expect '^ok' 'the fed form passes' check_no_early_exit_pipes seeded "$ep/good.sh"
+  expect '^ok' 'the shape named in a comment is not the shape itself' \
+    check_no_early_exit_pipes seeded "$ep/commented.sh"
+  expect 'FAIL.*is missing or empty' 'a script the check cannot read is caught' \
+    check_no_early_exit_pipes seeded "$ep/absent.sh"
+  rm -rf "$ep"
 
   # The README documenting a key the config no longer carries, which is how these two drift
   local conf
@@ -1915,6 +1959,7 @@ else
   check_temml_pin pins "$ROOT/scripts/fonts.sh" "$ROOT/package.json"
   check_documented_config docs "$ROOT/README.md" "$ROOT/myst.yml"
   check_no_aliases docs "$ROOT/myst.yml" "$ROOT/landing/myst.yml" "$ROOT"/examples/*.md
+  check_no_early_exit_pipes suite "$ROOT/scripts/check-examples.sh"
   check_italic_kinds docs "$ROOT/ark/blocks.typ"
   check_code_palette paper "$PAPER"
   # The surface a listing sits on, read off the page rather than out of ark/brand.typ: arkTint and
