@@ -1159,6 +1159,17 @@ article.article .myst-card-body > p:first-child {
   margin-top: 0.3rem;
 }
 
+/* The article grid holds a 208px column for the outline whether a page shows one or not, so a
+ * landing that hides it left every section pinned left of an empty gutter while the hero, which
+ * spans screen, stayed centred. On screen with a measure of its own, a section shares that axis. */
+article.article .ark-section {
+  grid-column: screen;
+  max-width: 62rem;
+  margin-inline: auto;
+  /* The screen column runs to the viewport edge, where body-outset carried gutters of its own */
+  padding-inline: 1rem;
+}
+
 /* A page whose title block is hidden still spends h1 and h2 on the title and hero, so a `##`
  * section arrives as h3 at 17.9px against 16.8px body text, legible only as bold. A landing opts
  * in with `ark-section` for the size, leaving h3 in an ordinary article at what its level earns. */
