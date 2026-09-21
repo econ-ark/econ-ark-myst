@@ -2,3 +2,7 @@
 _build/
 fonts/
 node_modules/
+# The typst export re-encodes every image a document uses next to the PDF, one file per use, so
+# brand/logo.png arrives here three times. The PDF is the deliverable and stays tracked; these are
+# copies of a tracked source, and committing them would put the same pixels in the repo four times.
+examples/exports/paper-*.png
