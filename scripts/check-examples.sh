@@ -112,6 +112,38 @@ bad() { printf 'FAIL  %s\n' "$*"; fail=1; }
 # Empty rather than zero when the file is not a PDF, so a caller's loop runs no iterations
 page_count() { pdfinfo "$1" 2>/dev/null | awk '/^Pages:/ {print $2}'; }
 
+# Pixels differing between two PDFs page for page, in RENDER_PIXELS, over RENDER_PAGES pages, with
+# any reason there was no comparison in RENDER_RAW. The count is checked before the walk: it is
+# empty on a file pdfinfo cannot read, and a walk over no pages counts no differing pixels.
+render_pixel_diff() {
+  local prefix=$1 one=$2 two=$3 dpi=$4 scratch p
+  RENDER_PIXELS=0
+  RENDER_RAW=
+  RENDER_PAGES=$(page_count "$one")
+  case $RENDER_PAGES in
+    '' | *[!0-9]* | 0)
+      RENDER_RAW="pdfinfo read no pages from $(basename "$one"), so nothing was compared"
+      return 1
+      ;;
+  esac
+  scratch=$(mktemp -d)
+  pdftoppm -png -r "$dpi" "$one" "$scratch/$prefix-one" 2>/dev/null
+  pdftoppm -png -r "$dpi" "$two" "$scratch/$prefix-two" 2>/dev/null
+  # pdftoppm pads a page number to the width of the last one, so a paper reaching ten pages writes
+  # one-01.png rather than one-1.png
+  for ((p = 1; p <= RENDER_PAGES; p++)); do
+    if ! ae_pixels \
+      "$(printf '%s/%s-one-%0*d.png' "$scratch" "$prefix" "${#RENDER_PAGES}" "$p")" \
+      "$(printf '%s/%s-two-%0*d.png' "$scratch" "$prefix" "${#RENDER_PAGES}" "$p")"; then
+      rm -rf "$scratch"
+      RENDER_RAW="page $p could not be compared: $AE_RAW"
+      return 1
+    fi
+    RENDER_PIXELS=$((RENDER_PIXELS + AE_COUNT))
+  done
+  rm -rf "$scratch"
+}
+
 check_text() {
   local name=$1 text=$2 a
   shift 2
@@ -587,7 +619,7 @@ check_font() {
 # pages are what gets compared. Text alone misses a weight or a colour that changed; bytes alone
 # over-reach, since a subset tag and an XMP instance id can differ between two identical renders.
 check_tracked() {
-  local name=$1 fresh=$2 committed=$3 scratch pages p total=0
+  local name=$1 fresh=$2 committed=$3
   # Every comparison below reports a match on two absent files: they extract the same empty text,
   # cmp calls two empty ones identical, and a page walk over no pages counts no differing pixels.
   # A git show that wrote nothing is how $committed arrives empty.
@@ -604,28 +636,15 @@ check_tracked() {
     ok "$name: the tracked PDF is byte for byte what the sources produce"
     return
   fi
-  scratch=$(mktemp -d)
-  pdftoppm -png -r 150 "$committed" "$scratch/old" 2>/dev/null
-  pdftoppm -png -r 150 "$fresh" "$scratch/new" 2>/dev/null
-  pages=$(page_count "$fresh")
-  # pdftoppm pads a page number to the width of the last one, so a paper reaching ten pages writes
-  # old-01.png. An unparseable count would abort the arithmetic and, with it, every check after
-  # this one, so ae_pixels reports that rather than letting it through as a zero.
-  for ((p = 1; p <= ${pages:-0}; p++)); do
-    if ! ae_pixels \
-      "$(printf '%s/old-%0*d.png' "$scratch" "${#pages}" "$p")" \
-      "$(printf '%s/new-%0*d.png' "$scratch" "${#pages}" "$p")"; then
-      rm -rf "$scratch"
-      bad "$name: page $p of the tracked PDF could not be compared, so it is unchecked: $AE_RAW"
-      return
-    fi
-    total=$((total + AE_COUNT))
-  done
-  rm -rf "$scratch"
-  if [ "$total" -eq 0 ]; then
-    ok "$name: the tracked PDF renders identically to the fresh build (${pages:-0} pages, bytes differ)"
+  # The finer pixels of the two callers: this one guards the artifact a clone gets without building
+  if ! render_pixel_diff tracked "$fresh" "$committed" 150; then
+    bad "$name: the tracked PDF is unchecked, $RENDER_RAW"
+    return
+  fi
+  if [ "$RENDER_PIXELS" -eq 0 ]; then
+    ok "$name: the tracked PDF renders identically to the fresh build ($RENDER_PAGES pages, bytes differ)"
   else
-    bad "$name: the tracked PDF renders differently from the fresh build ($total pixels); commit the rebuilt file"
+    bad "$name: the tracked PDF renders differently from the fresh build ($RENDER_PIXELS pixels); commit the rebuilt file"
   fi
 }
 
