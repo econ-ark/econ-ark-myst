@@ -1,0 +1,76 @@
+# Econ-ARK matplotlib style for a figure that lands in a paper, where brand/ark.mplstyle is for one
+# a notebook draws on the site. Same palette, different sizes: a paper figure is printed at 5.03 or
+# 6.68 inches and read at that size, so its type and its lines are set for the printed width.
+#
+# Every colour here is authored in theme.css and check_mplstyle holds the two ends together, so a
+# token renamed there fails the suite rather than leaving this file behind. brand/ark-figures.json
+# carries the same colours by name, with the two widths, for a repository that reads rather than
+# copies them. README, "Figures drawn in a notebook".
+#
+#   import matplotlib.pyplot as plt
+#   plt.style.use("../econ-ark-myst/brand/ark-paper.mplstyle")
+
+# Transparent, so the page colour shows through in either medium and a saved png carries none
+figure.facecolor: none
+figure.edgecolor: none
+axes.facecolor: none
+savefig.facecolor: none
+savefig.edgecolor: none
+savefig.transparent: True
+
+# Econ-ARK blue at four lightnesses, light to dark. Adjacent steps are 17 L* apart or more, which
+# is what keeps two of them apart at this weight, in grey as well as in colour.
+axes.prop_cycle: cycler('color', ['82a3cd', '52759c', '1f476b', '002040'])
+
+# The type a printed figure carries: a caption sits at 9pt, so a label above 7 competes with it
+font.family: sans-serif
+font.sans-serif: Fira Sans, Helvetica Neue, Arial, DejaVu Sans, sans-serif
+font.size: 6.5
+axes.titlesize: 7.5
+axes.labelsize: 6.5
+xtick.labelsize: 6.0
+ytick.labelsize: 6.0
+legend.fontsize: 6.5
+
+# Ink and rules from the palette, as the notebook style takes them
+text.color: 48464e
+axes.labelcolor: 48464e
+axes.edgecolor: a4a2a9
+xtick.color: 676470
+ytick.color: 676470
+xtick.labelcolor: 48464e
+ytick.labelcolor: 48464e
+
+# Two spines, as an econ figure is drawn
+axes.spines.top: False
+axes.spines.right: False
+axes.linewidth: 0.6
+
+axes.grid: False
+grid.color: e8edf2
+grid.linewidth: 0.6
+axes.axisbelow: True
+
+# The title sits left over the plot, where the caption sits left under the figure
+axes.titlelocation: left
+axes.titleweight: 500
+axes.titlepad: 6.0
+axes.titlecolor: 48464e
+
+legend.frameon: False
+legend.handlelength: 1.6
+legend.borderaxespad: 0.2
+
+# 1.5pt holds its colour at print size, where the notebook's 1.8 reads heavy beside 6.5pt type
+lines.linewidth: 1.5
+lines.solid_capstyle: round
+xtick.major.width: 0.6
+ytick.major.width: 0.6
+xtick.major.size: 3.0
+ytick.major.size: 3.0
+
+# The size a paper prints, rather than the size a screen shows
+figure.dpi: 300
+savefig.dpi: 300
+savefig.bbox: tight
+savefig.pad_inches: 0.02

@@ -91,6 +91,40 @@ nothing a reader sees until someone reruns it.
 Every colour in the file is authored in `theme.css`, and `check_mplstyle` compares the two. A token
 renamed there fails the suite while this file still holds the old hex.
 
+A paper prints a figure at 5.03 or 6.68 inches, where 10pt labels and 1.8pt lines
+print heavy, so `brand/ark-paper.mplstyle` sets the same palette at the printed size: 6.5pt labels,
+1.5pt lines, 300 dpi. Its cycle is Econ-ARK blue at four lightnesses rather than the four logo
+curves, since a paper draws two to four series in one family and reads them by lightness:
+
+```python
+plt.style.use("../econ-ark-myst/brand/ark-paper.mplstyle")
+```
+
+| Line | Hex | L\* |
+|------|-----|-----|
+| `--ark-line-1` | `#82a3cd` | 66 |
+| `--ark-line-2` | `#52759c` | 48 |
+| `--ark-line-3` | `#1f476b` | 29, which is `--ark-blue` itself |
+| `--ark-line-4` | `#002040` | 12 |
+| `--ark-datum` | `#c3bfcd` | 78, for a reference path under the four |
+
+Adjacent lines sit 17 L\* apart or more, which holds them apart at 1.5pt in grey as well as in
+colour. Pure black beside `--ark-line-4` is the pair that fails: 12 apart, so the two read as one.
+
+A repository that draws its own figures reads `brand/ark-figures.json`, which spares it a second
+copy of the hexes in a module of its own. The file gives each colour a name for what a figure uses
+it for, then the line ramp and the logo curves in order, then the two printed widths in inches:
+
+```python
+tokens = json.loads((here / "econ-ark-myst/brand/ark-figures.json").read_text())
+fig, ax = plt.subplots(figsize=(tokens["widths_in"]["column"], 2.2))
+ax.axhline(1.0, color=tokens["colors"]["datum"], ls=(0, (4, 2)))
+```
+
+`scripts/brand-figures.py` writes that file from `theme.css` and from the page geometry in
+`ark/layout.typ`, and `check_brand_json` regenerates it during the suite and fails on any
+difference, so the file a consumer reads cannot drift from the stylesheet the PDF takes.
+
 ## Frontmatter
 
 | Field | Where it appears | When unset |
@@ -549,12 +583,14 @@ The site side does need copying. Every site option that gives a file path, `styl
 | `favicon.png` | The browser tab |
 | `banner.svg` | The default banner behind an article-theme title card |
 | `ark.mplstyle` | The palette in a figure a notebook draws, once that notebook runs again |
+| `ark-paper.mplstyle` | The same palette at the size a paper prints, with the line ramp as the cycle |
+| `ark-figures.json` | The colours by name and the two printed widths, for a repository drawing its own figures |
 
 `theme.css` alone is enough for the typography and the palette. Three of the rest are the site chrome, `banner.svg` a default for a paper, `ark.mplstyle` the figures. To refresh them later:
 
 ```sh
 curl -sLO "https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/theme.css"
-for f in logo.png logo-dark.png favicon.png banner.svg ark.mplstyle; do
+for f in logo.png logo-dark.png favicon.png banner.svg ark.mplstyle ark-paper.mplstyle ark-figures.json; do
   curl -sLO "https://raw.githubusercontent.com/econ-ark/econ-ark-myst/main/brand/$f"
 done
 ```

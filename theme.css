@@ -112,6 +112,15 @@
     var(--ark-curve-3) 0 75%,
     var(--ark-curve-4) 0
   );
+  /* The lines a paper figure is drawn with: --ark-blue at hue 267 and chroma 25, its lightness
+     moved to L* 66, 48, 29 and 12, steps of 17 or more because a thin line is read by lightness
+     before hue. sRGB runs out under the darkest, which lands 10 degrees off at chroma 24 */
+  --ark-line-1: #82a3cd;
+  --ark-line-2: #52759c;
+  --ark-line-3: #1f476b;
+  --ark-line-4: #002040;
+  /* Lighter than all four, for a reference path under them */
+  --ark-datum: #c3bfcd;
   /* The field the banner artwork is drawn on. Held apart from --ark-blue, which switches to a
      light blue under html.dark, while the artwork's own field does not change with the theme */
   --ark-banner-field: #1f476b;

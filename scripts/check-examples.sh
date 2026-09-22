@@ -66,10 +66,10 @@ ANCHORS=(
 PRIME=$(printf '\342\200\262')
 # theme.css's :root is the palette's one authored home, and ark/brand.typ carries the same values
 # for the PDF, one of them computed rather than written. Reading the expected colour from the
-# stylesheet ties the halves: html.dark redefines four lower down, so the first match is the light.
+# stylesheet ties the halves. Only :root is read, so html.dark's nine cannot answer for the light.
 ark_colour() {
   local raw
-  raw=$(sed -nE "s/^[[:space:]]*--ark-$1:[[:space:]]*(#[0-9a-fA-F]{3,8}|var\(--ark-[a-z0-9-]+\))[[:space:]]*;.*/\1/p" \
+  raw=$(sed -nE "/^:root[[:space:]]*\{/,/^\}/{s/^[[:space:]]*--ark-$1:[[:space:]]*(#[0-9a-fA-F]{3,8}|var\(--ark-[a-z0-9-]+\))[[:space:]]*;.*/\1/p;}" \
     "$ROOT/theme.css" | head -1)
   # A token may name another rather than a hex, as --ark-code-keyword names --ark-blue
   case "$raw" in
@@ -337,6 +337,128 @@ check_temml_pin() {
   fi
 }
 
+# check_brand_json below regenerates the file and diffs it against itself, so a wrong formula in
+# scripts/widths.typ would be written twice and match. This measures the same two widths off a
+# built page, where the layout has been applied and no part of the generator can answer.
+check_measured_width() {
+  local name=$1 pdf=$2 json=$3 measured column wide want
+  require_file "$name" "$pdf" "the page the widths are read off" || return
+  require_file "$name" "$json" "the figure palette a consumer reads" || return
+  # The flush right edge of justified text and the column's left edge are each the commonest of
+  # their kind; the rail is the leftmost thing on the page, and a wide float starts at it
+  measured=$(pdftotext -bbox "$pdf" - 2>/dev/null |
+    sed -nE 's/.*xMin="([0-9.]+)" yMin="[0-9.]+" xMax="([0-9.]+)".*/\1 \2/p' |
+    awk '{ l = sprintf("%.1f", $1); r = sprintf("%.1f", $2); lc[l]++; rc[r]++
+           if (rail == "" || l + 0 < rail + 0) rail = l }
+         END { for (v in lc) if (lc[v] > lb) { lb = lc[v]; left = v }
+               for (v in rc) if (rc[v] > rb) { rb = rc[v]; right = v }
+               if (left == "" || right == "" || right + 0 <= left + 0) exit 1
+               printf "%.4f %.4f\n", (right - left) / 72, (right - rail) / 72 }')
+  if [ -z "$measured" ]; then
+    bad "$name: no text boxes came back from $(basename "$pdf"), so no width was measured"
+    return
+  fi
+  column=${measured% *}
+  wide=${measured#* }
+  for want in column wide; do
+    local got expected
+    got=$([ "$want" = column ] && printf '%s' "$column" || printf '%s' "$wide")
+    expected=$(jq -r --arg k "$want" '.widths_in[$k] // empty' "$json")
+    if [ -z "$expected" ]; then
+      bad "$name: $(basename "$json") carries no widths_in.$want to measure against"
+    elif awk -v a="$got" -v b="$expected" 'BEGIN { exit (a - b < 0.01 && b - a < 0.01) ? 0 : 1 }'; then
+      ok "$name: widths_in.$want is the ${expected}in the page measures"
+    else
+      bad "$name: widths_in.$want says ${expected}in where $(basename "$pdf") measures ${got}in"
+    fi
+  done
+}
+
+# brand/ark-figures.json carries the palette by name for a repository that draws figures, and it is
+# generated. Regenerating it here is what keeps a token renamed in theme.css, or a margin changed in
+# ark/layout.typ, from leaving a stale copy in the file a consumer reads.
+check_brand_json() {
+  local name=$1 file=$2 fresh
+  require_file "$name" "$file" "the figure palette a consumer reads" || return
+  # The generator reads tracked inputs only, so its output is the same every call. Three calls run
+  # per suite, each paying for uv and typst to start, and the run is kept the way the rasters are.
+  fresh="$BRAND_CACHE/ark-figures.json"
+  if [ ! -s "$fresh" ] &&
+    ! (cd "$ROOT" && uv run --no-project python scripts/brand-figures.py --stdout) >"$fresh" 2>/dev/null; then
+    bad "$name: the generator did not run, so the committed $(basename "$file") went unchecked"
+    rm -f "$fresh"
+    return
+  fi
+  if [ ! -s "$fresh" ]; then
+    bad "$name: the generator wrote nothing, so $(basename "$file") was compared against an empty file"
+  elif cmp -s "$file" "$fresh"; then
+    ok "$name: $(basename "$file") is what theme.css and the layout produce"
+  else
+    bad "$name: $(basename "$file") differs from a fresh run of scripts/brand-figures.py"
+    diff "$file" "$fresh" | head -6
+  fi
+}
+
+# The README prints an L* for each line and claims 17 between neighbours, which is what holds four
+# thin lines apart in grey. Both are computed here from the generated palette, so a hex edited in
+# theme.css fails against the table rather than quietly making two of the lines read as one.
+check_line_lightness() {
+  local name=$1 readme=$2 json=$3 report
+  require_file "$name" "$readme" "the README the lightnesses are printed in" || return
+  require_file "$name" "$json" "the figure palette a consumer reads" || return
+  report=$(jq -r '.lines[]' "$json" | awk '
+    function srgb(c) { c = c / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ^ 2.4 }
+    function lstar(hex,   r, g, b, y) {
+      r = srgb(strtonum("0x" substr(hex, 2, 2))); g = srgb(strtonum("0x" substr(hex, 4, 2)))
+      b = srgb(strtonum("0x" substr(hex, 6, 2))); y = 0.2126 * r + 0.7152 * g + 0.0722 * b
+      return y > 0.008856 ? 116 * (y ^ (1 / 3)) - 16 : 903.3 * y
+    }
+    { n++; v[n] = lstar($0) }
+    END { for (i = 1; i <= n; i++) printf "%d %.0f %.2f\n", i, v[i], (i > 1 ? v[i - 1] - v[i] : 99) }')
+  if [ -z "$report" ]; then
+    bad "$name: $(basename "$json") gave no lines, so no lightness was computed"
+    return
+  fi
+  while read -r i rounded gap; do
+    if ! grep -qE "ark-line-$i\`[^|]*\|[^|]*\|[^0-9]*$rounded" "$readme"; then
+      bad "$name: line $i measures L* $rounded, which the README's table does not print"
+    elif awk -v g="$gap" 'BEGIN { exit (g >= 17) ? 0 : 1 }'; then
+      if [ "$i" = 1 ]; then
+        ok "$name: line 1 is L* $rounded, the lightest of the four"
+      else
+        ok "$name: line $i is L* $rounded, $gap under the line above it"
+      fi
+    else
+      bad "$name: lines $((i - 1)) and $i are $gap apart in L*, under the 17 the README claims"
+    fi
+  done <<<"$report"
+}
+
+# The README prints the two widths four times over, in prose, in a table of points and inches, and
+# in a figsize a reader pastes. brand/ark-figures.json is the generated one, so these are read back
+# from it: a margin moved in ark/layout.typ leaves the README saying what the layout stopped doing.
+check_documented_widths() {
+  local name=$1 readme=$2 json=$3 key value inches points
+  require_file "$name" "$readme" "the README the widths are printed in" || return
+  require_file "$name" "$json" "the figure palette a consumer reads" || return
+  for key in column wide; do
+    value=$(jq -r --arg k "$key" '.widths_in[$k] // empty' "$json")
+    if [ -z "$value" ]; then
+      bad "$name: $(basename "$json") carries no widths_in.$key for the README to agree with"
+      continue
+    fi
+    inches=$(awk -v v="$value" 'BEGIN { printf "%.2f", v }')
+    points=$(awk -v v="$value" 'BEGIN { printf "%.1f", v * 72 }')
+    if ! grep -qF "$inches" "$readme"; then
+      bad "$name: widths_in.$key is ${value}in and the README prints no ${inches}"
+    elif ! grep -qF "$points" "$readme"; then
+      bad "$name: widths_in.$key is ${points}pt and the README prints no $points"
+    else
+      ok "$name: the README prints widths_in.$key as $points points and $inches inches"
+    fi
+  done
+}
+
 # The README shows the site block a consumer should write, and this repository's myst.yml is that
 # block. Two copies of one thing drift, and the copy a reader trusts is the one in the README.
 check_documented_config() {
@@ -456,7 +578,7 @@ for m in re.finditer(r"<text[^>]*font=\"(\d+)\"[^>]*>(.*?)</text>", x, re.S):
 # CSS nor Typst reaches. Nothing renders matplotlib here, so the tie is to the hexes theme.css
 # authors: a colour in the style file that no --ark-* token declares is one that drifted.
 check_mplstyle() {
-  local name=$1 style=$2 declared used stray cycle
+  local name=$1 style=$2 wanted=$3 declared used stray cycle
   require_file "$name" "$style" "the figure palette" || return
   # Bare six-digit hexes, as a style file writes them, against the tokens with the # stripped and
   # any three-digit form expanded, which is how --ark-ink is written
@@ -473,8 +595,8 @@ check_mplstyle() {
   cycle=$(grep -oE "cycler\('color', \[[^]]*\]" "$style" | grep -oE "[0-9a-f]{6}" | tr '\n' ' ')
   if [ -n "${stray// /}" ]; then
     bad "$name: $style paints with colours theme.css never declares: $stray"
-  elif [ "$cycle" != "fbaf3f ed2a7b 00adef 38b449 1f476b " ]; then
-    bad "$name: the figure cycle is not the four curves and the blue, in order: ${cycle:-none}"
+  elif [ "$cycle" != "$wanted " ]; then
+    bad "$name: the figure cycle is ${cycle:-none}, where this style is drawn in $wanted"
   else
     ok "$name: every colour a figure is drawn in is one theme.css declares ($(wc -l <<<"$used"))"
   fi
@@ -2558,19 +2680,92 @@ self_test() {
   # curves and the blue, and a style file carrying no colour at all
   local mpl
   mpl=$(mktemp -d)
+  local notebook paper
+  notebook='fbaf3f ed2a7b 00adef 38b449 1f476b'
+  paper='82a3cd 52759c 1f476b 002040'
   expect '^ok' 'the tracked figure palette passes unseeded' \
-    check_mplstyle seeded "$ROOT/brand/ark.mplstyle"
+    check_mplstyle seeded "$ROOT/brand/ark.mplstyle" "$notebook"
+  expect '^ok' 'the paper figure palette passes unseeded' \
+    check_mplstyle seeded "$ROOT/brand/ark-paper.mplstyle" "$paper"
   sed 's/text.color: 48464e/text.color: 112233/' "$ROOT/brand/ark.mplstyle" >"$mpl/stray.mplstyle"
   expect 'FAIL.*never declares: 112233' 'a colour off the palette is caught' \
-    check_mplstyle seeded "$mpl/stray.mplstyle"
+    check_mplstyle seeded "$mpl/stray.mplstyle" "$notebook"
   # The swap is to another palette colour, so the stray test above passes it through and the order
   # is what fails: a cycle of five declared colours in the wrong order is the way this goes wrong
   sed "s/'1f476b'/'676470'/" "$ROOT/brand/ark.mplstyle" >"$mpl/cycle.mplstyle"
-  expect 'FAIL.*not the four curves' 'a cycle that swaps the blue for the house grey is caught' \
-    check_mplstyle seeded "$mpl/cycle.mplstyle"
+  expect 'FAIL.*the figure cycle is' 'a cycle that swaps the blue for the house grey is caught' \
+    check_mplstyle seeded "$mpl/cycle.mplstyle" "$notebook"
+  # Each style read against the other's cycle, which is how a paper figure ends up in the bright set
+  expect 'FAIL.*the figure cycle is' 'the notebook style read as the paper one is caught' \
+    check_mplstyle seeded "$ROOT/brand/ark.mplstyle" "$paper"
   printf 'font.size: 10.0\n' >"$mpl/nocolour.mplstyle"
   expect 'FAIL.*no colour in' 'a style file with no colour at all is caught' \
-    check_mplstyle seeded "$mpl/nocolour.mplstyle"
+    check_mplstyle seeded "$mpl/nocolour.mplstyle" "$notebook"
+
+  # check_brand_json, against a file that drifted from theme.css and one that is not there
+  local figjson
+  figjson=$(mktemp)
+  sed 's/#82a3cd/#123456/' "$ROOT/brand/ark-figures.json" >"$figjson"
+  expect 'FAIL.*differs from a fresh run' 'a figure palette that drifted from theme.css is caught' \
+    check_brand_json seeded "$figjson"
+  rm -f "$figjson"
+  expect 'FAIL.*is missing or empty' 'a figure palette that is not there is caught' \
+    check_brand_json seeded "$EXAMPLES/exports/no-such-figures.json"
+  expect '^ok' 'the tracked figure palette is what the generator produces' \
+    check_brand_json seeded "$ROOT/brand/ark-figures.json"
+
+  # check_measured_width, against the widths a wrong formula upstream would write. The drift case
+  # above cannot be seeded this way: a regenerated copy carries the same wrong number.
+  figjson=$(mktemp)
+  jq '.widths_in.column = 5.5' "$ROOT/brand/ark-figures.json" >"$figjson"
+  expect 'FAIL.*says 5.5in where' 'a column width the page does not measure is caught' \
+    check_measured_width seeded "$PAPER" "$figjson"
+  jq 'del(.widths_in.wide)' "$ROOT/brand/ark-figures.json" >"$figjson"
+  expect 'FAIL.*carries no widths_in.wide' 'a width the palette omits is caught' \
+    check_measured_width seeded "$PAPER" "$figjson"
+  rm -f "$figjson"
+  # A page carrying no words at all, which would leave the measurement with nothing to average
+  local blank
+  blank=$(mktemp -d)
+  printf '#set page(width: 8.5in, height: 11in)\n#rect(width: 2in, height: 1in)\n' >"$blank/blank.typ"
+  if typst compile "$blank/blank.typ" "$blank/blank.pdf" >/dev/null 2>&1; then
+    expect 'FAIL.*no text boxes came back' 'a page with no text measures no width' \
+      check_measured_width seeded "$blank/blank.pdf" "$ROOT/brand/ark-figures.json"
+  else
+    bad "self-test: could not compile the wordless page that seeds the width check"
+  fi
+  rm -rf "$blank"
+  expect '^ok.*widths_in.column' 'the tracked widths are what a built page measures' \
+    check_measured_width seeded "$PAPER" "$ROOT/brand/ark-figures.json"
+
+  # check_line_lightness, against a line moved off the L* its table prints and one moved close
+  # enough to the line above to read as the same line at 1.5pt
+  local readme
+  figjson=$(mktemp)
+  readme=$(mktemp)
+  jq '.lines[1] = "#6f8fba"' "$ROOT/brand/ark-figures.json" >"$figjson"
+  expect 'FAIL.*which the README' 'a line off the lightness its table prints is caught' \
+    check_line_lightness seeded "$ROOT/README.md" "$figjson"
+  jq '.lines[1] = "#587da6"' "$ROOT/brand/ark-figures.json" >"$figjson"
+  sed 's/| `--ark-line-2` | `#52759c` | 48 |/| `--ark-line-2` | `#587da6` | 51 |/' "$ROOT/README.md" >"$readme"
+  expect 'FAIL.*under the 17' 'two lines too close to tell apart are caught' \
+    check_line_lightness seeded "$readme" "$figjson"
+  jq '.lines = []' "$ROOT/brand/ark-figures.json" >"$figjson"
+  expect 'FAIL.*gave no lines' 'a palette with no lines measures no lightness' \
+    check_line_lightness seeded "$ROOT/README.md" "$figjson"
+  expect '^ok.*lightest of the four' 'the tracked palette holds its lines apart' \
+    check_line_lightness seeded "$ROOT/README.md" "$ROOT/brand/ark-figures.json"
+
+  # check_documented_widths, against a README left behind by a margin that moved
+  sed 's/5\.03/5.99/g' "$ROOT/README.md" >"$readme"
+  expect 'FAIL.*README prints no 5.03' 'a README printing another inch width is caught' \
+    check_documented_widths seeded "$readme" "$ROOT/brand/ark-figures.json"
+  sed 's/361\.8/999.9/g' "$ROOT/README.md" >"$readme"
+  expect 'FAIL.*README prints no 361.8' 'a README printing another point width is caught' \
+    check_documented_widths seeded "$readme" "$ROOT/brand/ark-figures.json"
+  expect '^ok.*361.8 points' 'the README prints the widths the layout produces' \
+    check_documented_widths seeded "$ROOT/README.md" "$ROOT/brand/ark-figures.json"
+  rm -f "$figjson" "$readme"
   rm -rf "$mpl"
 
   # The two ways the manifest and the imports part: a module the template reaches that the list
@@ -2719,7 +2914,12 @@ else
   check_font paper "$PAPER" FiraMath-Regular-Identity-H
   check_bundle plugin "$ROOT/plugins/fira-math.bundle.mjs"
   check_brand brand "$ROOT/brand"
-  check_mplstyle brand "$ROOT/brand/ark.mplstyle"
+  check_mplstyle brand "$ROOT/brand/ark.mplstyle" 'fbaf3f ed2a7b 00adef 38b449 1f476b'
+  check_mplstyle brand "$ROOT/brand/ark-paper.mplstyle" '82a3cd 52759c 1f476b 002040'
+  check_brand_json brand "$ROOT/brand/ark-figures.json"
+  check_measured_width brand "$PAPER" "$ROOT/brand/ark-figures.json"
+  check_line_lightness brand "$ROOT/README.md" "$ROOT/brand/ark-figures.json"
+  check_documented_widths brand "$ROOT/README.md" "$ROOT/brand/ark-figures.json"
   check_template_files manifest "$ROOT"
   check_temml_pin pins "$ROOT/scripts/fonts.sh" "$ROOT/package.json"
   check_documented_config docs "$ROOT/README.md" "$ROOT/myst.yml"
