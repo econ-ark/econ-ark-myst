@@ -41,6 +41,9 @@
       let figureLabel = it.at("label", default: none)
       let named = figureLabel != none and wide-figures.contains(str(figureLabel))
       let wide = (nextFigureWide.get() or named) and figureDepth.get() == 0
+      // A table reads the state as its columns are laid out, which happens inside the content
+      // below, so a table named by label gets the state here rather than a second mechanism
+      if named and wide { nextFigureWide.update(true) }
       let columnWidth = textColumn() * (if wide { wideWidth } else { 100% })
       let height = measure(block(width: columnWidth, it)).height
       let fits = height <= textHeight() - 3em.to-absolute()

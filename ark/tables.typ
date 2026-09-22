@@ -35,24 +35,78 @@
 // The parsed copy stays in the document, hidden, so its label still resolves and a reference to it
 // still points at the page holding it. It gives its number back and the twin beside it takes that
 // number, which leaves one counter numbering every table in the order MyST numbered them.
+// One step per parsed copy hidden and one per twin that took its place, counted so the template
+// can ask at the end whether every table it hid was replaced by the twin meant to stand for it.
+#let arkTwinsHidden = counter("ark-twins-hidden")
+#let arkTwinsTaken = counter("ark-twins-taken")
+
+// The words a caption carries, flattened, which is how a twin is told from any other Typst table:
+// the fragment writes one caption into its LaTeX float and the same one into its twin.
+#let arkCaptionText(body) = {
+  if body == none {
+    ""
+  } else if type(body) == str {
+    body
+  } else if body.func() == [ ].func() {
+    // The walk below reads text, children and body, and the space between two children has none
+    // of them, so a caption holding any markup would flatten with its words run together
+    " "
+  } else {
+    let parts = body.fields()
+    if "text" in parts {
+      parts.text
+    } else if "children" in parts {
+      parts.children.map(arkCaptionText).join("")
+    } else if "body" in parts {
+      arkCaptionText(parts.body)
+    } else {
+      // A reference or a citation keeps what it points at in a field of its own, and dropping it
+      // would leave two captions alike but for which work they cite reading as one caption
+      repr(body)
+    }
+  }
+}
+
+// The whole caption, which is what pairs the two copies of one table: a generator writes it into
+// both halves word for word, where two tables on a page can share any opening a prefix would read
+#let arkCaptionKey(caption) = {
+  if caption == none { return "" }
+  arkCaptionText(caption.body).replace(regex("\\s+"), " ").trim()
+}
+
 #let arkTwinnedTables(twinned, doc) = if twinned == none { doc } else {
+  // A parsed copy leaves its caption here as it is hidden, and the Typst table that comes next
+  // takes its place only by carrying the same caption, which is what the fragment writes twice.
+  let expectingTwin = state("ark-expecting-twin", none)
   show figure: it => {
     let tableLabel = it.at("label", default: none)
     if it.kind == table {
-      // The twin, given the kind MyST's own tables carry. The label stays with the parsed copy,
-      // which is how the branch below tells a twin from a copy when the rule takes its output back.
-      figure(
-        it.body,
-        caption: it.caption,
-        kind: "table",
-        supplement: it.supplement,
-        numbering: it.numbering,
-        placement: it.placement,
-        scope: it.scope,
-        gap: it.gap,
-        outlined: it.outlined,
-      )
+      context if expectingTwin.get() != arkCaptionKey(it.caption) {
+        // The twin the fragment writes comes next or never, so an expectation this table does not
+        // answer is spent here rather than left standing for a table further down the page
+        expectingTwin.update(none)
+        it
+      } else {
+        // The twin, given the kind MyST's own tables carry. The label stays with the parsed copy,
+        // which is how the branch below tells a twin from a copy when the rule takes its output back.
+        expectingTwin.update(none)
+        arkTwinsTaken.step()
+        figure(
+          it.body,
+          caption: it.caption,
+          kind: "table",
+          supplement: it.supplement,
+          alt: it.alt,
+          numbering: it.numbering,
+          placement: it.placement,
+          scope: it.scope,
+          gap: it.gap,
+          outlined: it.outlined,
+        )
+      }
     } else if it.kind == "table" and tableLabel != none and (twinned == auto or twinned.contains(str(tableLabel))) {
+      expectingTwin.update(arkCaptionKey(it.caption))
+      arkTwinsHidden.step()
       place(hide(it))
       counter(figure.where(kind: "table")).update(n => n - 1)
     } else {

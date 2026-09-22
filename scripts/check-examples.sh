@@ -1297,27 +1297,30 @@ check_sidebar_footer() {
   fi
 }
 
-# A widened figure's caption starts over the margin rail, left of the text column at x = 153pt
-check_left_of() {
-  local name=$1 pdf=$2 word=$3 limit=$4 x
+# Where a word starts, against a limit, from either side. A word the PDF does not carry reports
+# that rather than an edge it failed, which the shared x = none message used to hide. check_rule
+# and check_ink split the same way over check_swatch.
+check_side_of() {
+  local name=$1 pdf=$2 word=$3 limit=$4 side=$5 x
   x=$(pdftotext -bbox "$pdf" - 2>/dev/null | grep -m1 -F -- ">$word</word>" | sed -E 's/.*xMin="([0-9.]+)".*/\1/')
-  if [ -n "$x" ] && awk -v x="$x" -v l="$limit" 'BEGIN { exit !(x < l) }'; then
+  if [ -z "$x" ]; then
+    bad "$name: '$word' is not in $(basename "$pdf"), so where it starts cannot be read"
+  elif [ "$side" = left ] && awk -v x="$x" -v l="$limit" 'BEGIN { exit !(x < l) }'; then
     ok "$name: '$word' starts at x = ${x%%.*}pt, over the margin rail"
+  elif [ "$side" = right ] && awk -v x="$x" -v l="$limit" 'BEGIN { exit !(x > l) }'; then
+    ok "$name: '$word' starts at x = ${x%%.*}pt, in the text column"
+  elif [ "$side" = left ]; then
+    bad "$name: '$word' starts at x = ${x%%.*}pt, not left of ${limit}pt, so the figure was not widened"
   else
-    bad "$name: '$word' starts at x = ${x:-none}pt, not left of ${limit}pt, so the figure was not widened"
+    bad "$name: '$word' starts at x = ${x%%.*}pt, not right of ${limit}pt, so it is over the rail"
   fi
 }
 
+# A widened figure's caption starts over the margin rail, left of the text column at x = 153pt
+check_left_of() { check_side_of "$1" "$2" "$3" "$4" left; }
+
 # The other side of it: a figure at column width starts where the text does, right of the rail
-check_right_of() {
-  local name=$1 pdf=$2 word=$3 limit=$4 x
-  x=$(pdftotext -bbox "$pdf" - 2>/dev/null | grep -m1 -F -- ">$word</word>" | sed -E 's/.*xMin="([0-9.]+)".*/\1/')
-  if [ -n "$x" ] && awk -v x="$x" -v l="$limit" 'BEGIN { exit !(x > l) }'; then
-    ok "$name: '$word' starts at x = ${x%%.*}pt, in the text column"
-  else
-    bad "$name: '$word' starts at x = ${x:-none}pt, not right of ${limit}pt, so it is over the rail"
-  fi
-}
+check_right_of() { check_side_of "$1" "$2" "$3" "$4" right; }
 
 # The rail is placed from the foot of the page, so a rail too tall for its column grows up over the
 # logo. Build a paper with more reviewers than it can hold and read where their names land: in the
@@ -1369,9 +1372,17 @@ check_link() {
     bad "$name: '$word' is not in $(basename "$pdf"), so what it links to cannot be read"
     return
   fi
+  # The anchors come out of a different tool than the text above, so a pdftohtml that produced
+  # nothing would read as a word carrying no link, which is what half these calls assert
+  local html
+  html=$(pdftohtml -i -s -noframes -stdout "$pdf" 2>/dev/null)
+  if [ -z "$html" ]; then
+    bad "$name: pdftohtml read nothing out of $(basename "$pdf"), so no link can be shown absent"
+    return
+  fi
   # perl picks the anchor out rather than a grep down the pipe, which would leave on its first
-  # match and take pdftohtml down with it under this script's pipefail
-  got=$(pdftohtml -i -s -noframes -stdout "$pdf" 2>/dev/null |
+  # match and take its producer down with it under this script's pipefail
+  got=$(printf '%s' "$html" |
     WORD="$word" perl -0777 -ne 'while (/<a href="([^"]*)"[^>]*>(.*?)<\/a>/gs) {
       my ($href, $text) = ($1, $2);
       $text =~ s/<[^>]*>//g;
@@ -1389,6 +1400,11 @@ check_link() {
   else
     bad "$name: '$word' links to ${got:-none}, not $want"
   fi
+}
+
+# The project file each fixture below needs, which is a title and nothing else
+fixture_project() {
+  printf 'version: 1\nproject:\n  title: %s\n' "$2" >"$1/myst.yml"
 }
 
 # A word the PDF must not carry. Text has to come out of the file first: one that never built
@@ -1423,7 +1439,7 @@ check_kept() {
 # that old stops typst. Stamp the copy and build again: the stamp surviving is that behaviour.
 typ_export_siblings() {
   local name=$1 dir=$2
-  printf 'version: 1\nproject:\n  title: Typst source export\n' >"$dir/myst.yml"
+  fixture_project "$dir" "Typst source export"
   {
     echo '---'
     echo 'title: A page exported as Typst source'
@@ -1440,12 +1456,15 @@ typ_export_siblings() {
     echo 'Text.'
   } >"$dir/page.md"
   (cd "$dir" && myst build page.md --typst) >/dev/null 2>&1
-  if [ ! -s "$dir/econ-ark.typ" ] || [ ! -s "$dir/page.typ" ]; then
-    bad "$name: a .typ export left no econ-ark.typ beside it, so what MyST does with it goes unread"
+  require_file "$name" "$dir/page.typ" "the source export itself" || return 1
+  require_file "$name" "$dir/econ-ark.typ" "what MyST leaves beside a source export" || return 1
+  printf '\n// stamped by the check suite\n' >>"$dir/econ-ark.typ"
+  # The rebuild is the whole point, so a second build that died has to say so rather than leave
+  # the caller to skip the check in silence
+  if ! (cd "$dir" && myst build page.md --typst) >/dev/null 2>&1; then
+    bad "$name: the rebuild of the .typ export failed, so what it did to the copies went unread"
     return 1
   fi
-  printf '\n// stamped by the check suite\n' >>"$dir/econ-ark.typ"
-  (cd "$dir" && myst build page.md --typst) >/dev/null 2>&1
 }
 
 # A page of a project exported on its own, which is where MyST writes a link to another page as a
@@ -1453,7 +1472,7 @@ typ_export_siblings() {
 # template answers a page link one way with site_url set and another without it.
 site_link_pages() {
   local name=$1 dir=$2
-  printf 'version: 1\nproject:\n  title: Site links\n' >"$dir/myst.yml"
+  fixture_project "$dir" "Site links"
   {
     echo '---'
     echo 'title: The exported page'
@@ -1468,6 +1487,11 @@ site_link_pages() {
     echo '    output: page-site.pdf'
     # The trailing slash is the case the template has to drop: the path MyST writes carries its own
     echo '    site_url: https://example.org/'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: page-bare.pdf'
+    # The same address without that slash, which has to give the same link
+    echo '    site_url: https://example.org'
     echo '---'
     echo
     echo '# Body'
@@ -1494,10 +1518,9 @@ site_link_pages() {
   (cd "$dir" && myst build page.md --typst) >/dev/null 2>&1
   # Before the template answered them, the page link printed as a dead path and the label stopped
   # the Typst build, so an absent PDF is the failure this pair is built to catch
-  if [ ! -s "$dir/page.pdf" ] || [ ! -s "$dir/page-site.pdf" ]; then
-    bad "$name: the two-page project did not build, so its links to the other page went unread"
-    return 1
-  fi
+  require_file "$name" "$dir/page.pdf" "the page links a PDF cannot follow" || return 1
+  require_file "$name" "$dir/page-site.pdf" "the same links under site_url" || return 1
+  require_file "$name" "$dir/page-bare.pdf" "site_url written without a trailing slash" || return 1
 }
 
 # A table written as a code-generated fragment arrives twice, as the LaTeX float MyST parses and as
@@ -1505,7 +1528,7 @@ site_link_pages() {
 # a directive and a raw twin beside it are the pair the template sees. Each cell names its copy.
 twinned_table_pages() {
   local name=$1 dir=$2 pair
-  printf 'version: 1\nproject:\n  title: Twinned tables\n' >"$dir/myst.yml"
+  fixture_project "$dir" "Twinned tables"
   pair=$(
     printf ':::{table} The first table\n:label: tbl-one\n\n| Case | Value |\n| ---- | ----- |\n| parsedone | 1 |\n:::\n\n'
     printf ':::{raw:typst}\n#figure(table(columns: 2, [Case], [Value], [twinone], [1]), caption: [The first table], kind: table)\n:::\n\n'
@@ -1533,6 +1556,9 @@ twinned_table_pages() {
     echo
     echo "$pair"
     echo
+    # A table written in raw Typst for its own sake, which no fragment twins. Folding it into the
+    # parsed tables' sequence would push the third table below to Table 4, which the anchors catch.
+    printf ':::{raw:typst}\n#figure(table(columns: 2, [Case], [Value], [ownrow], [9]), caption: [A table of its own])\n:::\n\n'
     printf ':::{table} The third table\n:label: tbl-three\n\n| Case | Value |\n| ---- | ----- |\n| plainthree | 3 |\n:::\n'
     echo
     echo 'References: [](#tbl-one), [](#tbl-two), [](#tbl-three).'
@@ -1556,10 +1582,57 @@ twinned_table_pages() {
     echo
     echo 'References: [](#tbl-one), [](#tbl-two).'
   } >"$dir/pairs.md"
-  (cd "$dir" && myst build mixed.md pairs.md --typst) >/dev/null 2>&1
-  if [ ! -s "$dir/mixed.pdf" ] || [ ! -s "$dir/mixed-off.pdf" ] || [ ! -s "$dir/pairs.pdf" ]; then
-    bad "$name: the twinned-table pages did not build, so neither form of the option was read"
-    return 1
+  # A named table whose twin was never written, beside a Typst table of its own whose caption opens
+  # the same way, as a panel B does. Pairing the two would print both as Table 1, one of them the
+  # target of the reference, so the captions have to match whole rather than at the front.
+  {
+    echo '---'
+    echo 'title: A named table with no twin'
+    echo 'authors:'
+    echo '  - name: A Person'
+    echo 'exports:'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: notwin.pdf'
+    echo '    twinned_tables: tbl-one'
+    echo '---'
+    echo
+    echo '# Body'
+    echo
+    printf ':::{table} Estimated coefficients from the baseline specification, by province\n:label: tbl-one\n\n| Case | Value |\n| ---- | ----- |\n| parsedone | 1 |\n:::\n\n'
+    printf ':::{raw:typst}\n#figure(table(columns: 2, [Case], [Value], [strayrow], [9]), caption: [Estimated coefficients from the baseline specification, by year])\n:::\n'
+  } >"$dir/notwin.md"
+  # A page whose "all" is untrue: one labelled table, no twin. Hiding it would take the table out
+  # of the PDF with nothing said, so the template counts the two and refuses the build.
+  {
+    echo '---'
+    echo 'title: An all that is not true'
+    echo 'authors:'
+    echo '  - name: A Person'
+    echo 'exports:'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: unmatched.pdf'
+    echo '    twinned_tables: all'
+    echo '---'
+    echo
+    echo '# Body'
+    echo
+    printf ':::{table} The only table\n:label: tbl-alone\n\n| Case | Value |\n| ---- | ----- |\n| alonecell | 1 |\n:::\n'
+  } >"$dir/unmatched.md"
+  (cd "$dir" && myst build mixed.md pairs.md unmatched.md notwin.md --typst) >/dev/null 2>&1
+  require_file "$name" "$dir/mixed.pdf" "the labels form of the option" || return 1
+  require_file "$name" "$dir/mixed-off.pdf" "the export that names no twins" || return 1
+  require_file "$name" "$dir/pairs.pdf" "the all form of the option" || return 1
+  if [ -s "$dir/unmatched.pdf" ]; then
+    bad "$name: a page whose all form has one table and no twin still built, so the table is gone"
+  else
+    ok "$name: all with a table that has no twin stops the build rather than hiding the table"
+  fi
+  if [ -s "$dir/notwin.pdf" ]; then
+    bad "$name: a named table whose twin was never written still built, so another table took its number"
+  else
+    ok "$name: a named table with no twin stops the build rather than lending its number on"
   fi
 }
 
@@ -1568,10 +1641,13 @@ twinned_table_pages() {
 # a third page names a label nothing carries, which the template refuses to build.
 label_option_pages() {
   local name=$1 dir=$2 body
-  printf 'version: 1\nproject:\n  title: Label options\n' >"$dir/myst.yml"
+  fixture_project "$dir" "Label options"
   body=$(
     printf '## A section\n\n'
     printf ':::{figure} https://placehold.co/600x120.png\n:label: fig-wide\n:width: 100%%\nWidecaption spans the margin rail and the text column.\n:::\n\n'
+    # A table named by the same option, which also has to share the wider measure between its columns
+    printf ':::{table} Widetablecaption starts at the same edge as the figure above.\n:label: tbl-wide\n\n'
+    printf '| Case | A description of the case | Value |\n| ---- | ---- | ---- |\n| One | The first case | 1 |\n:::\n\n'
     printf '## A second section\n\nText, with a reference to [](#app-proofs).\n\n'
     printf '(app-proofs)=\n## Proof of the Proposition\n\nThe proof.\n'
   )
@@ -1584,7 +1660,7 @@ label_option_pages() {
     echo '  - format: typst'
     echo "    template: $ROOT"
     echo '    output: labelled.pdf'
-    echo '    wide_figures: fig-wide'
+    echo '    wide_figures: fig-wide, tbl-wide'
     echo '    appendix_from: app-proofs'
     echo '  - format: typst'
     echo "    template: $ROOT"
@@ -1610,10 +1686,8 @@ label_option_pages() {
     echo 'Text.'
   } >"$dir/unknown.md"
   (cd "$dir" && myst build labelled.md unknown.md --typst) >/dev/null 2>&1
-  if [ ! -s "$dir/labelled.pdf" ] || [ ! -s "$dir/labelled-off.pdf" ]; then
-    bad "$name: the labelled page did not build, so neither option was read"
-    return 1
-  fi
+  require_file "$name" "$dir/labelled.pdf" "the wide figure and the lettered appendix" || return 1
+  require_file "$name" "$dir/labelled-off.pdf" "the same page with neither option" || return 1
   # The figure stays narrow and the appendices go unlettered when a label names nothing, and both
   # failures are silent, so the template stops the build instead
   if [ -s "$dir/unknown.pdf" ]; then
@@ -1720,8 +1794,12 @@ self_test() {
     check_left_of seeded "$PAPER" 'Baseline' 100
   # The same word read the other way: in the text column, which is where the paper's figures are
   expect '^ok' 'a figure at text width reads as in the column' check_right_of seeded "$PAPER" 'Baseline' 100
-  expect 'FAIL.*over the rail' 'a word the PDF does not carry is caught' \
-    check_right_of seeded "$PAPER" 'Widecaption' 100
+  expect 'FAIL.*over the rail' 'a caption read from the wrong side is caught' \
+    check_right_of seeded "$PAPER" 'Baseline' 500
+  # A word the paper does not carry used to read as an x of none, which both sides reported as an
+  # edge the word failed rather than a word that is not there
+  expect 'FAIL.*is not in' 'a word the PDF does not carry is caught by the side check' \
+    check_left_of seeded "$PAPER" 'Widecaption' 100
   expect 'FAIL.*not written' 'a missing PDF is caught' \
     check_pdf seeded "$EXAMPLES/exports/does-not-exist.pdf"
   # The tall table's caption and its last row are pages apart, so they must read as orphaned
@@ -2394,10 +2472,10 @@ self_test() {
   sweep_fixtures() {
     local fn
     for fn in $(declare -F | sed -n 's/^declare -f \(check_[a-z_]*\)$/\1/p'); do
-      # Written exemptions, never omissions: check_swatch is exercised through check_rule and
-      # check_ink, and check_rail_overflow builds its own paper against this very template, so
-      # seeding a failure would take a second template declining to move the reviewers out.
-      case $fn in check_swatch | check_rail_overflow) continue ;; esac
+      # Written exemptions, never omissions: check_swatch runs through check_rule and check_ink,
+      # check_side_of through check_left_of and check_right_of, and check_rail_overflow builds its
+      # own paper here, so seeding it would take a second template that keeps the reviewers in.
+      case $fn in check_swatch | check_side_of | check_rail_overflow) continue ;; esac
       grep -q "(^|[^a-z_])$fn([^a-z_]|$)" -E <<<"$seeded_here" ||
         bad "self-test: $fn has no fixture here, so nothing shows it can fail"
     done
@@ -2502,6 +2580,8 @@ else
     check_link site-links "$sitelinks/page.pdf" 'Table 1' none
     check_link site-links "$sitelinks/page-site.pdf" supplement https://example.org/supplement
     check_link site-links "$sitelinks/page-site.pdf" 'Table 1' none
+    # The address written without its trailing slash reaches the same page
+    check_link site-links "$sitelinks/page-bare.pdf" supplement https://example.org/supplement
   fi
   rm -rf "$sitelinks"
   # The two forms of twinned_tables and the export that sets neither. The numbers in the captions
@@ -2509,7 +2589,7 @@ else
   # table reads Table 5 while MyST's own references still say Table 3.
   twins=$(mktemp -d)
   if twinned_table_pages twinned "$twins"; then
-    check_pdf twinned "$twins/mixed.pdf" twinone twintwo plainthree \
+    check_pdf twinned "$twins/mixed.pdf" twinone twintwo plainthree ownrow \
       'Table 1 The first table' 'Table 2 The second table' 'Table 3 The third table' \
       'References: Table 1, Table 2, Table 3.'
     check_no_text twinned "$twins/mixed.pdf" parsedone
@@ -2531,6 +2611,12 @@ else
   if label_option_pages labelled "$labelled"; then
     check_left_of labelled "$labelled/labelled.pdf" Widecaption 100
     check_right_of labelled "$labelled/labelled-off.pdf" Widecaption 100
+    # A table named by the option widens the same way, columns and all: its caption starts at the
+    # figure's edge, and the last column heading lands where widenNextFigure puts it
+    check_left_of labelled "$labelled/labelled.pdf" Widetablecaption 100
+    check_right_of labelled "$labelled/labelled-off.pdf" Widetablecaption 100
+    check_left_of labelled "$labelled/labelled.pdf" Value 350
+    check_right_of labelled-off "$labelled/labelled-off.pdf" Value 350
     check_pdf labelled "$labelled/labelled.pdf" 'Appendix A Proof of the Proposition' \
       'a reference to Appendix A.'
     check_pdf labelled-off "$labelled/labelled-off.pdf" '3 Proof of the Proposition' \

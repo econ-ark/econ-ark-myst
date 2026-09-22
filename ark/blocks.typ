@@ -89,12 +89,17 @@
 // call inside context. A marker stands before the first appendix, where labelName is that appendix.
 #let appendixNumber(loc) = {
   let base = none
-  let markers = query(selector(<appendix>).before(loc))
-  if markers.len() > 0 { base = counter(heading).at(markers.last().location()).at(0, default: 0) }
   let named = appendixFrom.get()
   if named != none {
+    // The counter read at a heading's own location already counts that heading, so taking one off
+    // makes the heading the first appendix rather than the last body section
     let heads = query(selector(label(named)).before(loc, inclusive: true))
     if heads.len() > 0 { base = counter(heading).at(heads.last().location()).at(0, default: 1) - 1 }
+  }
+  // A page writing the marker itself, which costs a second query only where the option found nothing
+  if base == none {
+    let markers = query(selector(<appendix>).before(loc))
+    if markers.len() > 0 { base = counter(heading).at(markers.last().location()).at(0, default: 0) }
   }
   if base == none { return none }
   let nums = counter(heading).at(loc)

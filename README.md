@@ -200,7 +200,7 @@ exports:
 
 A label nothing in the document carries stops the build, since a figure left at column width is a change nobody would see reported.
 
-A widened table takes the other form, `widenNextFigure` in a raw Typst block just before it. That table reads the call as it is laid out, which is what shares the wider measure between its columns.
+A table takes the same option, under its own label, and its columns share the wider measure as they do under the other form, `widenNextFigure` in a raw Typst block just before the figure or table.
 
 ```text
 :::{raw:typst}
@@ -317,6 +317,8 @@ Write the labels instead, separated by commas or spaces, when the page also carr
 The parsed copy stays in the document, hidden, so a cross-reference to its label still resolves and still points at the page holding it. It gives its number back and the twin takes that number, which leaves one sequence numbering every table in the order MyST numbered them. The twin is given the kind MyST's own tables carry, so it also takes their styling: the caption above, cells at 9pt, and vertical rules dropped unless the twin draws them with an explicit stroke.
 
 Keep the label on the parsed copy, which the site renders and which `all` reads to tell a parsed copy from a twin.
+
+Each twin has to follow its parsed copy and carry the same caption, which a fragment written by a script already does. That caption is what pairs the two. A Typst table written for its own sake therefore keeps its own numbering. Where a named table's twin never arrived, the build stops, since that table would otherwise lend its number to whatever came next.
 
 ## Appendices
 

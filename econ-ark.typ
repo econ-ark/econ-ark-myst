@@ -316,13 +316,20 @@
   // Line numbers start with the main text, so the title block and abstract stay clean
   set par.line(numbering: if linenumbers { n => text(font: sansFont, size: 7pt, fill: arkGrey, str(n)) } else { none })
 
+  // Each option arrives as a string and is read once here, so the rule below and the check at the
+  // end of the document work from one value. appendix_from names one heading, hence the first.
+  let wideLabels = arkLabelList(wide-figures)
+  let twinnedSpec = arkTwinnedSpec(twinned-tables)
+  let appendixLabels = arkLabelList(appendix-from)
+  let appendixLabel = appendixLabels.at(0, default: none)
+
   // Code blocks, table figures and where each figure ends up
-  show: arkFloats.with(figure-placement, arkLabelList(wide-figures))
+  show: arkFloats.with(figure-placement, wideLabels)
   // Last, so it reaches a twinned table before the rules above wrap it, and so the twin it puts in
   // the parsed copy's place is styled and placed as every other table here is
-  show: arkTwinnedTables.with(arkTwinnedSpec(twinned-tables))
+  show: arkTwinnedTables.with(twinnedSpec)
   // The marker the appendix lettering counts from, in front of the heading the option names
-  show: arkAppendixFrom.with(appendix-from)
+  show: arkAppendixFrom.with(appendixLabel)
 
   set bibliography(title: [References], style: "chicago-author-date")
   show bibliography: (it) => {
@@ -338,21 +345,52 @@
   // Display the paper's contents.
   body
 
-  // A label the document does not carry passes silently through the options below: the table
-  // prints twice, the figure stays narrow, the appendices go unlettered. Stop the build instead.
+  // A label pointing at nothing, or at the wrong kind of thing, passes silently through the options
+  // below: the table prints twice, the figure stays narrow, the appendices go unlettered.
   context {
-    let absent = ()
-    for (option, labels) in (
-      ("twinned_tables", arkTwinnedSpec(twinned-tables)),
-      ("wide_figures", arkLabelList(wide-figures)),
-      ("appendix_from", arkLabelList(appendix-from)),
+    let wrong = ()
+    // A twinned_tables of "all" is the one value with no labels to read, so it arrives as auto
+    for (option, labels, wanted) in (
+      ("twinned_tables", twinnedSpec, "table"),
+      ("wide_figures", wideLabels, "figure"),
+      ("appendix_from", appendixLabels, "heading"),
     ) {
-      if type(labels) == array {
-        for name in labels {
-          if query(label(name)).len() == 0 { absent.push(option + " names " + name) }
+      if type(labels) != array { continue }
+      for name in labels {
+        let found = query(label(name))
+        let fits(el) = if wanted == "heading" {
+          el.func() == heading
+        } else if wanted == "table" {
+          el.func() == figure and el.kind == "table"
+        } else {
+          el.func() == figure
+        }
+        if found.len() == 0 {
+          wrong.push(option + " names " + name + ", which this document carries no label for")
+        } else if not found.any(fits) {
+          wrong.push(option + " names " + name + ", which is a label on no " + wanted)
         }
       }
     }
-    assert(absent.len() == 0, message: absent.join("; ") + ", and this document carries no such label")
+    // One heading opens the appendices, so a second label there would reach the lettering unread
+    if appendixLabels.len() > 1 {
+      wrong.push("appendix_from names " + str(appendixLabels.len()) + " labels, and one heading opens the appendices")
+    }
+    // A table hidden for a twin that never came is lost from the PDF, and the number it gave back
+    // goes to whichever Typst table comes next, which collides with a reference to that table
+    let hidden = arkTwinsHidden.final().at(0, default: 0)
+    let taken = arkTwinsTaken.final().at(0, default: 0)
+    if hidden != taken {
+      wrong.push(
+        "twinned_tables hid "
+          + str(hidden)
+          + " tables against "
+          + str(taken)
+          + " Typst twins standing in for them: each hidden table needs its twin next, under the same caption",
+      )
+    }
+    // Joining an empty array gives none, which assert refuses as a message, so it is asked only
+    // once there is something to say
+    if wrong.len() > 0 { assert(false, message: wrong.join("; ")) }
   }
 }

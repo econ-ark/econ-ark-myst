@@ -38,9 +38,9 @@
       // no PDF can follow, so the path prints as the text MyST wrote around it
       it.body
     } else {
-      // The rewritten link is a link too, which this same rule takes again; its destination is a
-      // web address by then, so the branch above turns it blue
-      link(site-url.trim("/", at: end) + it.dest, it.body)
+      // Blue here rather than through the branch above, which the rewritten link would reach by
+      // re-entering this rule: one reading of the rule should be enough to see what a link gets
+      text(fill: arkBlue, link(site-url.trim("/", at: end) + it.dest, it.body))
     }
   } else {
     context {

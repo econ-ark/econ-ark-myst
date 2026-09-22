@@ -109,10 +109,10 @@ options:
   - id: wide_figures
     type: string
     description: >
-      Labels of the figures that span the margin rail as well as the text column, separated by
-      commas or spaces. A figure named here needs no widenNextFigure call before it. A table's
-      columns still share the wider measure only under widenNextFigure, which is what the table
-      reads as it is laid out.
+      Labels of the figures and tables that span the margin rail as well as the text column,
+      separated by commas or spaces. A figure or table named here needs no widenNextFigure call
+      before it, and a table named here shares the wider measure between its columns as it does
+      under that call.
   - id: appendix_from
     type: string
     description: >
