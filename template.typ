@@ -268,8 +268,21 @@
 
 // The back matter and references go before an <appendix> marker, or at the end when there is none.
 // Show rules and labels, unlike names, also reach articles included in a multi-article export.
-#show <appendix>: it => backMatter + it
+#show <appendix>: it => {
+  // Set as running text here, so a marker written inside styled content, a heading's or an
+  // author's, still gets back matter in the body's setting
+  set text(..arkBodyText)
+  set par(..arkBodyPar)
+  backMatter + it
+}
 
+[# if options.appendix_from #]
+// appendix_from's marker goes into the body beside the heading it names, as a written one would
+#arkMarkAppendix(arkLabelList([-s(options.appendix_from)-]).at(0, default: none))[
+[# endif #]
 [-CONTENT-]
+[# if options.appendix_from #]
+]
+[# endif #]
 
 #context if query(<appendix>).len() == 0 { backMatter }

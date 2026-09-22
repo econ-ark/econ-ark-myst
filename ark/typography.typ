@@ -68,8 +68,8 @@
   }
 
   // Body text: serif at 11pt keeps the measure under 80 characters
-  set text(font: serifFont, size: 11pt, number-type: "lining")
-  set par(justify: true, leading: 0.72em, spacing: 0.72em, first-line-indent: 1.2em)
+  set text(..arkBodyText)
+  set par(..arkBodyPar)
   show math.equation: set text(font: mathFont)
   set math.equation(numbering: "(1)")
   show math.equation.where(block: true): set block(spacing: 1.1em)

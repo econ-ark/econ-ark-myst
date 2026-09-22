@@ -65,42 +65,49 @@
     #figure(kind: kind, supplement: supplement, numbering: "1", outlined: false, statement)#if labelName != none { label(labelName) }]
 }
 
-// The heading the appendices start at, as the name of its label, which an export option gives in
-// place of an <appendix> marker written in the body.
-#let appendixFrom = state("ark-appendix-from", none)
-
-// Puts that marker in front of the heading carrying labelName, where template.typ prints the back
-// matter, and records the name for the lettering below: a marker a show rule emits does not read as
-// "before" the heading it precedes, so the lettering counts from the heading itself.
-#let arkAppendixFrom(labelName, doc) = if labelName == none { doc } else {
+// Puts an <appendix> marker into the body as a sibling in front of the heading carrying labelName,
+// where a page writing it by hand has it, so the back matter breaks across pages the same way.
+#let arkMarkAppendix(labelName, body) = {
+  if labelName == none { return body }
   let target = label(labelName)
-  appendixFrom.update(labelName)
-  show heading: it => if it.at("label", default: none) == target {
-    [#metadata(none)#label("appendix")]
-    it
-  } else {
-    it
+  let sequence = ([a] + [b]).func()
+  // MyST writes a show rule before every figure, and each one wraps the rest of the page in a
+  // styled element, so the heading sits one level deeper per figure. The walk keeps its own stack
+  // because recursion that deep runs into Typst's limit on nested calls.
+  let stack = ((body, ()),)
+  let found = none
+  while stack.len() > 0 and found == none {
+    let (node, path) = stack.pop()
+    if node.func() == heading and node.at("label", default: none) == target {
+      found = (node, path)
+    } else if node.func() == sequence {
+      // Pushed last to first, so the page is searched in reading order
+      for (i, kid) in node.children.enumerate().rev() { stack.push((kid, path + ((node, i),))) }
+    } else if node.has("child") and node.has("styles") {
+      stack.push((node.child, path + ((node, none),)))
+    }
   }
-  doc
+  if found == none { return body }
+  let (head, path) = found
+  let out = [#metadata(none)#label("appendix")] + head
+  // Rebuilt from the heading outward, each styled level with the styles it carried
+  for (container, i) in path.rev() {
+    out = if i == none {
+      container.func()(out, container.styles)
+    } else {
+      let kids = container.children
+      (..kids.slice(0, i), out, ..kids.slice(i + 1)).join()
+    }
+  }
+  out
 }
 
 // Appendix number of the heading at loc, such as "A" or "B.2", or none where the appendices have
-// not started. Counted from where they start, so the author need not reset the heading counter;
-// call inside context. A marker stands before the first appendix, where labelName is that appendix.
+// not started. Counted from the <appendix> marker, so the author need not reset the heading
+// counter; call inside context.
 #let appendixNumber(loc) = {
-  let base = none
-  let named = appendixFrom.get()
-  if named != none {
-    // The counter read at a heading's own location already counts that heading, so taking one off
-    // makes the heading the first appendix rather than the last body section
-    let heads = query(selector(label(named)).before(loc, inclusive: true))
-    if heads.len() > 0 { base = counter(heading).at(heads.last().location()).at(0, default: 1) - 1 }
-  }
-  // A page writing the marker itself, which costs a second query only where the option found nothing
-  if base == none {
-    let markers = query(selector(<appendix>).before(loc))
-    if markers.len() > 0 { base = counter(heading).at(markers.last().location()).at(0, default: 0) }
-  }
+  let markers = query(selector(<appendix>).before(loc))
+  let base = if markers.len() > 0 { counter(heading).at(markers.last().location()).at(0, default: 0) }
   if base == none { return none }
   let nums = counter(heading).at(loc)
   let first = nums.at(0) - base

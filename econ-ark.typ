@@ -317,19 +317,17 @@
   set par.line(numbering: if linenumbers { n => text(font: sansFont, size: 7pt, fill: arkGrey, str(n)) } else { none })
 
   // Each option arrives as a string and is read once here, so the rule below and the check at the
-  // end of the document work from one value. appendix_from names one heading, hence the first.
+  // end of the document work from one value. template.typ reads appendix_from through the same
+  // arkLabelList where it puts the marker into the body, which this function never sees unwrapped.
   let wideLabels = arkLabelList(wide-figures)
   let twinnedSpec = arkTwinnedSpec(twinned-tables)
   let appendixLabels = arkLabelList(appendix-from)
-  let appendixLabel = appendixLabels.at(0, default: none)
 
   // Code blocks, table figures and where each figure ends up
   show: arkFloats.with(figure-placement, wideLabels)
   // Last, so it reaches a twinned table before the rules above wrap it, and so the twin it puts in
   // the parsed copy's place is styled and placed as every other table here is
   show: arkTwinnedTables.with(twinnedSpec)
-  // The marker the appendix lettering counts from, in front of the heading the option names
-  show: arkAppendixFrom.with(appendixLabel)
 
   set bibliography(title: [References], style: "chicago-author-date")
   show bibliography: (it) => {
@@ -375,6 +373,15 @@
     // One heading opens the appendices, so a second label there would reach the lettering unread
     if appendixLabels.len() > 1 {
       wrong.push("appendix_from names " + str(appendixLabels.len()) + " labels, and one heading opens the appendices")
+    }
+    // The marker goes in only beside a heading in the body's own flow. One nested in another
+    // element passes the label check above and would leave the appendices unlettered unannounced.
+    if (
+      appendixLabels.len() == 1
+        and query(<appendix>).len() == 0
+        and query(label(appendixLabels.at(0))).any(el => el.func() == heading)
+    ) {
+      wrong.push("appendix_from names " + appendixLabels.at(0) + ", a heading nested inside another element, where no marker can be put in front of it")
     }
     // A table hidden for a twin that never came is lost from the PDF, and the number it gave back
     // goes to whichever Typst table comes next, which collides with a reference to that table

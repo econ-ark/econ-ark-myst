@@ -29,3 +29,16 @@
 #let serifFont = ("Fira Sans", "New Computer Modern");
 #let mathFont = ("Fira Math", "New Computer Modern Math");
 #let monoFont = ("Fira Mono", "DejaVu Sans Mono");
+
+// The running text's own setting, which arkTypography installs and template.typ restores around the
+// back matter, wherever the <appendix> marker it stands at was written.
+// weight, style and fill are Typst's own defaults, named because such a reset has to undo them.
+#let arkBodyText = (
+  font: serifFont,
+  size: 11pt,
+  number-type: "lining",
+  weight: "regular",
+  style: "normal",
+  fill: black,
+);
+#let arkBodyPar = (justify: true, leading: 0.72em, spacing: 0.72em, first-line-indent: 1.2em);

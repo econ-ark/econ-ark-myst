@@ -1341,6 +1341,51 @@ check_left_of() { check_side_of "$1" "$2" "$3" "$4" left; }
 # The other side of it: a figure at column width starts where the text does, right of the rail
 check_right_of() { check_side_of "$1" "$2" "$3" "$4" right; }
 
+# A fixture built to test a page break has to keep landing on one. This reads how far down its page
+# a word sits, so an edit that moves the word clear of the foot fails here, where otherwise the
+# comparison it feeds would go on passing with the case it was built for no longer in it.
+check_low_on_page() {
+  local name=$1 pdf=$2 word=$3 page=$4 floor=$5 y
+  require_file "$name" "$pdf" "the page the word is read off" || return
+  y=$(pdftotext -bbox -f "$page" -l "$page" "$pdf" - 2>/dev/null |
+    sed -nE "s/.*yMin=\"([0-9.]+)\"[^>]*>$word<.*/\1/p" | head -1)
+  if [ -z "$y" ]; then
+    bad "$name: page $page of $(basename "$pdf") carries no $word"
+  elif awk -v y="$y" -v f="$floor" 'BEGIN { exit (y >= f) ? 0 : 1 }'; then
+    ok "$name: $word sits at y=$y on page $page, under the $floor the fixture needs"
+  else
+    bad "$name: $word sits at y=$y on page $page, above the $floor the fixture needs it under"
+  fi
+}
+
+# Two PDFs that have to render alike, page for page. An option that stands in for something a page
+# can write by hand is only as good as the page it produces, and the two came apart once: the back
+# matter shown at a marker inside a heading took the heading's styles and printed bold.
+check_same_render() {
+  local name=$1 one=$2 two=$3
+  require_file "$name" "$one" "the pair of renders" || return
+  require_file "$name" "$two" "the pair of renders" || return
+  if [ "$one" = "$two" ]; then
+    ok "$name: $(basename "$one") renders the same as itself"
+    return
+  fi
+  if [ "$(page_count "$one")" != "$(page_count "$two")" ]; then
+    bad "$name: $(basename "$one") has $(page_count "$one") pages against $(basename "$two")'s $(page_count "$two")"
+    return
+  fi
+  # The cheaper pixels of the two callers: a weight or an indent that changed shows at this size,
+  # and the self-test runs this four times over seeded copies
+  if ! render_pixel_diff same "$one" "$two" 110; then
+    bad "$name: the two renders are unchecked, $RENDER_RAW"
+    return
+  fi
+  if [ "$RENDER_PIXELS" -eq 0 ]; then
+    ok "$name: $(basename "$one") and $(basename "$two") render the same page for page"
+  else
+    bad "$name: $(basename "$one") and $(basename "$two") differ by $RENDER_PIXELS pixels"
+  fi
+}
+
 # The rail is placed from the foot of the page, so a rail too tall for its column grows up over the
 # logo. Build a paper with more reviewers than it can hold and read where their names land: in the
 # text column means the template moved them out, in the rail means they are sitting on the mark.
@@ -1659,7 +1704,7 @@ twinned_table_pages() {
 # appendices start at. Exported twice, since each is read off the difference the option makes, and
 # a third page names a label nothing carries, which the template refuses to build.
 label_option_pages() {
-  local name=$1 dir=$2 body
+  local name=$1 dir=$2 body appendix
   fixture_project "$dir" "Label options"
   body=$(
     printf '## A section\n\n'
@@ -1667,14 +1712,26 @@ label_option_pages() {
     # A table named by the same option, which also has to share the wider measure between its columns
     printf ':::{table} Widetablecaption starts at the same edge as the figure above.\n:label: tbl-wide\n\n'
     printf '| Case | A description of the case | Value |\n| ---- | ---- | ---- |\n| One | The first case | 1 |\n:::\n\n'
-    printf '## A second section\n\nText, with a reference to [](#app-proofs).\n\n'
-    printf '(app-proofs)=\n## Proof of the Proposition\n\nThe proof.\n'
+    # The citation is what makes MyST print a bibliography, which lands its References at the foot
+    # of page one: the one place a marker put inside the heading once broke the page differently
+    printf '## A second section\n\nText, with a reference to [](#app-proofs) and a citation [@Fixture2026].\n\n'
+    # All three parts template.typ loops over, each set at the marker, so a fixture short of one
+    # leaves that much of the setting unread. Long enough to wrap, since the bold heading-sized
+    # setting is read off where the lines break.
+    printf '+++ {"part": "declaration"}\n\nThe authors state their competing interests here, at a length that wraps onto a second line so the setting can be read off the page.\n\n'
+    printf '+++ {"part": "acknowledgments"}\n\nThanks to the reader, in a paragraph long enough to wrap onto a second line so that its setting can be read off the page as well.\n\n'
+    printf '+++ {"part": "data_availability"}\n\nThe data are available on request, in a sentence that runs on far enough to wrap onto a second line and be measured.\n\n'
+    printf '+++\n\n'
   )
+  appendix=$(printf '(app-proofs)=\n## Proof of the Proposition\n\nThe proof.\n')
+  printf '@article{Fixture2026,\n  author = {A Person},\n  title = {A Work},\n  journal = {A Journal},\n  year = {2026},\n}\n' >"$dir/refs.bib"
   {
     echo '---'
     echo 'title: A wide figure and an appendix, both named by label'
     echo 'authors:'
     echo '  - name: A Person'
+    echo 'bibliography:'
+    echo '  - refs.bib'
     echo 'exports:'
     echo '  - format: typst'
     echo "    template: $ROOT"
@@ -1687,7 +1744,29 @@ label_option_pages() {
     echo '---'
     echo
     echo "$body"
+    echo "$appendix"
   } >"$dir/labelled.md"
+  # The same page with the marker written into the body, which is what the option stands in for.
+  # Both are rendered and compared, so an option that letters the headings while setting the back
+  # matter differently fails here rather than in a consumer's PDF.
+  {
+    echo '---'
+    echo 'title: A wide figure and an appendix, both named by label'
+    echo 'authors:'
+    echo '  - name: A Person'
+    echo 'bibliography:'
+    echo '  - refs.bib'
+    echo 'exports:'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: written.pdf'
+    echo '    wide_figures: fig-wide, tbl-wide'
+    echo '---'
+    echo
+    echo "$body"
+    printf ':::{raw:typst}\n#metadata(none) <appendix>\n:::\n\n'
+    echo "$appendix"
+  } >"$dir/written.md"
   {
     echo '---'
     echo 'title: An option naming a label this page does not carry'
@@ -1704,15 +1783,41 @@ label_option_pages() {
     echo
     echo 'Text.'
   } >"$dir/unknown.md"
-  (cd "$dir" && myst build labelled.md unknown.md --typst) >/dev/null 2>&1
+  # A heading the label check finds, but inside a block, where the marker cannot be put beside it
+  {
+    echo '---'
+    echo 'title: An appendix heading nested inside a block'
+    echo 'authors:'
+    echo '  - name: A Person'
+    echo 'exports:'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: nested.pdf'
+    echo '    appendix_from: app-nested'
+    echo '---'
+    echo
+    echo '## A section'
+    echo
+    printf ':::{raw:typst}\n#block[= Nested <app-nested>]\n:::\n'
+  } >"$dir/nested.md"
+  (cd "$dir" && myst build labelled.md written.md unknown.md nested.md --typst) >"$dir/build.log" 2>&1
   require_file "$name" "$dir/labelled.pdf" "the wide figure and the lettered appendix" || return 1
   require_file "$name" "$dir/labelled-off.pdf" "the same page with neither option" || return 1
+  require_file "$name" "$dir/written.pdf" "the page writing the marker itself" || return 1
   # The figure stays narrow and the appendices go unlettered when a label names nothing, and both
   # failures are silent, so the template stops the build instead
   if [ -s "$dir/unknown.pdf" ]; then
     bad "$name: a page naming a label nothing carries still built, so the option fails silently"
   else
     ok "$name: a label nothing carries stops the build rather than passing as a figure left narrow"
+  fi
+  # Read for its message too, since a build that failed for any other reason leaves no PDF either
+  if [ -s "$dir/nested.pdf" ]; then
+    bad "$name: an appendix heading inside a block still built, with the appendices unlettered"
+  elif grep -qF 'app-nested, a heading nested inside another element' "$dir/build.log"; then
+    ok "$name: an appendix heading the marker cannot stand beside stops the build, saying why"
+  else
+    bad "$name: the nested appendix heading stopped the build, but not with the template's message"
   fi
 }
 
@@ -2343,6 +2448,47 @@ self_test() {
   expect 'FAIL.*is not in' 'a word the paper does not carry is caught' \
     check_link seeded "$PAPER" 'no such words here' https://example.org/
 
+  # The bug this check is for, at its smallest: same words, same length, one weight apart. The
+  # page-count and missing-file cases below are other branches and leave this one unproven.
+  local leak
+  leak=$(mktemp -d)
+  printf '#set text(font: "Fira Sans", weight: 400)\nBack matter set as running text.\n' >"$leak/body.typ"
+  printf '#set text(font: "Fira Sans", weight: 700)\nBack matter set as running text.\n' >"$leak/bold.typ"
+  if typst compile "$leak/body.typ" "$leak/body.pdf" >/dev/null 2>&1 &&
+    typst compile "$leak/bold.typ" "$leak/bold.pdf" >/dev/null 2>&1; then
+    expect 'FAIL.*differ by' 'a style leak of one page, same text and length, is caught' \
+      check_same_render seeded "$leak/body.pdf" "$leak/bold.pdf"
+    # Two paths holding the same render, which is the passing case that walks the pages. The
+    # identity case below returns before rasterising, so it leaves that walk unproven.
+    cp "$leak/body.pdf" "$leak/copy.pdf"
+    expect '^ok.*page for page' 'two paths holding one render pass the page walk' \
+      check_same_render seeded "$leak/body.pdf" "$leak/copy.pdf"
+  else
+    bad "self-test: could not compile the pair that seeds the style leak"
+  fi
+  # Two files pdfinfo cannot read: the page walk would otherwise run no iterations and count no
+  # differing pixels, reporting a match having compared nothing
+  printf 'not a pdf\n' >"$leak/junk-a.pdf"
+  cp "$leak/junk-a.pdf" "$leak/junk-b.pdf"
+  expect 'FAIL.*nothing was compared' 'two unreadable PDFs do not pass for a matching pair' \
+    check_same_render seeded "$leak/junk-a.pdf" "$leak/junk-b.pdf"
+  rm -rf "$leak"
+
+  expect '^ok' 'a PDF renders the same as itself' check_same_render seeded "$PAPER" "$PAPER"
+
+  # check_low_on_page, against the example paper, whose References sit 301pt down page four: under
+  # a floor above that, over one below it, and a word the page does not carry at all
+  expect '^ok.*under the 250' 'a word under its floor passes' \
+    check_low_on_page seeded "$PAPER" References 4 250
+  expect 'FAIL.*above the 400' 'a word that sits over its floor is caught' \
+    check_low_on_page seeded "$PAPER" References 4 400
+  expect 'FAIL.*carries no References' 'a word missing from the page is caught' \
+    check_low_on_page seeded "$PAPER" References 1 250
+  expect 'FAIL.*pages against' 'two PDFs of different lengths are caught' \
+    check_same_render seeded "$PAPER" "$TALL"
+  expect 'FAIL.*is missing or empty' 'a render that is not there is caught' \
+    check_same_render seeded "$PAPER" "$EXAMPLES/exports/does-not-exist.pdf"
+
   # A file read for a line it was given: there, gone, and a file that is not there at all
   local kept
   kept=$(mktemp)
@@ -2637,9 +2783,14 @@ else
     check_left_of labelled "$labelled/labelled.pdf" Value 350
     check_right_of labelled-off "$labelled/labelled-off.pdf" Value 350
     check_pdf labelled "$labelled/labelled.pdf" 'Appendix A Proof of the Proposition' \
-      'a reference to Appendix A.'
+      'a reference to Appendix A and a citation'
     check_pdf labelled-off "$labelled/labelled-off.pdf" '3 Proof of the Proposition' \
-      'a reference to Proof of the Proposition.'
+      'a reference to Proof of the Proposition and a citation'
+    # appendix_from stands in for a marker written into the body, so the two render alike. The
+    # option once set the back matter bold, and once pushed References off the foot of a page the
+    # written marker kept them on, which is where this fixture holds them, 645pt down page one.
+    check_low_on_page labelled "$labelled/written.pdf" References 1 630
+    check_same_render labelled "$labelled/labelled.pdf" "$labelled/written.pdf"
   fi
   rm -rf "$labelled"
   # The copies beside a .typ export, which a rebuild leaves as it found them. The README turns that

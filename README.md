@@ -335,7 +335,7 @@ exports:
     appendix_from: app-proofs
 ```
 
-The build stops when the label reaches no heading, since appendices left numbered as sections are a change nobody would see reported.
+The build stops when the label reaches no heading, since appendices left numbered as sections are a change nobody would see reported. It stops too when the heading is nested in another element, such as a `#block` in a `{raw:typst}` block, where the marker cannot go beside it.
 
 The other form writes the marker in the body, which is what `appendix_from` puts there:
 
