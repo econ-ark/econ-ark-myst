@@ -15,15 +15,15 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       # gen-banner.py declares its own dependencies inline, so uv is all the brand check needs
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10
 
       # Versions match the local builds that produced the tracked example PDF
       - name: Install mystmd and Typst
         run: |
-          npm install -g mystmd@1.10.1
+          npm install -g mystmd@1.11.0
           npm install
           curl -sL https://github.com/typst/typst/releases/download/v0.15.1/typst-x86_64-unknown-linux-musl.tar.xz \
             | sudo tar -xJ --strip-components=1 -C /usr/local/bin typst-x86_64-unknown-linux-musl/typst
@@ -59,7 +59,7 @@ jobs:
       # The tracked PDF has to reproduce here, so when it does not, keep what this runner built
       - name: Keep the PDF this runner built
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: paper-built-on-the-runner
           path: examples/exports/paper.pdf

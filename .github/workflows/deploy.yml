@@ -26,11 +26,11 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install mystmd
         run: |
-          npm install -g mystmd@1.10.1
+          npm install -g mystmd@1.11.0
           npm install
 
       # theme.css asks for faces that are not in the repository, so the deploy makes them
@@ -39,7 +39,7 @@ jobs:
           pip install --quiet fonttools brotli
           scripts/fonts.sh webfonts
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
       # Three sites from one stylesheet: the landing page at the root, the paper under each theme.
       # An asset href carries the sub-path it is served from, so each build sets its own BASE_URL.
@@ -66,9 +66,9 @@ jobs:
           (cd landing && BASE_URL=$REPO myst build --html)
           cp -r landing/_build/html/. pages/
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: pages
 
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

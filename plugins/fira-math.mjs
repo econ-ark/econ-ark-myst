@@ -4,7 +4,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+// js-yaml 5 has no default export, and its named export works in 4 as well
+import { load as loadYaml } from 'js-yaml';
 import temml from 'temml';
 
 // MyST leaves no trace of frontmatter macros on the node, so both levels are read from their files.
@@ -40,7 +41,7 @@ function projectMacros(file) {
   if (macroCache.has(config)) return macroCache.get(config);
   let macros = {};
   try {
-    macros = asMacros(yaml.load(fs.readFileSync(config, 'utf8'))?.project?.math);
+    macros = asMacros(loadYaml(fs.readFileSync(config, 'utf8'))?.project?.math);
   } catch (error) {
     file.message(`fira-math: no macros read from ${config} (${error.message})`, undefined, 'fira-math');
   }
@@ -66,7 +67,7 @@ function pageMacros(file) {
       macros = asMacros(JSON.parse(text)?.metadata?.math);
     } else {
       const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
-      macros = asMacros(yaml.load(frontmatter?.[1] ?? '')?.math);
+      macros = asMacros(loadYaml(frontmatter?.[1] ?? '')?.math);
     }
   } catch (error) {
     file.message(`fira-math: no macros read from ${source} (${error.message})`, undefined, 'fira-math');
