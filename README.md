@@ -530,6 +530,14 @@ exports:
     template: https://github.com/econ-ark/econ-ark-myst.git
 ```
 
+An export whose `output` ends in `.typ` writes the template's own files beside it, `econ-ark.typ`, `ark/` and `brand/`, and MyST writes them once. A later build regenerates the article's `.typ` from the template it fetched and leaves those siblings at the version that first wrote them; `myst clean --templates` empties the template cache and leaves them too. After the theme gains an option, the fresh article calls the old module and typst stops:
+
+```text
+error: unexpected argument: wide-figures
+```
+
+Delete the copies beside the export and build again. MyST builds a PDF export in a temporary directory that carries the fetched template with it, so that form never hits this.
+
 The site side does need copying. Every site option that gives a file path, `style`, `logo`, `logo_dark` and `favicon`, is resolved against the local directory, and a URL there fails with `ENOENT`. A site that wants this look copies the files it needs into its own repository:
 
 | Copy | To get |

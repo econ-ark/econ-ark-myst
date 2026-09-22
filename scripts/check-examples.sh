@@ -1405,6 +1405,49 @@ check_no_text() {
   fi
 }
 
+# A file that still carries a line it was given, which is how the copies beside a .typ export are
+# read below. A file that went missing fails here rather than reading as a line that survived.
+check_kept() {
+  local name=$1 file=$2 text=$3
+  if [ ! -s "$file" ]; then
+    bad "$name: $(basename "$file") is not there, so nothing shows whether '$text' survived"
+  elif grep -qF -- "$text" "$file"; then
+    ok "$name: $(basename "$file") still carries '$text'"
+  else
+    bad "$name: $(basename "$file") no longer carries '$text'"
+  fi
+}
+
+# An export whose output ends in .typ has the template's own files written beside it, once. The
+# README tells a consumer to delete them after a theme update, since a fresh article calling a copy
+# that old stops typst. Stamp the copy and build again: the stamp surviving is that behaviour.
+typ_export_siblings() {
+  local name=$1 dir=$2
+  printf 'version: 1\nproject:\n  title: Typst source export\n' >"$dir/myst.yml"
+  {
+    echo '---'
+    echo 'title: A page exported as Typst source'
+    echo 'authors:'
+    echo '  - name: A Person'
+    echo 'exports:'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: page.typ'
+    echo '---'
+    echo
+    echo '## A section'
+    echo
+    echo 'Text.'
+  } >"$dir/page.md"
+  (cd "$dir" && myst build page.md --typst) >/dev/null 2>&1
+  if [ ! -s "$dir/econ-ark.typ" ] || [ ! -s "$dir/page.typ" ]; then
+    bad "$name: a .typ export left no econ-ark.typ beside it, so what MyST does with it goes unread"
+    return 1
+  fi
+  printf '\n// stamped by the check suite\n' >>"$dir/econ-ark.typ"
+  (cd "$dir" && myst build page.md --typst) >/dev/null 2>&1
+}
+
 # A page of a project exported on its own, which is where MyST writes a link to another page as a
 # path and a reference to that page's table as a label no PDF holds. Built twice, since the
 # template answers a page link one way with site_url set and another without it.
@@ -2203,6 +2246,18 @@ self_test() {
   expect 'FAIL.*is not in' 'a word the paper does not carry is caught' \
     check_link seeded "$PAPER" 'no such words here' https://example.org/
 
+  # A file read for a line it was given: there, gone, and a file that is not there at all
+  local kept
+  kept=$(mktemp)
+  printf 'a line\nstamped by the check suite\n' >"$kept"
+  expect '^ok' 'a file still carrying its line passes' check_kept seeded "$kept" 'stamped by the check suite'
+  printf 'a line\n' >"$kept"
+  expect 'FAIL.*no longer carries' 'a file that lost the line is caught' \
+    check_kept seeded "$kept" 'stamped by the check suite'
+  rm -f "$kept"
+  expect 'FAIL.*is not there' 'a file that is not there proves no survival' \
+    check_kept seeded "$kept" 'stamped by the check suite'
+
   # The absence check, which a file carrying no text at all would otherwise pass on nothing
   expect '^ok' 'a word the paper does not carry reads as absent' \
     check_no_text seeded "$PAPER" 'no such words here'
@@ -2482,6 +2537,13 @@ else
       'a reference to Proof of the Proposition.'
   fi
   rm -rf "$labelled"
+  # The copies beside a .typ export, which a rebuild leaves as it found them. The README turns that
+  # into an instruction, so a MyST release that starts refreshing them has to fail here.
+  siblings=$(mktemp -d)
+  if typ_export_siblings siblings "$siblings"; then
+    check_kept siblings "$siblings/econ-ark.typ" 'stamped by the check suite'
+  fi
+  rm -rf "$siblings"
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   primarytheme=$(awk '/^  template:/ { gsub(/["'\'']/, "", $2); print $2; exit }' "$ROOT/myst.yml")
   primary="site ($primarytheme)"
