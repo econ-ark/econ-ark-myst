@@ -18,7 +18,7 @@ jobs:
           node-version: 24
 
       # gen-banner.py declares its own dependencies inline, so uv is all the brand check needs
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.2.0
 
       # Versions match the local builds that produced the tracked example PDF
       - name: Install mystmd and Typst
