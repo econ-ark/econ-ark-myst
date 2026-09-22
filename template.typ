@@ -171,6 +171,15 @@
   [# if options.site_url #]
   site-url: [-s(options.site_url)-],
   [# endif #]
+  [# if options.twinned_tables #]
+  twinned-tables: [-s(options.twinned_tables)-],
+  [# endif #]
+  [# if options.wide_figures #]
+  wide-figures: [-s(options.wide_figures)-],
+  [# endif #]
+  [# if options.appendix_from #]
+  appendix-from: [-s(options.appendix_from)-],
+  [# endif #]
   [# if doc.downloads #]
   downloads: (
   [# for d in doc.downloads #]

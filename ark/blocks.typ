@@ -65,13 +65,40 @@
     #figure(kind: kind, supplement: supplement, numbering: "1", outlined: false, statement)#if labelName != none { label(labelName) }]
 }
 
-// Appendix number of the heading at loc, such as "A" or "B.2", or none before the <appendix> marker.
-// Counted from the marker, so the author need not reset the heading counter; call inside context.
+// The heading the appendices start at, as the name of its label, which an export option gives in
+// place of an <appendix> marker written in the body.
+#let appendixFrom = state("ark-appendix-from", none)
+
+// Puts that marker in front of the heading carrying labelName, where template.typ prints the back
+// matter, and records the name for the lettering below: a marker a show rule emits does not read as
+// "before" the heading it precedes, so the lettering counts from the heading itself.
+#let arkAppendixFrom(labelName, doc) = if labelName == none { doc } else {
+  let target = label(labelName)
+  appendixFrom.update(labelName)
+  show heading: it => if it.at("label", default: none) == target {
+    [#metadata(none)#label("appendix")]
+    it
+  } else {
+    it
+  }
+  doc
+}
+
+// Appendix number of the heading at loc, such as "A" or "B.2", or none where the appendices have
+// not started. Counted from where they start, so the author need not reset the heading counter;
+// call inside context. A marker stands before the first appendix, where labelName is that appendix.
 #let appendixNumber(loc) = {
+  let base = none
   let markers = query(selector(<appendix>).before(loc))
-  if markers.len() == 0 { return none }
+  if markers.len() > 0 { base = counter(heading).at(markers.last().location()).at(0, default: 0) }
+  let named = appendixFrom.get()
+  if named != none {
+    let heads = query(selector(label(named)).before(loc, inclusive: true))
+    if heads.len() > 0 { base = counter(heading).at(heads.last().location()).at(0, default: 1) - 1 }
+  }
+  if base == none { return none }
   let nums = counter(heading).at(loc)
-  let first = nums.at(0) - counter(heading).at(markers.last().location()).at(0, default: 0)
+  let first = nums.at(0) - base
   if first < 1 { return none }
   (numbering("A", first), ..nums.slice(1).map(str)).join(".")
 }

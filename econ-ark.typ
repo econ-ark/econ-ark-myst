@@ -55,6 +55,12 @@
   // Where the MyST site is served, such as "https://econ-ark.org". A page exported on its own links
   // the project's other pages by path, and each path resolves against this address
   site-url: none,
+  // "all", or the labels of the tables whose Typst twin is the copy to print, described in ark/tables.typ
+  twinned-tables: none,
+  // Labels of the figures that span the margin rail as well as the text column
+  wide-figures: none,
+  // Label of the heading the appendices start at, in place of an <appendix> marker in the body
+  appendix-from: none,
   downloads: (),
   // The paper's content.
   body
@@ -311,7 +317,12 @@
   set par.line(numbering: if linenumbers { n => text(font: sansFont, size: 7pt, fill: arkGrey, str(n)) } else { none })
 
   // Code blocks, table figures and where each figure ends up
-  show: arkFloats.with(figure-placement)
+  show: arkFloats.with(figure-placement, arkLabelList(wide-figures))
+  // Last, so it reaches a twinned table before the rules above wrap it, and so the twin it puts in
+  // the parsed copy's place is styled and placed as every other table here is
+  show: arkTwinnedTables.with(arkTwinnedSpec(twinned-tables))
+  // The marker the appendix lettering counts from, in front of the heading the option names
+  show: arkAppendixFrom.with(appendix-from)
 
   set bibliography(title: [References], style: "chicago-author-date")
   show bibliography: (it) => {
@@ -326,4 +337,22 @@
 
   // Display the paper's contents.
   body
+
+  // A label the document does not carry passes silently through the options below: the table
+  // prints twice, the figure stays narrow, the appendices go unlettered. Stop the build instead.
+  context {
+    let absent = ()
+    for (option, labels) in (
+      ("twinned_tables", arkTwinnedSpec(twinned-tables)),
+      ("wide_figures", arkLabelList(wide-figures)),
+      ("appendix_from", arkLabelList(appendix-from)),
+    ) {
+      if type(labels) == array {
+        for name in labels {
+          if query(label(name)).len() == 0 { absent.push(option + " names " + name) }
+        }
+      }
+    }
+    assert(absent.len() == 0, message: absent.join("; ") + ", and this document carries no such label")
+  }
 }

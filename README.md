@@ -159,6 +159,9 @@ A link to this same PDF at its permanent address tells a reader holding an old c
 | `remark` | Name of the paper's REMARK on econ-ark.org, such as `LiqConstr`, linked in the materials block |
 | `binder_label` | Label over the `binder` link in the materials block, such as `Dashboard`. Defaults to "Run online" |
 | `site_url` | Where the MyST site is served, such as `https://econ-ark.org`. Sends the links a page carries to the project's other pages there, described under "Links to the rest of the project" below |
+| `twinned_tables` | Tables whose Typst twin is the copy to print, `all` or a list of labels, described under "Tables that arrive twice" below |
+| `wide_figures` | Labels of the figures that span the margin rail as well as the text column, described under "Wide figures" below |
+| `appendix_from` | Label of the heading the appendices start at, described under "Appendices" below |
 | `figure_placement` | Where figures and tables go, described under "Figure placement" below. `none`, the default, keeps each where it is written. `auto`, `top` or `bottom` floats them |
 
 ## Figure placement
@@ -187,7 +190,17 @@ Results.
 
 ## Wide figures
 
-A figure with several panels in a row can take the width of the margin rail as well as the text column. Call `widenNextFigure` in a raw Typst block just before a MyST figure or table:
+A figure with several panels in a row can take the width of the margin rail as well as the text column. List its label under `wide_figures` in the export block, separated by commas or spaces where a page has several:
+
+```yaml
+exports:
+  - format: typst
+    wide_figures: fig-panels, fig-mechanism
+```
+
+A label nothing in the document carries stops the build, since a figure left at column width is a change nobody would see reported.
+
+A widened table takes the other form, `widenNextFigure` in a raw Typst block just before it. That table reads the call as it is laid out, which is what shares the wider measure between its columns.
 
 ```text
 :::{raw:typst}
@@ -283,9 +296,46 @@ MyST does not know labels defined inside raw Typst, and `@tbl-wide` in the text 
 
 `fullwidth(float: false, ...)` keeps the figure in the text flow, directly after the sentence that introduces it, as LaTeX `[h]` does. It keeps the default placement described under Figure placement. Use it from page two on, because on page one the wide figure would run over the margin notes.
 
+### Tables that arrive twice
+
+A table a script writes can be a fragment carrying both a LaTeX float and a Typst twin. MyST parses the float, which is what the site renders and what a cross-reference resolves to, and exports it as `figure(kind: "table")` next to the twin's `figure(kind: table)`. Because both print, the table appears twice in the PDF.
+
+The export block's `twinned_tables` says which parsed copies have a twin. Set it to `all` when every table on the page comes from such a fragment:
+
+```yaml
+exports:
+  - format: typst
+    twinned_tables: all
+```
+
+Write the labels instead, separated by commas or spaces, when the page also carries a table MyST lays out. With `all` set, that table is hidden along with the rest, since `all` claims every parsed table has a twin:
+
+```yaml
+    twinned_tables: tbl-inventory, tbl-published-numbers
+```
+
+The parsed copy stays in the document, hidden, so a cross-reference to its label still resolves and still points at the page holding it. It gives its number back and the twin takes that number, which leaves one sequence numbering every table in the order MyST numbered them. The twin is given the kind MyST's own tables carry, so it also takes their styling: the caption above, cells at 9pt, and vertical rules dropped unless the twin draws them with an explicit stroke.
+
+Keep the label on the parsed copy, which the site renders and which `all` reads to tell a parsed copy from a twin.
+
 ## Appendices
 
-Open the appendices in the body with a marker, then write them as ordinary `#` sections:
+Label the heading the appendices open at and name that label in the export block:
+
+```text
+(app-proofs)=
+# Proofs
+```
+
+```yaml
+exports:
+  - format: typst
+    appendix_from: app-proofs
+```
+
+The build stops when the label reaches no heading, since appendices left numbered as sections are a change nobody would see reported.
+
+The other form writes the marker in the body, which is what `appendix_from` puts there:
 
 ```text
 :::{raw:typst}

@@ -5,7 +5,7 @@
 #import "layout.typ": *
 #import "figures.typ": *
 
-#let arkFloats(figure-placement, doc) = {
+#let arkFloats(figure-placement, wide-figures, doc) = {
   show raw.where(block: true): (it) => {
     set align(left)
     set par(justify: false)
@@ -36,7 +36,11 @@
   // a taller one breaks across pages. Theorem-like figures stay breakable, since a proof may span pages.
   show figure: it => if it.placement == none and it.kind in ("figure", "table", "code", image, table, raw) {
     context {
-      let wide = nextFigureWide.get() and figureDepth.get() == 0
+      // Either the state a raw block sets just before a figure, or the figure's own label, which
+      // is what an export option can name and what keeps the width with the figure it belongs to
+      let figureLabel = it.at("label", default: none)
+      let named = figureLabel != none and wide-figures.contains(str(figureLabel))
+      let wide = (nextFigureWide.get() or named) and figureDepth.get() == 0
       let columnWidth = textColumn() * (if wide { wideWidth } else { 100% })
       let height = measure(block(width: columnWidth, it)).height
       let fits = height <= textHeight() - 3em.to-absolute()

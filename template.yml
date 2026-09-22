@@ -106,6 +106,27 @@ options:
   - id: binder_label
     type: string
     description: Label over the binder link in the materials block, such as "Dashboard"; defaults to "Run online"
+  - id: wide_figures
+    type: string
+    description: >
+      Labels of the figures that span the margin rail as well as the text column, separated by
+      commas or spaces. A figure named here needs no widenNextFigure call before it. A table's
+      columns still share the wider measure only under widenNextFigure, which is what the table
+      reads as it is laid out.
+  - id: appendix_from
+    type: string
+    description: >
+      Label of the heading the appendices start at, written in the page as (label)= before the
+      heading. The back matter and the references print before it and every heading from there on
+      is lettered, which is what an <appendix> marker in a raw Typst block does.
+  - id: twinned_tables
+    type: string
+    description: >
+      Tables whose Typst twin is the copy to print, for a table written as a fragment that carries
+      both a LaTeX float MyST parses and a Typst twin. Write "all" when every parsed table has a
+      twin, or the labels of the ones that do, separated by commas or spaces. The parsed copy is
+      hidden rather than dropped, so a cross-reference to it still resolves, and the twin takes its
+      number so one sequence numbers every table.
   - id: site_url
     type: string
     description: >

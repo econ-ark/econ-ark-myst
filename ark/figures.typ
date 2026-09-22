@@ -3,6 +3,14 @@
 #import "brand.typ": *
 #import "layout.typ": *
 
+// Labels as a template option can carry them, since MyST options take a string and never a list:
+// separated by commas or spaces, and written with or without the # a cross-reference uses.
+#let arkLabelList(value) = if value == none {
+  ()
+} else {
+  value.split(regex("[,\\s]+")).map(part => part.trim("#")).filter(part => part != "")
+}
+
 // The sans at Econ-ARK blue that a figure number, a theorem head and a subfigure's (a) all take.
 // One definition, so a change of weight or colour reaches the three of them together.
 #let labelText(body) = text(font: sansFont, weight: 500, fill: arkBlue, body)
