@@ -32,11 +32,8 @@
   arkLabelList(value)
 }
 
-// The parsed copy stays in the document, hidden, so its label still resolves and a reference to it
-// still points at the page holding it. It gives its number back and the twin beside it takes that
-// number, which leaves one counter numbering every table in the order MyST numbered them.
-// One step per parsed copy hidden and one per twin that took its place, counted so the template
-// can ask at the end whether every table it hid was replaced by the twin meant to stand for it.
+// One step per parsed copy hidden and one per twin that took its place, so the template can ask at
+// the end whether every table it hid was replaced by the twin meant to stand for it.
 #let arkTwinsHidden = counter("ark-twins-hidden")
 #let arkTwinsTaken = counter("ark-twins-taken")
 
@@ -81,28 +78,34 @@
   show figure: it => {
     let tableLabel = it.at("label", default: none)
     if it.kind == table {
-      context if expectingTwin.get() != arkCaptionKey(it.caption) {
-        // The twin the fragment writes comes next or never, so an expectation this table does not
-        // answer is spent here rather than left standing for a table further down the page
-        expectingTwin.update(none)
-        it
-      } else {
-        // The twin, given the kind MyST's own tables carry. The label stays with the parsed copy,
-        // which is how the branch below tells a twin from a copy when the rule takes its output back.
-        expectingTwin.update(none)
-        arkTwinsTaken.step()
-        figure(
-          it.body,
-          caption: it.caption,
-          kind: "table",
-          supplement: it.supplement,
-          alt: it.alt,
-          numbering: it.numbering,
-          placement: it.placement,
-          scope: it.scope,
-          gap: it.gap,
-          outlined: it.outlined,
-        )
+      // Most tables have no twin waiting, and that settles the comparison on its own: a caption
+      // key is a string, so it never equals none. Asking first keeps arkCaptionKey's walk off
+      // every plain table in the document.
+      context {
+        let expecting = expectingTwin.get()
+        if expecting == none or expecting != arkCaptionKey(it.caption) {
+          // The twin the fragment writes comes next or never, so an expectation this table does
+          // not answer is spent here, and cannot reach a table further down the page
+          expectingTwin.update(none)
+          it
+        } else {
+          // The twin, given the kind MyST's own tables carry. The label stays with the parsed
+          // copy, which is how the branch below tells the two apart on the way back through.
+          expectingTwin.update(none)
+          arkTwinsTaken.step()
+          figure(
+            it.body,
+            caption: it.caption,
+            kind: "table",
+            supplement: it.supplement,
+            alt: it.alt,
+            numbering: it.numbering,
+            placement: it.placement,
+            scope: it.scope,
+            gap: it.gap,
+            outlined: it.outlined,
+          )
+        }
       }
     } else if it.kind == "table" and tableLabel != none and (twinned == auto or twinned.contains(str(tableLabel))) {
       expectingTwin.update(arkCaptionKey(it.caption))

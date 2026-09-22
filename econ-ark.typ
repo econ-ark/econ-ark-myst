@@ -354,15 +354,15 @@
       ("appendix_from", appendixLabels, "heading"),
     ) {
       if type(labels) != array { continue }
+      let fits(el) = if wanted == "heading" {
+        el.func() == heading
+      } else if wanted == "table" {
+        el.func() == figure and el.kind == "table"
+      } else {
+        el.func() == figure
+      }
       for name in labels {
         let found = query(label(name))
-        let fits(el) = if wanted == "heading" {
-          el.func() == heading
-        } else if wanted == "table" {
-          el.func() == figure and el.kind == "table"
-        } else {
-          el.func() == figure
-        }
         if found.len() == 0 {
           wrong.push(option + " names " + name + ", which this document carries no label for")
         } else if not found.any(fits) {
