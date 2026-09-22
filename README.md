@@ -126,7 +126,7 @@ These are all the fields the template reads. It ignores the fields that serve a 
 
 The "Cite as" block appears once the paper has a `doi`, `arxiv` or `zenodo` link, since a draft without a persistent identifier changes under its readers. It gives a Chicago author-date entry, the style of the reference list, followed by the DOI as a URL, the arXiv identifier and a link to the Zenodo archive. The entry lists up to three authors and shortens more to the first author and "et al." MyST reads a suffix such as "Jr." as part of the family name. To cite such a name correctly, give the author's `name` as an object with `given`, `family` and `suffix`.
 
-The materials block lists what exists for the paper beyond the PDF, in four columns under rules in the four colours of the Econ-ARK logo. All four rules print however many columns a paper fills. Four is the limit, one slot per logo colour, and a paper that somehow reaches five fails its build, and the message gives the count. A paper with no materials keeps the rules without the heading, as the line between its front matter and its text. The columns keep this order:
+Under the abstract, a materials block lists what exists for the paper beyond the PDF, in four columns under rules in the four colours of the Econ-ARK logo. All four rules print however many columns a paper fills. Four is the limit, one slot per logo colour, and a paper that somehow reaches five fails its build, and the message gives the count. A paper with no materials keeps the rules without the heading, as the line between its front matter and its text. Columns keep this order:
 
 | Column | Source |
 |--------|--------|
@@ -222,7 +222,7 @@ The figure keeps its MyST label, so `@fig-panels` refers to it as usual, and its
 | Text column | 361.8 | 5.03 |
 | Wide, over the margin rail | 481.2 | 6.68 |
 
-Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib for a wide figure, to print its fonts at their set size. A wide figure stays where it is written unless `figure_placement` or `placeNextFigure` floats it. The running head, footer and page numbers keep the text column's width. On page one the rail holds the logo and notes, so widen a figure only from page two on. A wide figure that floats from page one is placed at the foot of the page at column width.
+Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib for a wide figure, to print its fonts at their set size. A wide figure stays where it is written unless `figure_placement` or `placeNextFigure` floats it. Running head, footer and page numbers keep the text column's width. On page one the rail holds the logo and notes, so widen a figure only from page two on. A wide figure that floats from page one is placed at the foot of the page at column width.
 
 ## Parts
 
@@ -243,7 +243,7 @@ A part the template does not list stays in the text of the PDF as an unlabeled p
 
 The last part in a file needs a bare `+++` closing it. A part written at the end with nothing following costs the paper every footnote in the body: the marks and the notes both vanish from the PDF, the text around them closes up as though they were never written, and the only sign is one line, `Unknown footnote identifier`, in a build that still exits 0. `examples/paper.md` ends with that closing `+++` for this reason, and `check_myst_errors` in the check script fails the run on any such line.
 
-The back matter, these three sections and then the references, goes before the `<appendix>` marker, or at the end of the paper when there is no marker. MyST removes a part from the text of a PDF wherever it is written. The `parts:` key of the project frontmatter does not reach a PDF export.
+The back matter, these three sections and then the references, goes before the `<appendix>` marker, or at the end of the paper when there is no marker. MyST removes a part from the text of a PDF wherever it is written, and reads `parts:` in the project frontmatter for a site alone, never for a PDF export.
 
 ## Where the values come from
 
@@ -440,7 +440,7 @@ project:
       title: BibTeX
 ```
 
-The paper's own `downloads` still feed the PDF's materials block, where every entry has to be a web address. The two lists coexist. The paper carries absolute URLs for print. The project carries files for the site.
+The paper's own `downloads` still feed the PDF's materials block, where every entry has to be a web address. Both lists coexist, absolute URLs in the paper for print and files in the project for the site.
 
 ### Equations on the site
 
@@ -557,14 +557,14 @@ for f in logo.png logo-dark.png favicon.png banner.svg ark.mplstyle; do
 done
 ```
 
-`banner.svg` is a default banner for a paper that wants one: the brand blue behind four consumption functions that rise towards their asymptotes, in the colours and the order of the logo curves, each carrying the kink the logo draws. article-theme lays its title card over the middle of a banner. The curves run out below the card and off the right edge, where the card leaves the field open. Set it for every page under `project:`, or for one page in its own frontmatter:
+`banner.svg` is a default banner for a paper that wants one: the brand blue behind four consumption functions that rise towards their asymptotes, in the colours and the order of the logo curves, each carrying the kink the logo draws. article-theme lays its title card over the middle of a banner. Below it the curves run out, off the right edge where the field is open. Set it for every page under `project:`, or for one page in its own frontmatter:
 
 ```yaml
 project:
   banner: banner.svg
 ```
 
-book-theme shows `logo.png` in the site's navigation, where article-theme leaves that place empty beside a paper. The stylesheet carries its own copy of the mark and sets it over the title. The wordmark is black. At night both marks rest on a white plate.
+book-theme shows `logo.png` in the site's navigation, where article-theme leaves that place empty beside a paper. `theme.css` carries its own copy of the mark and sets it over the title, in a black wordmark. At night both marks rest on a white plate.
 
 The stylesheet serves the fonts itself. `fonts/` holds Fira Sans and Fira Mono subset to Latin as woff2, about 125KB for the seven faces, and `theme.css` declares an `@font-face` for each. A site copies them over by naming the directory under the project's `static_files`, which is what this repository's own `myst.yml` does:
 
