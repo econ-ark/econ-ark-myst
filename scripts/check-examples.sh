@@ -321,6 +321,29 @@ check_documented_config() {
   fi
 }
 
+# An option reaches a consumer through template.yml, which MyST validates the export block against,
+# and through the README, which is where the consumer reads what it does. An option in one and not
+# the other is either a setting nobody is told about or a row describing a setting MyST refuses.
+check_documented_options() {
+  local name=$1 readme=$2 config=$3 id listed documented missing=0
+  listed=$(awk '/^options:/ { on = 1; next } on && /^[a-z]/ { exit } on && /^  - id: / { print $3 }' "$config")
+  documented=$(awk '/^## Options$/ { on = 1; next } on && /^## / { exit } on' "$readme" |
+    sed -nE 's/^\| `([a-z_]+)`.*/\1/p')
+  if [ -z "$listed" ] || [ -z "$documented" ]; then
+    bad "$name: ${config##*/} lists $(grep -c . <<<"$listed") options and the README's table $(grep -c . <<<"$documented") rows, so this check proved nothing"
+    return
+  fi
+  for id in $listed; do
+    grep -qxF "$id" <<<"$documented" || { bad "$name: ${config##*/} offers '$id', which the README's option table does not"; missing=1; }
+  done
+  for id in $documented; do
+    grep -qxF "$id" <<<"$listed" || { bad "$name: the README's option table shows '$id', which ${config##*/} does not offer"; missing=1; }
+  done
+  if [ "$missing" -eq 0 ]; then
+    ok "$name: every template option has a README row and every row an option ($(grep -c . <<<"$listed") options)"
+  fi
+}
+
 # `grep -q` leaves on its first match, so a producer still writing takes SIGPIPE, and under the
 # pipefail this script sets that fails the whole pipeline: a condition reads as a class nothing
 # styles or a face the PDF never embedded. No shellcheck release reports it, 0.11.0 included.
@@ -1326,6 +1349,87 @@ check_rail_overflow() {
   rm -rf "$scratch"
 }
 
+# Where a word leads, or none when it prints as plain text. pdftohtml gives a link annotation back
+# as an anchor around the words it covers, and the words are on the page whether or not one is a
+# link, so a PDF that never built fails here rather than reading as text that carries no link.
+check_link() {
+  local name=$1 pdf=$2 word=$3 want=$4 got
+  if ! grep -qF -- "$word" < <(pdftotext "$pdf" - 2>/dev/null); then
+    bad "$name: '$word' is not in $(basename "$pdf"), so what it links to cannot be read"
+    return
+  fi
+  # perl picks the anchor out rather than a grep down the pipe, which would leave on its first
+  # match and take pdftohtml down with it under this script's pipefail
+  got=$(pdftohtml -i -s -noframes -stdout "$pdf" 2>/dev/null |
+    WORD="$word" perl -0777 -ne 'while (/<a href="([^"]*)"[^>]*>(.*?)<\/a>/gs) {
+      my ($href, $text) = ($1, $2);
+      $text =~ s/<[^>]*>//g;
+      $text =~ s/&#160;/ /g;
+      next unless index($text, $ENV{WORD}) >= 0;
+      print $href;
+      last;
+    }')
+  if [ "${got:-none}" = "$want" ] && [ "$want" = none ]; then
+    ok "$name: '$word' prints as text, under no link"
+  elif [ "${got:-none}" = "$want" ]; then
+    ok "$name: '$word' links to $want"
+  else
+    bad "$name: '$word' links to ${got:-none}, not $want"
+  fi
+}
+
+# A page of a project exported on its own, which is where MyST writes a link to another page as a
+# path and a reference to that page's table as a label no PDF holds. Built twice, since the
+# template answers a page link one way with site_url set and another without it.
+site_link_pages() {
+  local name=$1 dir=$2
+  printf 'version: 1\nproject:\n  title: Site links\n' >"$dir/myst.yml"
+  {
+    echo '---'
+    echo 'title: The exported page'
+    echo 'authors:'
+    echo '  - name: A Person'
+    echo 'exports:'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: page.pdf'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: page-site.pdf'
+    # The trailing slash is the case the template has to drop: the path MyST writes carries its own
+    echo '    site_url: https://example.org/'
+    echo '---'
+    echo
+    echo '# Body'
+    echo
+    echo 'A link to the [supplement](supplement.md), which no export reaches.'
+    echo
+    echo 'A reference to its table: [](#tbl-summary).'
+  } >"$dir/page.md"
+  {
+    echo '---'
+    echo 'title: The supplement'
+    echo '---'
+    echo
+    echo '# Tables'
+    echo
+    echo ':::{table} A summary'
+    echo ':label: tbl-summary'
+    echo
+    echo '| Case | Value |'
+    echo '| ---- | ----- |'
+    echo '| One  | 1     |'
+    echo ':::'
+  } >"$dir/supplement.md"
+  (cd "$dir" && myst build page.md --typst) >/dev/null 2>&1
+  # Before the template answered them, the page link printed as a dead path and the label stopped
+  # the Typst build, so an absent PDF is the failure this pair is built to catch
+  if [ ! -s "$dir/page.pdf" ] || [ ! -s "$dir/page-site.pdf" ]; then
+    bad "$name: the two-page project did not build, so its links to the other page went unread"
+    return 1
+  fi
+}
+
 # One case per line: run the check, require its output to match, and let the label say what that
 # proves. A miss now prints what the check said instead, which the four-line form it replaces
 # threw away. Cases needing several patterns at once stay written out below.
@@ -1877,6 +1981,19 @@ self_test() {
   printf 'site:\n  template: book-theme\n' >"$conf"
   expect 'FAIL.*README shows' 'a README documenting a key the config lacks is caught' \
     check_documented_config seeded "$ROOT/README.md" "$conf"
+
+  # The option table and template.yml, each in turn holding what the other does not, then a
+  # template.yml offering nothing, which would let both directions pass over an empty list
+  printf 'options:\n  - id: kind\n  - id: told_to_nobody\n' >"$conf"
+  expect 'FAIL.*told_to_nobody' 'an option with no row in the README is caught' \
+    check_documented_options seeded "$ROOT/README.md" "$conf"
+  expect 'FAIL.*README.*shows .linenumbers' 'a row for an option the template dropped is caught' \
+    check_documented_options seeded "$ROOT/README.md" "$conf"
+  printf 'options:\nparts:\n  - id: abstract\n' >"$conf"
+  expect 'FAIL.*proved nothing' 'a template offering no option at all reports that' \
+    check_documented_options seeded "$ROOT/README.md" "$conf"
+  expect '^ok' 'the template options and the README table agree' \
+    check_documented_options seeded "$ROOT/README.md" "$ROOT/template.yml"
   rm -f "$conf"
 
   # A machine that never had Fira Math installed, then a font directory holding one release twice,
@@ -1917,6 +2034,16 @@ self_test() {
   # A word in the table carries no rule beside it, and a word in the body carries the body's ink
   expect 'FAIL.*off palette' 'a missing rule is caught' check_rule seeded "$PAPER" 'Discount' "$ARK_BLUE"
   expect 'FAIL.*unbranded' 'an unbranded word is caught' check_ink seeded "$PAPER" 'Discount' "$ARK_BLUE"
+
+  # The paper carries an arXiv identifier under a link and a discount factor under none, which is
+  # every way check_link can answer: the address read back, no address, and the word absent
+  expect '^ok' 'a link the paper carries is read back' \
+    check_link seeded "$PAPER" 'arXiv:2609.00000' https://arxiv.org/abs/2609.00000
+  expect '^ok' 'a word under no link reads as none' check_link seeded "$PAPER" 'Discount' none
+  expect 'FAIL.*links to https://arxiv' 'a word that does carry a link is caught' \
+    check_link seeded "$PAPER" 'arXiv:2609.00000' none
+  expect 'FAIL.*is not in' 'a word the paper does not carry is caught' \
+    check_link seeded "$PAPER" 'no such words here' https://example.org/
 
   # check_site is a composite, so its empty-directory case has to report every assertion in it.
   # One missing line here means one assertion that passes on a site serving nothing.
@@ -2072,7 +2199,7 @@ self_test() {
 # python3 and perl are as load bearing as the PDF tools: a missing interpreter would leave pdf_runs
 # and css_rules emitting nothing, which reads downstream as an artifact carrying nothing. The
 # searches are grep's, since a runner carrying every tool above still had no rg.
-for tool in myst pdftotext pdfinfo pdffonts pdftoppm convert python3 perl; do
+for tool in myst pdftotext pdfinfo pdffonts pdftoppm pdftohtml convert python3 perl; do
   command -v "$tool" >/dev/null || { echo "missing required tool: $tool"; exit 2; }
 done
 
@@ -2133,6 +2260,7 @@ else
   check_template_files manifest "$ROOT"
   check_temml_pin pins "$ROOT/scripts/fonts.sh" "$ROOT/package.json"
   check_documented_config docs "$ROOT/README.md" "$ROOT/myst.yml"
+  check_documented_options docs "$ROOT/README.md" "$ROOT/template.yml"
   check_no_aliases docs "$ROOT/myst.yml" "$ROOT/landing/myst.yml" "$ROOT"/examples/*.md
   check_no_early_exit_pipes suite "$ROOT/scripts/check-examples.sh"
   check_italic_kinds docs "$ROOT/ark/blocks.typ"
@@ -2145,6 +2273,17 @@ else
   check_proof_style paper "$PAPER" Concavity italic
   check_proof_style paper "$PAPER" 'Target wealth' upright
   check_rail_overflow rail
+  # The links a page carries to the rest of its project: to another page, which goes to the site
+  # when site_url names one and prints as text when it does not, and to a label on that page,
+  # which prints as text either way because MyST never says which page holds it
+  sitelinks=$(mktemp -d)
+  if site_link_pages site-links "$sitelinks"; then
+    check_link site-links "$sitelinks/page.pdf" supplement none
+    check_link site-links "$sitelinks/page.pdf" 'Table 1' none
+    check_link site-links "$sitelinks/page-site.pdf" supplement https://example.org/supplement
+    check_link site-links "$sitelinks/page-site.pdf" 'Table 1' none
+  fi
+  rm -rf "$sitelinks"
   (cd "$ROOT" && myst build --html) >/dev/null 2>&1
   primarytheme=$(awk '/^  template:/ { gsub(/["'\'']/, "", $2); print $2; exit }' "$ROOT/myst.yml")
   primary="site ($primarytheme)"

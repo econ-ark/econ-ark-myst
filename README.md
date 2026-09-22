@@ -158,6 +158,7 @@ A link to this same PDF at its permanent address tells a reader holding an old c
 | `linenumbers` | Number the lines of the main text, for review drafts |
 | `remark` | Name of the paper's REMARK on econ-ark.org, such as `LiqConstr`, linked in the materials block |
 | `binder_label` | Label over the `binder` link in the materials block, such as `Dashboard`. Defaults to "Run online" |
+| `site_url` | Where the MyST site is served, such as `https://econ-ark.org`. Sends the links a page carries to the project's other pages there, described under "Links to the rest of the project" below |
 | `figure_placement` | Where figures and tables go, described under "Figure placement" below. `none`, the default, keeps each where it is written. `auto`, `top` or `bottom` floats them |
 
 ## Figure placement
@@ -302,6 +303,28 @@ To keep an appendix in its own file, pull it in after the marker with the `inclu
 `@app-proofs` prints "Appendix A" in the PDF and the section title on the site. MyST writes a cross-reference as a link carrying the target's title rather than as a Typst reference. The template letters that link in a `show link` rule. Write the sentence to read with either form, the way "@app-proofs works through the algebra" does. A `{raw:typst}` reference also letters the PDF, but the site drops the whole block and renders a sentence with nothing in front of it. Equations, figures and tables keep one numbering sequence through the appendices, because MyST writes their reference numbers into the text before Typst lays out the page.
 
 The template defines no `appendix` part, so write appendices in the body.
+
+## Links to the rest of the project
+
+Exporting one page of a project leaves the project's other pages outside the PDF, and MyST goes on writing the links that reach them. A link to another page becomes a path, `#link("/reproduction")`. It resolves on the site and nowhere else. A reference to a label on one of those pages fares worse. The label is in no PDF, and Typst stops the build over it with `error: label <tbl-summary> does not exist in the document`.
+
+The template prints both as the text MyST wrote, so the sentence reads and the build finishes. With `site_url` in the export block, a link to another page goes to that page on the site instead:
+
+```yaml
+exports:
+  - format: typst
+    site_url: https://econ-ark.org
+```
+
+A trailing slash there is dropped, since the path MyST writes carries its own. A reference to a label keeps printing as its text either way: MyST writes the label and the number it resolved, never which page holds the label, so the template has no address to send it to. A page that knows where its own supplement is served can send those references there itself, in a raw Typst block whose rule runs before the template's:
+
+```text
+:::{raw:typst}
+#show link: it => context if type(it.dest) == label and query(it.dest).len() == 0 {
+  link("https://econ-ark.org/supplement#" + str(it.dest), it.body)
+} else { it }
+:::
+```
 
 ## Several articles in one PDF
 

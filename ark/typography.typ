@@ -5,7 +5,7 @@
 #import "blocks.typ": appendixNumber
 
 // Rules for text in footnotes go here, before the title block: a footnote picks up only rules set before it
-#let arkTypography(heading-numbering, doc) = {
+#let arkTypography(heading-numbering, site-url, doc) = {
   // Typst's stock syntax colours are off the palette, and the tokens are unreachable from a show
   // rule, so the three roles theme.css gives a listing are set from a theme file instead
   set raw(theme: "../brand/code.tmTheme")
@@ -31,16 +31,32 @@
   // MyST writes a cross-reference as a link carrying the target's title, never as a ref, so the
   // appendix lettering has to happen here as well as in the ref rule below.
   show link: it => if type(it.dest) == str {
-    text(fill: arkBlue, it)
+    if not it.dest.starts-with("/") {
+      text(fill: arkBlue, it)
+    } else if site-url == none {
+      // A page exported out of a multi-page project links the project's other pages by path, which
+      // no PDF can follow, so the path prints as the text MyST wrote around it
+      it.body
+    } else {
+      // The rewritten link is a link too, which this same rule takes again; its destination is a
+      // web address by then, so the branch above turns it blue
+      link(site-url.trim("/", at: end) + it.dest, it.body)
+    }
   } else {
     context {
       let targets = query(it.dest)
-      let el = if targets.len() > 0 { targets.first() } else { none }
-      let appendix = if el != none and el.func() == heading and el.numbering != none { appendixNumber(el.location()) }
-      // The replacement is a link too, which this same rule matches; comparing against the body it
-      // would build is what stops the second pass from building it again
-      let lettered = [Appendix #appendix]
-      if appendix == none or it.body == lettered { it } else { link(it.dest, lettered) }
+      if targets.len() == 0 {
+        // A reference to a label on a page the export left behind. The label is in no PDF and a
+        // link to it stops the build; MyST numbered the text already, so the text prints alone
+        it.body
+      } else {
+        let el = targets.first()
+        let appendix = if el.func() == heading and el.numbering != none { appendixNumber(el.location()) }
+        // The replacement is a link too, which this same rule matches; comparing against the body it
+        // would build is what stops the second pass from building it again
+        let lettered = [Appendix #appendix]
+        if appendix == none or it.body == lettered { it } else { link(it.dest, lettered) }
+      }
     }
   }
   show cite: set text(fill: arkBlue)

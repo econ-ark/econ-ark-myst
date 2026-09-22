@@ -52,6 +52,9 @@
   binder-label: "Run online",
   // "auto", "top" or "bottom" floats figures that fit a page; "none" keeps each figure where it is written
   figure-placement: "none",
+  // Where the MyST site is served, such as "https://econ-ark.org". A page exported on its own links
+  // the project's other pages by path, and each path resolves against this address
+  site-url: none,
   downloads: (),
   // The paper's content.
   body
@@ -88,7 +91,7 @@
 
   // The running text, set before the title block because a footnote picks up only rules set
   // before it, and the title block carries the author notes
-  show: arkTypography.with(heading-numbering)
+  show: arkTypography.with(heading-numbering, site-url)
 
   // Margin rail, top: the logo links to econ-ark.org
   place(

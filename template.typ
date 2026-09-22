@@ -168,6 +168,9 @@
   [# if options.remark #]
   remark: [-s(options.remark)-],
   [# endif #]
+  [# if options.site_url #]
+  site-url: [-s(options.site_url)-],
+  [# endif #]
   [# if doc.downloads #]
   downloads: (
   [# for d in doc.downloads #]

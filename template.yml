@@ -106,6 +106,13 @@ options:
   - id: binder_label
     type: string
     description: Label over the binder link in the materials block, such as "Dashboard"; defaults to "Run online"
+  - id: site_url
+    type: string
+    description: >
+      Where the MyST site is served, such as "https://econ-ark.org". A page exported on its own
+      links the project's other pages by path, which no PDF can follow: set this and each such link
+      goes to the site, leave it unset and each prints as its text. A reference to a label on
+      another page prints as its text either way, since MyST does not say which page holds it.
 parts:
   - id: abstract
     description: >
