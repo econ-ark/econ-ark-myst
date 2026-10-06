@@ -941,11 +941,11 @@ css_rules() {
     }' "$1"
 }
 
-# A class is styled only when its own block declares something and its name ends where the selector
-# does: a renamed `.ark-hero-image`, an empty `.ark-section { }` and a name left in a comment each
-# passed once. Fed rather than piped: `grep -q` leaves early, and pipefail reads SIGPIPE as absent.
+# A class is styled only when its own block declares something (the third argument, or anything)
+# and its name ends where the selector does: `.ark-hero-image`, an empty `.ark-section { }` and a
+# name in a comment each passed once. Fed, never piped: pipefail reads grep -q's SIGPIPE as absent.
 css_declares() {
-  grep -qP "^[^\t]*\.\Q$2\E(?![\w-])[^\t]*\t[^\t]*[a-z-]\s*:\s*[^;\s]" < <(css_rules "$1")
+  grep -qP "^[^\t]*\.\Q$2\E(?![\w-])[^\t]*\t[^\t]*${3:-[a-z-]\s*:\s*[^;\s]}" < <(css_rules "$1")
 }
 
 # The page carries a JSON copy of its own config, which repeats every class name, so a class the
@@ -1323,7 +1323,7 @@ check_mathml() {
 # reach the page in the class part-wrapper writes, and the served sheet has to hide it, or a paper
 # written for both shows raw LaTeX as body text.
 check_elsevier_parts() {
-  local name=$1 dir=$2 page="$2/site-only/index.html" cls rules
+  local name=$1 dir=$2 page="$2/site-only/index.html" cls
   require_file "$name" "$page" "the Elsevier parts" || return
   for cls in graphical-abstract biography; do
     if page_uses_class "$page" "ark-part-$cls"; then
@@ -1331,10 +1331,7 @@ check_elsevier_parts() {
     else
       bad "$name: no ark-part-$cls on the site-only page, so theme.css cannot reach that part"
     fi
-  done
-  rules=$(css_rules "$dir/myst-theme.css" 2>/dev/null)
-  for cls in graphical-abstract biography; do
-    if grep -qP "^[^\t]*\.ark-part-\Q$cls\E(?![\w-])[^\t]*\t[^\t]*display: *none" <<<"$rules"; then
+    if css_declares "$dir/myst-theme.css" "ark-part-$cls" 'display:\s*none'; then
       ok "$name: the served sheet hides the $cls part"
     else
       bad "$name: the served sheet does not hide the $cls part, so its raw LaTeX shows as text"
@@ -1520,10 +1517,10 @@ check_right_of() { check_side_of "$1" "$2" "$3" "$4" right; }
 # Typst hyphenated with a soft hyphen, so such a line ends in a token holding a hyphen and a soft
 # hyphen. At least one ordinary break has to be there too, or hyphenation was simply switched off.
 check_compound_breaks() {
-  local name=$1 pdf=$2 text soft inside
+  local name=$1 pdf=$2 text soft inside shy=$'\302\255'
   text=$(pdftotext -layout "$pdf" - 2>/dev/null)
-  soft=$(grep -c "$(printf '\302\255')\$" <<<"$text")
-  inside=$(grep -P "\S*-\S*$(printf '\302\255')\$" <<<"$text" | tr -s ' ' | sed 's/^ //' | head -3)
+  soft=$(grep -c "$shy\$" <<<"$text")
+  inside=$(grep -P "\S*-\S*$shy\$" <<<"$text" | tr -s ' ' | sed 's/^ //' | head -3)
   if [ -z "$text" ]; then
     bad "$name: no text came out of $(basename "$pdf"), so its line breaks went unread"
   elif [ -n "$inside" ]; then
@@ -1535,41 +1532,62 @@ check_compound_breaks() {
   fi
 }
 
+# Each name template.typ binds ahead of its imports replaces a TeX command mystmd's converter
+# writes through by name. The generated page has to still write it outside the template's own lines,
+# or a release now maps that command and its binding is dead.
+check_converter_gaps() {
+  local name=$1 template=$2 typ=$3 body bindings binding
+  bindings=$(sed -n '/^\[-IMPORTS-\]/q; s/^#let \([a-z]*\) = .*/\1/p' "$template")
+  body=$(grep -vE '^\s*(//|#let )' "$typ" 2>/dev/null)
+  if [ -z "$bindings" ] || [ -z "$body" ]; then
+    bad "$name: no bindings in $(basename "$template") or no generated $(basename "$typ") to read them in"
+    return
+  fi
+  for binding in $bindings; do
+    if grep -qw -- "$binding" <<<"$body"; then
+      ok "$name: mystmd still writes $binding, which template.typ binds"
+    else
+      bad "$name: mystmd no longer writes $binding, so its binding in template.typ is dead"
+    fi
+  done
+}
+
 # An epigraph's lines, from the row holding FIRST to the row holding the attribution ATTR, read off
 # pdftotext -bbox. Every quotation row starts at one x, ragged at the right, and the attribution
 # ends at least as far right as any of them while starting well right of where they start.
 check_epigraph_layout() {
-  local name=$1 pdf=$2 first=$3 attr=$4 rows
-  rows=$(pdftotext -bbox "$pdf" - 2>/dev/null | awk -v first="$first" -v attr="$attr" '
+  local name=$1 pdf=$2 first=$3 attr=$4 verdict
+  verdict=$(pdftotext -bbox "$pdf" - 2>/dev/null | awk -v first="$first" -v attr="$attr" -v pdf="$(basename "$pdf")" '
+    function field(key) {
+      match($0, key "=\"[0-9.]+\"")
+      return substr($0, RSTART + length(key) + 2, RLENGTH - length(key) - 3)
+    }
     /<word / {
-      match($0, /xMin="[0-9.]+"/); x0 = substr($0, RSTART + 6, RLENGTH - 7) + 0
-      match($0, /xMax="[0-9.]+"/); x1 = substr($0, RSTART + 6, RLENGTH - 7) + 0
-      match($0, /yMin="[0-9.]+"/); y = substr($0, RSTART + 6, RLENGTH - 7)
       w = $0; sub(/.*">/, "", w); sub(/<\/word>.*/, "", w)
       if (w == first) on = 1
       if (!on) next
-      if (!(y in start)) { start[y] = x0; order[++n] = y }
-      end[y] = x1
+      y = field("yMin")
+      if (!(y in start)) { start[y] = field("xMin") + 0; order[++n] = y }
+      end[y] = field("xMax") + 0
       if (w == attr) { last = y; exit }
     }
     END {
-      if (!last) exit
-      for (i = 1; i <= n; i++) printf "%s %.1f %.1f\n", (order[i] == last ? "attr" : "line"), start[order[i]], end[order[i]]
+      for (i = 1; i <= n; i++) {
+        y = order[i]
+        if (y == last) { a0 = start[y]; a1 = end[y]; continue }
+        if (++k == 1 || start[y] < lo) lo = start[y]
+        if (k == 1 || start[y] > hi) hi = start[y]
+        if (end[y] > far) far = end[y]
+      }
+      if (k < 2 || last == "") printf "FAIL no multi-line epigraph from %s to its attribution in %s, so its layout went unread\n", first, pdf
+      else if (hi - lo > 0.5) printf "FAIL the epigraph lines start from x = %.1f to %.1fpt, so they are not set from one left edge\n", lo, hi
+      else if (a1 < far - 0.5 || a0 < lo + 50) printf "FAIL the attribution runs from x = %.1f to %.1fpt, not flush right of lines ending by %.1fpt\n", a0, a1, far
+      else printf "ok %d epigraph lines start at x = %.1fpt and the attribution ends at %.1fpt\n", k, lo, a1
     }')
-  local line
-  # Read from a process substitution, never a pipe: a while loop at the end of a pipe runs in a
-  # subshell, and the fail flag bad sets there would never reach the exit code
-  while IFS= read -r line; do
-    case $line in FAIL*) bad "${line#FAIL  }" ;; *) ok "${line#ok    }" ;; esac
-  done < <(awk -v name="$name" -v pdf="$(basename "$pdf")" -v first="$first" '
-    $1 == "line" { n++; if (n == 1 || $2 < lo) lo = $2; if (n == 1 || $2 > hi) hi = $2; if ($3 > far) far = $3 }
-    $1 == "attr" { a0 = $2; a1 = $3; seen = 1 }
-    END {
-      if (n < 2 || !seen) printf "FAIL  %s: no multi-line epigraph from %s to its attribution in %s, so its layout went unread\n", name, first, pdf
-      else if (hi - lo > 0.5) printf "FAIL  %s: the epigraph lines start from x = %.1f to %.1fpt, so they are not set from one left edge\n", name, lo, hi
-      else if (a1 < far - 0.5 || a0 < lo + 50) printf "FAIL  %s: the attribution runs from x = %.1f to %.1fpt, not flush right of lines ending by %.1fpt\n", name, a0, a1, far
-      else printf "ok    %s: %d epigraph lines start at x = %.1fpt and the attribution ends at %.1fpt\n", name, n, lo, a1
-    }' <<<"$rows")
+  case $verdict in
+    ok*) ok "$name: ${verdict#ok }" ;;
+    *) bad "$name: ${verdict#FAIL }" ;;
+  esac
 }
 
 # A fixture built to test a page break has to keep landing on one. This reads how far down its page
@@ -2064,105 +2082,87 @@ fixture_page() {
   } >"$dir/$page.md"
 }
 
-# Builds the fixture pages given as arguments in one run and requires each PDF, so a page that
-# never built fails here and its checks are skipped
+# Builds every page of a fixture project in one MyST run, since each run pays MyST's startup
 build_fixture_pages() {
+  (cd "$1" && myst build ./*.md --typst) >/dev/null 2>&1
+}
+
+# Requires the PDF of every page it is given, so a page that never built fails here and its checks
+# are skipped
+require_pages() {
   local name=$1 dir=$2 page
   shift 2
-  (cd "$dir" && myst build "${@/%/.md}" --typst) >/dev/null 2>&1
   for page in "$@"; do
     require_file "$name" "$dir/$page.pdf" "the $page page" || return 1
   done
 }
 
-# Key points written as a YAML list in the frontmatter and as a bullet list in a keypoints block.
-# The elsarticle template reads the same part, so a paper exported to both writes it once. Each
-# form has to come out as one bullet per point.
-keypoints_form_pages() {
-  local name=$1 dir=$2
-  fixture_project "$dir" "Key points"
-  printf '# Body\n\nText.\n' | fixture_page "$dir" yaml \
+# An epigraph long enough to take three lines of the narrow measure, so where each line starts can
+# be read. The fixture pages and the self-test seeds set the same sentence.
+EPIGRAPH_TEXT='Quotetext is what the epigraph says, at a length that runs well past one line of its'
+EPIGRAPH_TEXT+=' narrow measure, so the start of each line can be read off the page.'
+
+# Writes the standalone fixture pages into one project, which one run builds. The main run reads
+# them group by group, each group named by the prefix its pages share.
+fixture_pages() {
+  local dir=$1 intro=$'# Introduction\n\nIntrotext opens the body.\n' body form para lead='' i
+  fixture_project "$dir" "Fixture pages"
+
+  # kp-: key points as a YAML list in the frontmatter and as a bullet list in a keypoints block.
+  # The elsarticle template reads the same part, so a paper exported to both writes it once.
+  printf '# Body\n\nText.\n' | fixture_page "$dir" kp-yaml \
     $'keypoints:\n  - Yamlpointone holds the first point.\n  - Yamlpointtwo holds the second point.'
   printf '+++ {"part": "keypoints"}\n\n- %s\n- %s\n\n+++\n\n# Body\n\nText.\n' \
     'Blockpointone holds the first point.' 'Blockpointtwo holds the second point.' |
-    fixture_page "$dir" block ''
-  build_fixture_pages "$name" "$dir" yaml block
-}
+    fixture_page "$dir" kp-block ''
 
-# A body heading named like a declared part. With no summary given any other way, MyST takes a
-# closing "# Summary" section as the summary part, leaving its subsection numbered under the
-# section before it. A summary in the frontmatter keeps the section in the body. README, Parts.
-part_heading_pages() {
-  local name=$1 dir=$2 body
-  fixture_project "$dir" "Part headings"
-  body=$(printf '# Introduction\n\nIntrotext opens the body.\n\n# Summary\n\n%s\n\n## Detail\n\n%s' \
+  # heading-: with no summary given otherwise, MyST takes a closing "# Summary" section as the
+  # summary part and leaves its subsection numbered under the section before. A frontmatter
+  # summary keeps the section in the body. README, Parts.
+  body=$(printf '%s\n# Summary\n\n%s\n\n## Detail\n\n%s' "$intro" \
     'Summarytext closes the paper.' 'Detailtext sits under the summary.')
-  fixture_page "$dir" moved '' <<<"$body"
-  fixture_page "$dir" kept 'summary: Frontsummary comes from the frontmatter.' <<<"$body"
-  build_fixture_pages "$name" "$dir" moved kept
-}
+  fixture_page "$dir" heading-moved '' <<<"$body"
+  fixture_page "$dir" heading-kept 'summary: Frontsummary comes from the frontmatter.' <<<"$body"
 
-# An epigraph with its attribution, in a block and in the frontmatter, as a blockquote ending
-# `-- Name` and as plain paragraphs ending `--- Name`. Both PDFs set the name apart either way;
-# the site parses it out of the blockquote alone. README, Parts.
-epigraph_form_pages() {
-  # Long enough to take three lines of the narrow measure, so where each line starts can be read
-  local name=$1 dir=$2 quote=$'> Quotetext is what the epigraph says, at a length that runs well past one line of its narrow measure, so the start of each line can be read off the page.\n>\n> -- Attribname'
-  fixture_project "$dir" "Epigraph"
-  # The plain form the Elsevier template also reads: the quotation, then a paragraph opening ---
-  local plain=$'Quotetext is what the epigraph says, at a length that runs well past one line of its narrow measure, so the start of each line can be read off the page.\n\n--- Attribname'
-  fixture_project "$dir" "Epigraph"
-  printf '+++ {"part": "epigraph"}\n\n%s\n\n+++\n\n# Introduction\n\nIntrotext opens the body.\n' \
-    "$quote" | fixture_page "$dir" block ''
-  printf '# Introduction\n\nIntrotext opens the body.\n' |
-    fixture_page "$dir" front "epigraph: |"$'\n'"$(sed 's/^/  /' <<<"$quote")"
-  printf '+++ {"part": "epigraph"}\n\n%s\n\n+++\n\n# Introduction\n\nIntrotext opens the body.\n' \
-    "$plain" | fixture_page "$dir" plain-block ''
-  printf '# Introduction\n\nIntrotext opens the body.\n' |
-    fixture_page "$dir" plain-front "epigraph: |"$'\n'"$(sed 's/^/  /' <<<"$plain")"
-  build_fixture_pages "$name" "$dir" block front plain-block plain-front
-}
+  # epi-: an epigraph with its attribution, in a block and in the frontmatter, as a blockquote
+  # ending `-- Name` and as plain paragraphs ending `--- Name`. Both PDFs set the name apart either
+  # way. The site parses it out of the blockquote alone. README, Parts.
+  local -A epigraph=([quote]="> $EPIGRAPH_TEXT"$'\n>\n> -- Attribname'
+    [plain]="$EPIGRAPH_TEXT"$'\n\n--- Attribname')
+  for form in quote plain; do
+    printf '+++ {"part": "epigraph"}\n\n%s\n\n+++\n\n%s' "${epigraph[$form]}" "$intro" |
+      fixture_page "$dir" "epi-$form-block" ''
+    fixture_page "$dir" "epi-$form-front" \
+      "epigraph: |"$'\n'"$(sed 's/^/  /' <<<"${epigraph[$form]}")" <<<"$intro"
+  done
 
-# TeX that mystmd's converter writes as names Typst lacks: \partial as `diff`, \texttt called by
-# name, \mathord bare. Without the bindings in template.typ the compile stops, and MyST exits 0
-# without writing a PDF; a binding of the wrong form prints the macro's name instead.
-partial_pages() {
-  local name=$1 dir=$2
-  fixture_project "$dir" "Converter gaps"
+  # gaps: TeX that mystmd's converter writes as names Typst lacks, \partial as `diff`, \texttt
+  # called by name, \mathord bare. Without the bindings in template.typ the compile stops, and MyST
+  # exits 0 without writing a PDF. A binding of the wrong form prints the macro's name instead.
   {
     printf '# Body\n\nDerivtext $\\partial v / \\partial a$ inline.\n\n'
     printf '$$\n\\frac{\\partial^2 v}{\\partial a^2} = 0\n$$\n\n'
     printf 'Engtext $\\texttt{ENGINE}_k$ and Ordtext $T(\\mathord{\\cdot}, x)$ inline.\n\n'
     printf 'Symtext $a \\coloneqq b$ and $\\llbracket x \\rrbracket$ and $\\mathstrut y$ inline.\n'
-  } | fixture_page "$dir" partial ''
-  build_fixture_pages "$name" "$dir" partial
-}
+  } | fixture_page "$dir" gaps ''
 
-# Thirty paragraphs dense with hyphenated words, each led by a longer stand-in word so its breaks
-# fall somewhere new. Under Typst's own hyphenation one of them breaks as state-depen-.
-compound_pages() {
-  local name=$1 dir=$2 i para
+  # compounds: thirty paragraphs dense with hyphenated words, each led by a longer stand-in word
+  # so its breaks fall somewhere new. Under Typst's own hyphenation one breaks as state-depen-.
   para='the policy is index-monotone in assets and state-dependent in income, and the buffer-stock'
   para+=' target rises with impatience-adjusted returns, so the index-monotone ordering holds for'
   para+=' every well-behaved calibration of the precautionary-saving model.'
-  fixture_project "$dir" "Hyphenated words"
   for i in $(seq 1 30); do
-    printf 'Lead%s %s\n\n' "$(printf 'x%.0s' $(seq 1 "$i"))" "$para"
+    lead+=x
+    printf 'Lead%s %s\n\n' "$lead" "$para"
   done | fixture_page "$dir" compounds ''
-  build_fixture_pages "$name" "$dir" compounds
-}
 
-# The Elsevier template's two raw LaTeX parts, as blocks on one page and in the frontmatter on
-# another. Neither reaches the PDF, body included, while the body around them still does.
-elsevier_part_pages() {
-  local name=$1 dir=$2 graphical='Graphicaltext stays out.' bio='Biotext stays out.' intro
-  fixture_project "$dir" "Elsevier parts"
-  intro=$'# Introduction\n\nIntrotext opens the body.\n'
+  # els-: the Elsevier template's two raw LaTeX parts, as blocks and in the frontmatter. Neither
+  # reaches the PDF, body included, while the body around them still does.
   printf '%s\n+++ {"part": "graphical_abstract"}\n\n%s\n\n+++ {"part": "biography"}\n\n%s\n\n+++\n' \
-    "$intro" "$graphical" "$bio" | fixture_page "$dir" blocks ''
-  fixture_page "$dir" front "parts:"$'\n'"  graphical_abstract: $graphical"$'\n'"  biography: $bio" \
+    "$intro" 'Graphicaltext stays out.' 'Biotext stays out.' | fixture_page "$dir" els-blocks ''
+  fixture_page "$dir" els-front \
+    $'parts:\n  graphical_abstract: Graphicaltext stays out.\n  biography: Biotext stays out.' \
     <<<"$intro"
-  build_fixture_pages "$name" "$dir" blocks front
 }
 
 # A self-test seed set by Typst directly, so no template stands between the defect and the check:
@@ -2283,8 +2283,7 @@ self_test() {
 
   # The epigraph layout: lines from one left edge with the attribution flush right pass, and each
   # way of getting it wrong is caught, from a PDF Typst sets directly so no template stands between
-  local epi quote='Quotetext is what the epigraph says, at a length that runs well past one line'
-  quote+=' of its narrow measure, so the start of each line can be read off the page.'
+  local epi quote=$EPIGRAPH_TEXT
   epi=$(mktemp -d)
   epigraph_seed() {
     printf '#set page(width: 300pt, height: auto, margin: 20pt)\n#align(%s)[%s]\n\n#align(%s)[#sym.dash.em Attribname]\n' \
@@ -2306,18 +2305,21 @@ self_test() {
   rm -rf "$epi"
 
   # Hyphenated words in a narrow justified column, set three ways from Typst directly: with the
-  # template's rule, without it, where one breaks inside, and with hyphenation off altogether
+  # template's rule, read from ark/typography.typ, without it, where one breaks inside, and with
+  # hyphenation off altogether
   local hy hyw para='The policy is index-monotone in assets and state-dependent in income, and the'
   para+=' buffer-stock target rises with impatience-adjusted returns, so the index-monotone ordering'
   para+=' and the state-dependent bounds hold for every well-behaved calibration of the model.'
   hy=$(mktemp -d)
   hyphen_seed() {
-    printf '#set page(width: %spt, height: auto, margin: 10pt)\n#set par(justify: true)\n%s\n%s\n' \
-      "$2" "$3" "$para" | typst_seed "$hy" "$1"
+    printf '#set page(width: 116pt, height: auto, margin: 10pt)\n#set par(justify: true)\n%s\n%s\n' \
+      "$2" "$para" | typst_seed "$hy" "$1"
   }
-  hyw='#show regex("\b[\p{L}\d]+(?:-[\p{L}\d]+)+\b"): set text(hyphenate: false)'
-  if hyphen_seed ruled 116 "$hyw" && hyphen_seed bare 116 '' &&
-    hyphen_seed off 116 '#set text(hyphenate: false)'; then
+  hyw=$(grep -m1 'set text(hyphenate: false)' "$ROOT/ark/typography.typ" | sed 's/^ *show/#show/')
+  if [ -z "$hyw" ]; then
+    bad "self-test: no hyphenation rule in ark/typography.typ to seed the check with"
+  elif hyphen_seed ruled "$hyw" && hyphen_seed bare '' &&
+    hyphen_seed off '#set text(hyphenate: false)'; then
     expect '^ok.*none inside' 'hyphenated words that break only at their hyphens pass' \
       check_compound_breaks seeded "$hy/ruled.pdf"
     expect 'FAIL.*inside a hyphenated word' 'a line ending inside a hyphenated word is caught' \
@@ -2344,11 +2346,24 @@ self_test() {
     check_plugin_pages seeded "$pp/broken.mjs"
   rm -rf "$pp"
 
+  # The converter check over a template binding two names, one of which the page writes only in
+  # the template's own comment and binding, and a path with no generated page at it
+  local cg
+  cg=$(mktemp -d)
+  printf '#let diff = sym.partial\n#let texttt = math.mono\n\n[-IMPORTS-]\n' >"$cg/template.typ"
+  printf '// texttt in a comment\n#let texttt = math.mono\n$diff v$\n' >"$cg/page.typ"
+  expect '^ok.*still writes diff' 'a name the generated page writes passes' \
+    check_converter_gaps seeded "$cg/template.typ" "$cg/page.typ"
+  expect 'FAIL.*no longer writes texttt' 'a name only the template lines write is caught' \
+    check_converter_gaps seeded "$cg/template.typ" "$cg/page.typ"
+  expect 'FAIL.*no generated' 'a page that was never generated is caught' \
+    check_converter_gaps seeded "$cg/template.typ" "$cg/gone.typ"
+  rm -rf "$cg"
+
   # Typst stamps a creation date unless the template clears it, so a plain compile seeds the defect
   local scratch
   scratch=$(mktemp -d)
-  printf 'A page.\n' >"$scratch/stamped.typ"
-  if typst compile "$scratch/stamped.typ" "$scratch/stamped.pdf" >/dev/null 2>&1; then
+  if printf 'A page.\n' | typst_seed "$scratch" stamped; then
     expect 'FAIL.*creation timestamp' 'a creation timestamp is caught' \
       check_pdf seeded "$scratch/stamped.pdf" 'A page.'
   else
@@ -2375,10 +2390,10 @@ self_test() {
   # The same words at another weight: the text check reads them as equal, so only the pages differ
   local weights
   weights=$(mktemp -d)
-  printf '#set text(font: "Fira Sans", weight: 500)\nSame words either way.\n' >"$weights/light.typ"
-  printf '#set text(font: "Fira Sans", weight: 700)\nSame words either way.\n' >"$weights/heavy.typ"
-  if typst compile "$weights/light.typ" "$weights/light.pdf" >/dev/null 2>&1 &&
-    typst compile "$weights/heavy.typ" "$weights/heavy.pdf" >/dev/null 2>&1; then
+  if printf '#set text(font: "Fira Sans", weight: 500)\nSame words either way.\n' |
+    typst_seed "$weights" light &&
+    printf '#set text(font: "Fira Sans", weight: 700)\nSame words either way.\n' |
+    typst_seed "$weights" heavy; then
     expect 'FAIL.*renders differently' 'a PDF whose text matches but whose pages differ is caught' \
       check_tracked seeded "$weights/heavy.pdf" "$weights/light.pdf"
   else
@@ -2866,10 +2881,10 @@ self_test() {
   # page-count and missing-file cases below are other branches and leave this one unproven.
   local leak
   leak=$(mktemp -d)
-  printf '#set text(font: "Fira Sans", weight: 400)\nBack matter set as running text.\n' >"$leak/body.typ"
-  printf '#set text(font: "Fira Sans", weight: 700)\nBack matter set as running text.\n' >"$leak/bold.typ"
-  if typst compile "$leak/body.typ" "$leak/body.pdf" >/dev/null 2>&1 &&
-    typst compile "$leak/bold.typ" "$leak/bold.pdf" >/dev/null 2>&1; then
+  if printf '#set text(font: "Fira Sans", weight: 400)\nBack matter set as running text.\n' |
+    typst_seed "$leak" body &&
+    printf '#set text(font: "Fira Sans", weight: 700)\nBack matter set as running text.\n' |
+    typst_seed "$leak" bold; then
     expect 'FAIL.*differ by' 'a style leak of one page, same text and length, is caught' \
       check_same_render seeded "$leak/body.pdf" "$leak/bold.pdf"
     # Two paths holding the same render, which is the passing case that walks the pages. The
@@ -2924,15 +2939,15 @@ self_test() {
 
   # check_site is a composite, so its empty-directory case has to report every assertion in it.
   # One missing line here means one assertion that passes on a site serving nothing.
-  local want
+  local want wants=(unstyled 'no banner' 'rule is inert' 'four-colour rule is missing'
+    'vanishes at night' "MyST's own mark" 'no bg-myst-bg class' 'cannot reach the PDF'
+    'system sans' 'system math font' 'Plain Language Summary again' 'Elsevier parts went unchecked')
   out=$(check_site seeded "$(mktemp -d)")
-  for want in unstyled 'no banner' 'rule is inert' 'four-colour rule is missing' \
-    'vanishes at night' "MyST's own mark" 'no bg-myst-bg class' 'cannot reach the PDF' \
-    'system sans' 'system math font' 'Plain Language Summary again' 'Elsevier parts went unchecked'; do
+  for want in "${wants[@]}"; do
     grep -q "FAIL.*$want" <<<"$out" ||
       bad "self-test: a site serving nothing did not report '$want'"
   done
-  ok "self-test: a site serving no stylesheet, banner, logo or class reports all twelve"
+  ok "self-test: a site serving no stylesheet, banner, logo or class reports all ${#wants[@]}"
 
   # The Elsevier parts on a page with every class, under a sheet with none of the rules,
   # then under one hiding a single part: each rule missing is reported on its own
@@ -2942,11 +2957,10 @@ self_test() {
   printf '<div class="ark-part-%s">x</div>\n' graphical-abstract biography \
     >"$ep/site-only/index.html"
   printf 'p { color: red; }\n' >"$ep/myst-theme.css"
-  out=$(check_elsevier_parts seeded "$ep")
-  for want in 'hide the graphical-abstract' 'hide the biography'; do
-    grep -q "FAIL.*$want" <<<"$out" || bad "self-test: a sheet with no part rules did not report '$want'"
+  for want in graphical-abstract biography; do
+    expect "FAIL.*not hide the $want" "a sheet with no part rules reports the $want rule missing" \
+      check_elsevier_parts seeded "$ep"
   done
-  ok "self-test: a sheet with no part rules reports each missing rule"
   printf '.ark-part-biography { display: none; }\n' >"$ep/myst-theme.css"
   expect '^ok.*hides the biography' 'a sheet hiding one part passes that part' \
     check_elsevier_parts seeded "$ep"
@@ -3040,8 +3054,8 @@ self_test() {
   # A page carrying no words at all, which would leave the measurement with nothing to average
   local blank
   blank=$(mktemp -d)
-  printf '#set page(width: 8.5in, height: 11in)\n#rect(width: 2in, height: 1in)\n' >"$blank/blank.typ"
-  if typst compile "$blank/blank.typ" "$blank/blank.pdf" >/dev/null 2>&1; then
+  if printf '#set page(width: 8.5in, height: 11in)\n#rect(width: 2in, height: 1in)\n' |
+    typst_seed "$blank" blank; then
     expect 'FAIL.*no text boxes came back' 'a page with no text measures no width' \
       check_measured_width seeded "$blank/blank.pdf" "$ROOT/brand/ark-figures.json"
   else
@@ -3301,7 +3315,7 @@ else
       'a reference to Appendix A and a citation'
     check_pdf labelled-off "$labelled/labelled-off.pdf" '3 Proof of the Proposition' \
       'a reference to Proof of the Proposition and a citation'
-    # appendix_from stands in for a marker written into the body, so the two render alike. The
+    # appendix_from replaces a marker written into the body, so the two render alike. The
     # option once set the back matter bold, and once pushed References off the foot of a page the
     # written marker kept them on, which is where this fixture holds them, 645pt down page one.
     check_low_on_page labelled "$labelled/written.pdf" References 1 630
@@ -3310,67 +3324,61 @@ else
   rm -rf "$labelled"
   # A bullet before each point, whichever form the paper wrote them in. Before keypoints took
   # as_list, the YAML form came out as bare paragraphs with no bullet.
-  keypoints=$(mktemp -d)
-  if keypoints_form_pages keypoints "$keypoints"; then
-    check_pdf keypoints-yaml "$keypoints/yaml.pdf" 'Key Points' \
+  pages=$(mktemp -d)
+  fixture_pages "$pages"
+  build_fixture_pages "$pages"
+  if require_pages keypoints "$pages" kp-yaml kp-block; then
+    check_pdf keypoints-yaml "$pages/kp-yaml.pdf" 'Key Points' \
       '• Yamlpointone holds the first point.' '• Yamlpointtwo holds the second point.'
-    check_pdf keypoints-block "$keypoints/block.pdf" 'Key Points' \
+    check_pdf keypoints-block "$pages/kp-block.pdf" 'Key Points' \
       '• Blockpointone holds the first point.' '• Blockpointtwo holds the second point.'
   fi
-  rm -rf "$keypoints"
   # The closing Summary section moves into the front matter ahead of the first heading, while its
   # subsection is numbered under Introduction. Given a summary in the frontmatter, it is numbered 2.
-  headings=$(mktemp -d)
-  if part_heading_pages part-heading "$headings"; then
-    check_pdf part-heading-moved "$headings/moved.pdf" \
+  if require_pages part-heading "$pages" heading-moved heading-kept; then
+    check_pdf part-heading-moved "$pages/heading-moved.pdf" \
       'Summary Summarytext closes the paper. 1 Introduction' '1.1 Detail Detailtext'
-    check_no_text part-heading-moved "$headings/moved.pdf" '2 Summary'
-    check_pdf part-heading-kept "$headings/kept.pdf" \
+    check_no_text part-heading-moved "$pages/heading-moved.pdf" '2 Summary'
+    check_pdf part-heading-kept "$pages/heading-kept.pdf" \
       'Summary Frontsummary comes from the frontmatter.' '2 Summary Summarytext closes the paper.' \
       '2.1 Detail Detailtext'
   fi
-  rm -rf "$headings"
   # Nothing of the two raw LaTeX parts reaches the PDF in either form, while the body does
-  elsevier=$(mktemp -d)
-  if elsevier_part_pages elsevier-parts "$elsevier"; then
+  if require_pages elsevier-parts "$pages" els-blocks els-front; then
     for page in blocks front; do
-      check_pdf "elsevier-parts-$page" "$elsevier/$page.pdf" 'Introtext opens the body.'
+      check_pdf "elsevier-parts-$page" "$pages/els-$page.pdf" 'Introtext opens the body.'
       for word in Graphicaltext Biotext; do
-        check_no_text "elsevier-parts-$page" "$elsevier/$page.pdf" "$word"
+        check_no_text "elsevier-parts-$page" "$pages/els-$page.pdf" "$word"
       done
     done
   fi
-  rm -rf "$elsevier"
   # The attribution comes out apart from the quotation, an em dash before the name, ahead of the
   # body; the quotation's lines share one left edge and the attribution ends at the right
-  epigraphs=$(mktemp -d)
-  if epigraph_form_pages epigraph "$epigraphs"; then
-    for page in block front plain-block plain-front; do
-      check_pdf "epigraph-$page" "$epigraphs/$page.pdf" 'Quotetext is what the epigraph says' \
+  epi_pages=(epi-quote-block epi-quote-front epi-plain-block epi-plain-front)
+  if require_pages epigraph "$pages" "${epi_pages[@]}"; then
+    for page in "${epi_pages[@]}"; do
+      check_pdf "$page" "$pages/$page.pdf" 'Quotetext is what the epigraph says' \
         "read off the page. $(printf '\342\200\224') Attribname 1 Introduction"
-      check_epigraph_layout "epigraph-$page" "$epigraphs/$page.pdf" Quotetext Attribname
+      check_epigraph_layout "$page" "$pages/$page.pdf" Quotetext Attribname
     done
   fi
-  rm -rf "$epigraphs"
   # The page compiles: the partial sign in math italic, ENGINE in monospace, the dot in its argument
-  # place, and neither macro's name in the text
-  partials=$(mktemp -d)
-  if partial_pages partial "$partials"; then
-    check_pdf partial "$partials/partial.pdf" "Derivtext $(printf '\360\235\234\225')" \
-      "Engtext $(printf '\360\235\231\264')" "Ordtext" "($(printf '\342\213\205'),"
-    # The colon-equals, both stroked brackets, and a strut that prints nothing beside its y
-    check_pdf partial "$partials/partial.pdf" "Symtext" "$(printf '\342\211\224')" \
-      "$(printf '\342\237\246')" "$(printf '\342\237\247')" "and $(printf '\360\235\221\246') inline"
+  # place, the colon-equals, both stroked brackets, an invisible strut beside its y, and no macro's
+  # name in the text
+  if require_pages converter-gaps "$pages" gaps; then
+    check_pdf converter-gaps "$pages/gaps.pdf" "Derivtext $(printf '\360\235\234\225')" \
+      "Engtext $(printf '\360\235\231\264')" "Ordtext" "($(printf '\342\213\205')," \
+      "Symtext" "$(printf '\342\211\224')" "$(printf '\342\237\246')" "$(printf '\342\237\247')" \
+      "and $(printf '\360\235\221\246') inline"
     for word in texttt mathord coloneqq llbracket rrbracket mathstrut; do
-      check_no_text partial "$partials/partial.pdf" "$word"
+      check_no_text converter-gaps "$pages/gaps.pdf" "$word"
     done
+    check_converter_gaps converter-gaps "$ROOT/template.typ" "$pages"/_build/temp/*/gaps.typ
   fi
-  rm -rf "$partials"
-  compounds=$(mktemp -d)
-  if compound_pages compounds "$compounds"; then
-    check_compound_breaks compounds "$compounds/compounds.pdf"
+  if require_pages compounds "$pages" compounds; then
+    check_compound_breaks compounds "$pages/compounds.pdf"
   fi
-  rm -rf "$compounds"
+  rm -rf "$pages"
   # The copies beside a .typ export, which a rebuild leaves as it found them. The README turns that
   # into an instruction, so a MyST release that starts refreshing them has to fail here.
   siblings=$(mktemp -d)
