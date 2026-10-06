@@ -120,7 +120,37 @@ def ribbon(mid, half, eps=0.25):
     upper = rdp(mid + normal * half[:, None], eps)
     lower = rdp(mid - normal * half[:, None], eps)
     loop = np.vstack([upper, lower[::-1]])
-    return "M " + " L ".join("%.1f %.1f" % (x, y) for x, y in loop) + " Z", len(loop)
+    return path_data(loop) + " Z", len(loop)
+
+
+def path_data(points):
+    """An SVG path through the points, to a tenth of a unit."""
+    return "M " + " L ".join("%.1f %.1f" % (x, y) for x, y in points)
+
+
+def fit(shapes, x0, y0, x1, y1):
+    """Map every centreline from the artwork's bounding box onto the box (x0, y0) to (x1, y1).
+
+    Returns the mapped centrelines by colour and the x and y scales, which differ: the box
+    stretches the curves to its own proportions.
+    """
+    every = np.vstack([mid for mid, _ in shapes.values()])
+    gx0, gx1 = every[:, 0].min(), every[:, 0].max()
+    gy0, gy1 = every[:, 1].min(), every[:, 1].max()
+    sx, sy = (x1 - x0) / (gx1 - gx0), (y1 - y0) / (gy1 - gy0)
+    mids = {
+        colour: np.column_stack(
+            [x0 + (mid[:, 0] - gx0) * sx, y0 + (mid[:, 1] - gy0) * sy]
+        )
+        for colour, (mid, _) in shapes.items()
+    }
+    return mids, sx, sy
+
+
+def write(target, svg):
+    with open(target, "w") as handle:
+        handle.write(svg)
+    log.info("wrote %s, %d bytes", target, len(svg))
 
 
 def read(source):
@@ -141,21 +171,11 @@ def favicon(shapes, target, size=256, margin=26, pen=13):
     The curves fill the square, so their proportions change. The extra height spreads
     their ends apart, which is what makes four lines still read as four at 32px.
     """
-    every = np.vstack([mid for mid, _ in shapes.values()])
-    gx0, gx1 = every[:, 0].min(), every[:, 0].max()
-    gy0, gy1 = every[:, 1].min(), every[:, 1].max()
-    span = size - 2 * margin
-    sx, sy = span / (gx1 - gx0), span / (gy1 - gy0)
-
-    drawn = []
-    for colour in ORDER:
-        mid, _ = shapes[colour]
-        pts = np.column_stack(
-            [margin + (mid[:, 0] - gx0) * sx, margin + (mid[:, 1] - gy0) * sy]
-        )
-        kept = rdp(pts, 0.4)
-        d = "M " + " L ".join("%.1f %.1f" % (x, y) for x, y in kept)
-        drawn.append(f'    <path d="{d}" stroke="{BRAND[colour]}"/>')
+    mids, _, _ = fit(shapes, margin, margin, size - margin, size - margin)
+    drawn = [
+        f'    <path d="{path_data(rdp(mids[colour], 0.4))}" stroke="{BRAND[colour]}"/>'
+        for colour in ORDER
+    ]
 
     svg = (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}"'
@@ -165,16 +185,11 @@ def favicon(shapes, target, size=256, margin=26, pen=13):
         f'  <g fill="none" stroke-width="{pen}" stroke-linecap="round"'
         f' stroke-linejoin="round">\n' + "\n".join(drawn) + "\n  </g>\n</svg>\n"
     )
-    with open(target, "w") as handle:
-        handle.write(svg)
-    log.info("wrote %s, %d bytes", target, len(svg))
+    write(target, svg)
 
 
 def banner(shapes, target):
-    every = np.vstack([mid for mid, _ in shapes.values()])
-    gx0, gx1 = every[:, 0].min(), every[:, 0].max()
-    gy0, gy1 = every[:, 1].min(), every[:, 1].max()
-    sx, sy = (X1 - X0) / (gx1 - gx0), (Y1 - Y0) / (gy1 - gy0)
+    mids, sx, sy = fit(shapes, X0, Y0, X1, Y1)
     widest = max(half.max() for _, half in shapes.values())
     pen = PEN / 2 / widest
     log.info(
@@ -183,11 +198,8 @@ def banner(shapes, target):
 
     drawn = []
     for colour in ORDER:
-        mid, half = shapes[colour]
-        mid = np.column_stack(
-            [X0 + (mid[:, 0] - gx0) * sx, Y0 + (mid[:, 1] - gy0) * sy]
-        )
-        d, n = ribbon(mid, half * pen)
+        _, half = shapes[colour]
+        d, n = ribbon(mids[colour], half * pen)
         log.info("%s: %d stations as a %d point ribbon", colour, len(half), n)
         drawn.append(f'      <path d="{d}" fill="{BRAND[colour]}"/>')
 
@@ -214,9 +226,7 @@ def banner(shapes, target):
         + f'  <rect width="{WIDTH}" height="{HEIGHT}" fill="#1f476b"/>\n'
         f"  <g>\n" + "\n".join(drawn) + "\n  </g>\n</svg>\n"
     )
-    with open(target, "w") as handle:
-        handle.write(svg)
-    log.info("wrote %s, %d bytes", target, len(svg))
+    write(target, svg)
 
 
 if __name__ == "__main__":

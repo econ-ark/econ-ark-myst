@@ -4,16 +4,16 @@
 #import "brand.typ": *
 
 // A "Label  content" run-in field, which the front matter sets its abstract, summary, keywords
-// and JEL codes as. One definition, so a change of label weight or colour reaches all of them.
+// and JEL codes as
 #let labeledField(label, content, size: 8.5pt) = {
-  text(font: sansFont, weight: 500, fill: arkBlue, size: size, label)
+  arkLabel(label, size: size)
   h(0.7em)
   content
 }
 
 // A small labelled block in the margin rail
 #let railItem(title, content) = {
-  text(size: 7.5pt, fill: arkBlue, weight: 500, title)
+  arkLabel(title, size: 7.5pt)
   linebreak()
   text(size: 7.5pt, content)
 }
@@ -25,7 +25,7 @@
   set text(font: sansFont, size: 8pt)
   set par(first-line-indent: 0pt, justify: false, leading: 0.45em, spacing: 0.45em)
   if groups.len() > 0 {
-    text(size: 8.5pt, fill: arkBlue, weight: 500, "Materials")
+    arkLabel("Materials", size: 8.5pt)
     v(5pt, weak: true)
   }
   grid(
@@ -51,7 +51,7 @@
   set list(marker: text(fill: arkBlue, sym.bullet), indent: 0pt, body-indent: 0.5em, spacing: 0.8em)
   // Label half a point under the text, matching the rail labels and, under the abstract, the keyword labels
   // Title case, which is what myst-theme labels this part with on the site
-  text(size: size - 0.5pt, fill: arkBlue, weight: 500, "Key Points")
+  arkLabel("Key Points", size: size - 0.5pt)
   v(0.6em, weak: true)
   body
 }

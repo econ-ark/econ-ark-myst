@@ -403,10 +403,21 @@ article.article .myst-exercise-header,
 article.article .myst-exercise-title {
   background: transparent;
   border: 0;
+  color: var(--ark-blue);
+}
+
+/* The label a box opens with, in the sans the PDF sets a theorem head in. Each kind of box keeps
+ * its own colour in its own rule: blue, the exercise's curve, or the admonition's. */
+article.article .myst-dropdown-header,
+article.article .myst-exercise-header,
+article.article .myst-exercise-title,
+article.article .myst-proof-title,
+:is(aside, details).myst-admonition .myst-admonition-header,
+:is(aside, details).myst-admonition .myst-admonition-header-text,
+:is(aside, details).myst-admonition .myst-admonition-header-icon {
   font-family: var(--ark-sans);
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--ark-blue);
 }
 
 article.article .myst-exercise-title {
@@ -593,6 +604,7 @@ article.article table th {
   border-bottom: 1px solid var(--ark-grey);
 }
 
+/* Both themes rule every row; the rules that carry the table are the three set above */
 article.article table td,
 article.article table tr {
   border: 0;
@@ -641,13 +653,9 @@ article.article figure table {
   font-family: var(--ark-sans);
   font-size: 0.87rem;
   font-variant-numeric: tabular-nums lining-nums;
-  border-collapse: collapse;
-  border-top: 1.5px solid var(--ark-grey);
-  border-bottom: 1.5px solid var(--ark-grey);
 }
 
 article.article figure table th {
-  font-weight: 500;
   text-align: left;
   vertical-align: bottom;
   color: var(--ark-ink);
@@ -658,13 +666,7 @@ article.article figure table th {
 
 article.article figure table td {
   color: var(--ark-ink);
-  border: 0;
   padding: 0.3em 0.75em;
-}
-
-/* Both themes rule every row; the rules that carry the table are the three set above */
-article.article figure table tr {
-  border: 0;
 }
 
 /* Code, in the mono face that pairs with the body serif and the PDF's pale blue block */
@@ -898,9 +900,6 @@ article.article .myst-proof-body > :first-child {
 }
 
 article.article .myst-proof-title {
-  font-family: var(--ark-sans);
-  font-size: 0.95rem;
-  font-weight: 500;
   color: var(--ark-blue);
 }
 
@@ -946,9 +945,6 @@ html.dark :is(aside, details).myst-admonition {
   background: transparent;
   border: 0;
   padding-bottom: 0;
-  font-family: var(--ark-sans);
-  font-size: 0.95rem;
-  font-weight: 500;
   color: var(--ark-admonition);
 }
 
@@ -1002,12 +998,7 @@ article.article .myst-backmatter-title,
   font-weight: 500;
 }
 
-.myst-footnotes {
-  font-family: var(--ark-serif);
-  font-size: 0.87rem;
-  color: var(--ark-ink);
-}
-
+.myst-footnotes,
 .myst-bibliography-list {
   font-family: var(--ark-serif);
   font-size: 0.87rem;

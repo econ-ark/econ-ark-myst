@@ -30,6 +30,17 @@
 #let mathFont = ("Fira Math", "New Computer Modern Math");
 #let monoFont = ("Fira Mono", "DejaVu Sans Mono");
 
+// The sans at Econ-ARK blue every label takes: figure numbers, theorem heads, definition terms,
+// field and rail labels. One definition, so a change of weight or colour reaches them all.
+// With no size it takes the size around it.
+#let arkLabel(body, size: none) = text(
+  font: sansFont,
+  weight: 500,
+  fill: arkBlue,
+  ..(if size == none { (:) } else { (size: size) }),
+  body,
+);
+
 // The running text's own setting, which arkTypography installs and template.typ restores around the
 // back matter, wherever the <appendix> marker it stands at was written.
 // weight, style and fill are Typst's own defaults, named because such a reset has to undo them.

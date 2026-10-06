@@ -11,17 +11,13 @@
   value.split(regex("[,\\s]+")).map(part => part.trim("#")).filter(part => part != "")
 }
 
-// The sans at Econ-ARK blue that a figure number, a theorem head and a subfigure's (a) all take.
-// One definition, so a change of weight or colour reaches the three of them together.
-#let labelText(body) = text(font: sansFont, weight: 500, fill: arkBlue, body)
-
 // The "Figure 1" or "Proposition 2" a caption and a theorem head both open with.
-#let numberLabel(it) = labelText[#it.supplement #it.counter.display(it.numbering)]
+#let numberLabel(it) = arkLabel[#it.supplement #it.counter.display(it.numbering)]
 
 // Wraps MyST's subpar.grid so a subfigure's (a) label matches the caption above it. ark/subpar.typ
 // binds it; that file exists because the binding must be a module.
 #let arkSubparGrid(base) = base.grid.with(show-sub-caption: (num, it) => {
-  labelText(num)
+  arkLabel(num)
   h(0.4em)
   it.body
 })

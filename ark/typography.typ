@@ -84,7 +84,7 @@
   // Replacing the item drops the block Typst wraps it in, so the block comes back here
   show terms.item: it => block(above: 0.7em, below: 0.7em, {
     set par(first-line-indent: 0pt)
-    text(font: sansFont, weight: 500, fill: arkBlue, it.term)
+    arkLabel(it.term)
     h(0.7em)
     it.description
   })

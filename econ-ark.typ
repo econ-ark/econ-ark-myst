@@ -215,7 +215,7 @@
     set text(font: sansFont, size: 7.5pt)
     set par(first-line-indent: 0pt, justify: false, leading: 0.5em, spacing: 0.6em)
     if (kind != none) {
-      text(11pt, fill: arkBlue, weight: 500, kind)
+      arkLabel(kind, size: 11pt)
       parbreak()
     }
     // MyST fills a missing date with the build date, so an undated paper shows the day it was built
