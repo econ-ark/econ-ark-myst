@@ -7,6 +7,18 @@
 #let breakableDefault = true
 // Theorem-like blocks in flow, replacing the floating boxes defined in the imports above
 #let proof = arkProof
+// mystmd, through 1.11.0, writes \partial as `diff`, a math name Typst has since dropped for
+// `partial`. Binding it here, ahead of the content and the parts, lets a derivative compile.
+#let diff = sym.partial
+// A TeX macro the converter cannot map passes through by name, called with its argument, or bare
+// when the argument is one token: \texttt{ENGINE} arrives called, \mathord{\cdot} arrives bare.
+#let texttt(body) = math.mono(body)
+#let mathord = none
+// Commands that take no argument arrive bare, so a symbol or a box binds each safely
+#let coloneqq = sym.colon.eq
+#let llbracket = sym.bracket.l.stroked
+#let rrbracket = sym.bracket.r.stroked
+#let mathstrut = box(width: 0pt, hide(sym.paren.l))
 
 #let tableStyle = arkTableStyle
 // Admonitions, replacing the boxes defined in the imports above. The names are what MyST looks
@@ -203,8 +215,18 @@
   ],
   [# endif #]
   [# if parts.epigraph #]
+  // A last paragraph opening with `--` or `---` is the attribution, as the Elsevier template reads
+  // it. It becomes the attribution a blockquote's last line gives, which econ-ark.typ sets alike.
+  [# set epiParas = parts.epigraph.trim().split("\n\n") #]
+  [# set epiLast = epiParas[epiParas.length - 1].trim() #]
   epigraph: [
+  [# if epiParas.length > 1 and r/^-{2,3}\s/.test(epiLast) #]
+    #quote(block: true, attribution: [[-epiLast.replace(r/^-{2,3}\s*/, "")-]])[
+    [-epiParas.slice(0, -1).join("\n\n")-]
+    ]
+  [# else #]
     [-parts.epigraph-]
+  [# endif #]
   ],
   [# endif #]
   [# if doc.source #]

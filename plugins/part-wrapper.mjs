@@ -2,8 +2,15 @@
 // A selector reaching such a part by position would sooner or later label a paper that has none.
 // README, "The parts the site has no slot for", carries the rest.
 
-// Parts to wrap. theme.css supplies what marks each one, as the Typst side does for the PDF.
-const WRAPPED_PARTS = ['declaration', 'dedication', 'epigraph'];
+// Parts to wrap. theme.css supplies what marks each one, as the Typst side does for the PDF, and
+// hides the two Elsevier parts that hold raw LaTeX, which the PDF leaves out too.
+const WRAPPED_PARTS = [
+  'declaration',
+  'dedication',
+  'epigraph',
+  'graphical_abstract',
+  'biography',
+];
 
 const partClass = (part) => `ark-part-${part.replaceAll('_', '-')}`;
 

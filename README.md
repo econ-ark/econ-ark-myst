@@ -266,12 +266,15 @@ Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib 
 | `summary` | Run-in "Summary" after the abstract | Above the page, where `theme.css` relabels the theme's "Plain Language Summary" to "Summary" |
 | `keypoints` | Three or four short bullet points, at most 25 words each, in the margin under the logo. When the margin cannot hold them above its lower notes, they move under the abstract. Write them as a bullet list in a keypoints block or as a YAML list in the frontmatter, the form the elsarticle template also reads | Above the page, as "Key Points" |
 | `dedication` | Centred and italic after the front matter, before the first heading | Centred and italic, in the same place |
-| `epigraph` | Set in from the right after the dedication, smaller than the text; write the attribution into it | Set in from the right, in the same place |
+| `epigraph` | Set in from the right after the dedication, smaller than the text, its lines starting from one left edge with the attribution upright at the right. Write it as a blockquote whose last line is `-- Name`, in a block or in the frontmatter: that sets the name apart as the attribution here, on the site and in the Elsevier template. A last plain paragraph opening `---` works in both PDFs, while the site prints its dashes as written | Set in from the right, in the same place |
 | `declaration` | First unnumbered section of the back matter. One block for competing interests, generative AI use and whatever else the paper states | Where the block is written, above the back matter, under a "Declarations" heading |
 | `acknowledgments` | Unnumbered section after the declarations | Below the page |
 | `data_availability` | Unnumbered section after the acknowledgments | Below the page |
+| `graphical_abstract`, `biography` | Omitted. The Elsevier template takes each as raw LaTeX, which Typst cannot set | Hidden |
 
-Three of those site behaviours are not the theme's. `declaration`, `dedication` and `epigraph` reach a page as bare paragraphs, and what marks them is `plugins/part-wrapper.mjs` with `theme.css`, described under The parts the site has no slot for. A site built without that plugin shows all three as body text.
+Every part the Elsevier template ([elsarticle-myst](https://github.com/econ-ark/elsarticle-myst)) accepts is listed above, so a paper exported to both puts none of them into this PDF's body. Everything else that template prints comes from MyST's own parts and keys. Its highlights are `keypoints`. Its title note is `funding`, which this template sets in the margin rail.
+
+Five of those site behaviours are not the theme's. `declaration`, `dedication` and `epigraph` reach a page as bare paragraphs, and the two raw LaTeX parts as their source text. What marks or hides each is `plugins/part-wrapper.mjs` with `theme.css`, described under The parts the site has no slot for. A site built without that plugin shows all five as body text.
 
 A part the template does not list stays in the text of the PDF as an unlabeled paragraph when it is written as a block, and is dropped from the PDF when it is written in the frontmatter.
 
@@ -391,6 +394,26 @@ To keep an appendix in its own file, pull it in after the marker with the `inclu
 `@app-proofs` prints "Appendix A" in the PDF and the section title on the site. MyST writes a cross-reference as a link carrying the target's title rather than as a Typst reference. The template letters that link in a `show link` rule. Write the sentence to read with either form, the way "@app-proofs works through the algebra" does. A `{raw:typst}` reference also letters the PDF, but the site drops the whole block and renders a sentence with nothing in front of it. Equations, figures and tables keep one numbering sequence through the appendices, because MyST writes their reference numbers into the text before Typst lays out the page.
 
 The template defines no `appendix` part, so write appendices in the body.
+
+## Unconverted math commands
+
+MyST hands each equation to a converter that writes it as Typst, and a TeX command the converter does not know passes through by name. Typst stops on a name it does not know. MyST still exits 0, and no PDF is written. `template.typ` binds the names that need it: `\partial`, `\texttt`, `\mathord`, `\coloneqq`, `\llbracket`, `\rrbracket` and `\mathstrut` all reach the PDF as written. For the commands below, write the form in the last column, which converts and prints as TeX would. Measured with mystmd 1.11.0 and Typst 0.15.1.
+
+| Command | In the PDF | Write instead |
+|---------|------------|---------------|
+| `\bm{x}` | No PDF | `\boldsymbol{x}` |
+| `\textbf{abc}` | No PDF | `\mathbf{\mathrm{abc}}` |
+| `\mathbf{abc}`, `\mathsf{abc}` | Bold or sans, but italic where TeX sets them upright | `\mathbf{\mathrm{abc}}`, `\mathsf{\mathrm{abc}}` |
+| `\textsf{abc}` | No PDF | `\mathsf{\mathrm{abc}}` |
+| `\textup{abc}`, `\mathtt{abc}` | No PDF | `\mathrm{abc}`, `\texttt{abc}` |
+| `\textit{abc}`, `\mathit{abc}`, `\emph{abc}` | No PDF | `abc`, which math sets in italic |
+| `\displaystyle`, `\scriptstyle` | No PDF | Leave it out |
+| `\mathbin`, `\mathrel`, `\mathpunct`, `\mathinner`, `\mathopen`, `\mathclose` | No PDF | The argument alone, without the spacing its class would give |
+| `\mspace{3mu}` | No PDF | `\,`, `\:`, `\;`, `\quad` or `\qquad` |
+| `\phantom`, `\vphantom`, `\hphantom` | No PDF | `\mathstrut` for a strut of a parenthesis's height; nothing else converts |
+| `\!` | A space of minus 1em, six times TeX's, which draws the next symbol over the one before; before a bracket, no PDF | Leave it out |
+
+A macro defined under `math:` in the frontmatter does not help with these. Each definition becomes a Typst binding, in which a parameter `#1` comes out as `# 1`, which Typst cannot parse, and a body using a command above fails as the command does. Only a macro with no parameter whose body converts reaches the PDF.
 
 ## Links to the rest of the project
 
@@ -516,7 +539,7 @@ Two things still differ from the PDF. A binary operator inside a subscript, as i
 
 MyST knows seven parts. The site theme reserves backmatter slots for two of them, acknowledgments and data availability. Every other part renders as a bare paragraph where the author wrote it, with no heading and nothing in the DOM to hang one on, so a `declaration` part arrives indistinguishable from the last paragraph of the paper. Reaching it by position would mean labelling whatever preceded the backmatter, which in a paper that does not declare anything is the closing paragraph of the body.
 
-`plugins/part-wrapper.mjs` wraps such a part in a class instead, and `theme.css` marks it through that class. Declarations take a heading laid out to match the backmatter rows beside them:
+`plugins/part-wrapper.mjs` wraps such a part in a class instead, and `theme.css` marks it through that class. Declarations take a heading laid out to match the backmatter rows beside them, and the Elsevier template's two raw LaTeX parts are hidden, as the PDF leaves them out:
 
 ```yaml
 project:

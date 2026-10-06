@@ -305,11 +305,23 @@
     v(0.9em)
   }
   if epigraph != none {
-    align(right, block(width: 72%, {
+    // At the right, as wide as its longest line up to 72%, its lines from one left edge. A quote's
+    // attribution would follow that alignment, so this rule sets it upright at the right.
+    let body = {
       set par(justify: false)
       set text(size: 9pt, style: "italic")
+      show quote.where(block: true): it => {
+        block(it.body)
+        if it.attribution != none {
+          align(right, text(style: "normal")[#sym.dash.em #it.attribution])
+        }
+      }
       epigraph
-    }))
+    }
+    layout(size => align(right, block(
+      width: calc.min(measure(body).width, size.width * 0.72),
+      align(left, body),
+    )))
     v(0.9em)
   }
 

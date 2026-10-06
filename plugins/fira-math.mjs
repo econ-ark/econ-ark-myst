@@ -55,7 +55,9 @@ function projectMacros(file) {
 const pageCache = new Map();
 
 function pageMacros(file) {
-  const source = file?.path;
+  // A part's tree carries its page's path with a fragment naming the part, as in
+  // paper.md#parts.abstract, which is no file on disk
+  const source = file?.path?.replace(/#[^/]*$/, '');
   if (!source) return {};
   if (pageCache.has(source)) return pageCache.get(source);
   let macros = {};
@@ -66,8 +68,10 @@ function pageMacros(file) {
       // frontmatter from the top-level metadata, filtered to the page keys, and math is one.
       macros = asMacros(JSON.parse(text)?.metadata?.math);
     } else {
+      // A page with no frontmatter has no macros of its own. js-yaml 5 rejects an empty input, so
+      // it is never asked to read one.
       const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
-      macros = asMacros(loadYaml(frontmatter?.[1] ?? '')?.math);
+      if (frontmatter?.[1]?.trim()) macros = asMacros(loadYaml(frontmatter[1])?.math);
     }
   } catch (error) {
     file.message(`fira-math: no macros read from ${source} (${error.message})`, undefined, 'fira-math');

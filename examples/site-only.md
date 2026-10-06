@@ -22,3 +22,17 @@ to a margin note.
 The kind cannot be read from a stylesheet: `myst-aside-${kind}` reaches the class attribute as that
 literal string, so `topic`, `margin` and `sidebar` are indistinguishable.
 :::
+
+The two parts below belong to the Elsevier template, which a paper written for both carries. In a
+real paper each holds raw LaTeX, which the site hides as the PDF leaves it out. Here each holds
+plain text, so the hiding can be read off the page.
+
++++ {"part": "graphical_abstract"}
+
+Graphicaltext stays off the page.
+
++++ {"part": "biography"}
+
+Biotext stays off the page.
+
++++
