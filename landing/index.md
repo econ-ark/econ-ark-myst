@@ -37,10 +37,10 @@ Fira Sans carries the text, Fira Mono the code, and Fira Math everything between
 
 ## Equations in the same face as the prose
 
-MyST renders site math with KaTeX, which paints glyphs from its own Computer Modern faces at
-positions it has already computed, so no stylesheet can put another typeface under them. A build-time
-plugin re-renders each equation as MathML Core, which a browser lays out itself from whatever font it
-is given. Symbols on the page now read the same as symbols in a sentence.
+A build-time plugin sets every equation on this site in Fira Math, so a symbol in a display reads the
+same as the symbol in a sentence. The README explains
+[why MyST's own math needs the plugin](https://github.com/econ-ark/econ-ark-myst#equations-on-the-site)
+and what the plugin does.
 
 The consumer discounts next period at $\beta$ and earns $R$ on what is left, which is the same
 $\beta$ and the same $R$ the display below is set from:
