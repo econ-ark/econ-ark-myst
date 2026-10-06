@@ -1945,7 +1945,7 @@ label_option_pages() {
 
 # The two ways a paper writes its key points, a YAML list in the frontmatter and a bullet list in a
 # keypoints block. The elsarticle template reads the same part, so a paper exported to both writes
-# it once; each form has to come out as one bullet per point.
+# it once. Each form has to come out as one bullet per point.
 keypoints_form_pages() {
   local name=$1 dir=$2 form
   fixture_project "$dir" "Key points"
@@ -1982,6 +1982,37 @@ keypoints_form_pages() {
   (cd "$dir" && myst build yaml.md block.md --typst) >/dev/null 2>&1
   for form in yaml block; do
     require_file "$name" "$dir/$form.pdf" "the $form form of the key points" || return 1
+  done
+}
+
+# A body heading named like a declared part. With no summary given any other way, MyST takes a
+# closing "# Summary" section as the summary part, leaving its subsection numbered under the
+# section before it. A summary in the frontmatter keeps the section in the body. README, Parts.
+part_heading_pages() {
+  local name=$1 dir=$2 page front
+  fixture_project "$dir" "Part headings"
+  for page in moved kept; do
+    front=''
+    [ "$page" = kept ] && front='summary: Frontsummary comes from the frontmatter.'
+    {
+      echo '---'
+      echo 'title: A closing summary section'
+      echo 'authors:'
+      echo '  - name: A Person'
+      [ -n "$front" ] && echo "$front"
+      echo 'exports:'
+      echo '  - format: typst'
+      echo "    template: $ROOT"
+      echo "    output: $page.pdf"
+      echo '---'
+      echo
+      printf '# Introduction\n\nIntrotext opens the body.\n\n'
+      printf '# Summary\n\nSummarytext closes the paper.\n\n## Detail\n\nDetailtext sits under the summary.\n'
+    } >"$dir/$page.md"
+  done
+  (cd "$dir" && myst build moved.md kept.md --typst) >/dev/null 2>&1
+  for page in moved kept; do
+    require_file "$name" "$dir/$page.pdf" "the $page page" || return 1
   done
 }
 
@@ -3045,6 +3076,18 @@ else
       '• Blockpointone holds the first point.' '• Blockpointtwo holds the second point.'
   fi
   rm -rf "$keypoints"
+  # The closing Summary section moves into the front matter ahead of the first heading, while its
+  # subsection is numbered under Introduction. Given a summary in the frontmatter, it is numbered 2.
+  headings=$(mktemp -d)
+  if part_heading_pages part-heading "$headings"; then
+    check_pdf part-heading-moved "$headings/moved.pdf" \
+      'Summary Summarytext closes the paper. 1 Introduction' '1.1 Detail Detailtext'
+    check_no_text part-heading-moved "$headings/moved.pdf" '2 Summary'
+    check_pdf part-heading-kept "$headings/kept.pdf" \
+      'Summary Frontsummary comes from the frontmatter.' '2 Summary Summarytext closes the paper.' \
+      '2.1 Detail Detailtext'
+  fi
+  rm -rf "$headings"
   # The copies beside a .typ export, which a rebuild leaves as it found them. The README turns that
   # into an instruction, so a MyST release that starts refreshing them has to fail here.
   siblings=$(mktemp -d)
