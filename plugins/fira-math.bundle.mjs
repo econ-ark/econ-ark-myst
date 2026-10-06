@@ -15192,11 +15192,12 @@ var temml$1 = {
 
 // plugins/fira-math.mjs
 var macroCache = /* @__PURE__ */ new Map();
+var sourcePath = (file) => file?.path?.replace(/#[^/]*$/, "");
 var asMacros = (math2) => Object.fromEntries(
   Object.entries(math2 ?? {}).map(([key, value]) => [key, typeof value === "string" ? value : value?.macro])
 );
 function projectMacros(file) {
-  let dir = path.dirname(path.resolve(file?.path ?? "."));
+  let dir = path.dirname(path.resolve(sourcePath(file) ?? "."));
   let config;
   for (; ; ) {
     if (fs.existsSync(path.join(dir, "myst.yml"))) {
@@ -15223,7 +15224,7 @@ function projectMacros(file) {
 }
 var pageCache = /* @__PURE__ */ new Map();
 function pageMacros(file) {
-  const source = file?.path?.replace(/#[^/]*$/, "");
+  const source = sourcePath(file);
   if (!source) return {};
   if (pageCache.has(source)) return pageCache.get(source);
   let macros2 = {};

@@ -13,6 +13,10 @@ import temml from 'temml';
 // equation missing its macro comes back in KaTeX and looks like a dead plugin.
 const macroCache = new Map();
 
+// The page a tree came from. A part's tree carries its page's path with a fragment naming the
+// part, as in paper.md#parts.abstract, which is no file on disk.
+const sourcePath = (file) => file?.path?.replace(/#[^/]*$/, '');
+
 // A macro is written either as a string or as an object carrying it under `macro`
 const asMacros = (math) =>
   Object.fromEntries(
@@ -23,7 +27,7 @@ const asMacros = (math) =>
 // launched anywhere else would read no project macros at all and say nothing. Cached per config,
 // since one process can build more than one project, as the landing page is.
 function projectMacros(file) {
-  let dir = path.dirname(path.resolve(file?.path ?? '.'));
+  let dir = path.dirname(path.resolve(sourcePath(file) ?? '.'));
   let config;
   for (;;) {
     if (fs.existsSync(path.join(dir, 'myst.yml'))) {
@@ -55,9 +59,7 @@ function projectMacros(file) {
 const pageCache = new Map();
 
 function pageMacros(file) {
-  // A part's tree carries its page's path with a fragment naming the part, as in
-  // paper.md#parts.abstract, which is no file on disk
-  const source = file?.path?.replace(/#[^/]*$/, '');
+  const source = sourcePath(file);
   if (!source) return {};
   if (pageCache.has(source)) return pageCache.get(source);
   let macros = {};
