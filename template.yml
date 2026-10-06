@@ -145,8 +145,10 @@ parts:
   - id: keypoints
     description: >
       Three or four short bullet points, shown in the margin under the logo,
-      or under the abstract when the margin has no room.
-    max_words: 80
+      or under the abstract when the margin has no room. Write them as a bullet list in a
+      keypoints block or as a YAML list under keypoints in the frontmatter; each item is one point.
+    as_list: true
+    max_words: 25
   - id: dedication
     description: Dedication, centred on its own after the front matter and before the first heading.
     max_words: 50

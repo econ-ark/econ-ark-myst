@@ -264,7 +264,7 @@ Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib 
 |------|------------|-----------------------------------|
 | `abstract` | Run-in abstract under the title | Above the page |
 | `summary` | Run-in "Summary" after the abstract | Above the page, where `theme.css` relabels the theme's "Plain Language Summary" to "Summary" |
-| `keypoints` | Three or four short bullet points, at most 80 words, in the margin under the logo. When the margin cannot hold them above its lower notes, they move under the abstract | Above the page, as "Key Points" |
+| `keypoints` | Three or four short bullet points, at most 25 words each, in the margin under the logo. When the margin cannot hold them above its lower notes, they move under the abstract. Write them as a bullet list in a keypoints block or as a YAML list in the frontmatter, the form the elsarticle template also reads | Above the page, as "Key Points" |
 | `dedication` | Centred and italic after the front matter, before the first heading | Centred and italic, in the same place |
 | `epigraph` | Set in from the right after the dedication, smaller than the text; write the attribution into it | Set in from the right, in the same place |
 | `declaration` | First unnumbered section of the back matter. One block for competing interests, generative AI use and whatever else the paper states | Where the block is written, above the back matter, under a "Declarations" heading |
@@ -273,7 +273,7 @@ Size a plot to the printed width, for example `figsize=(6.68, h)` in matplotlib 
 
 Three of those site behaviours are not the theme's. `declaration`, `dedication` and `epigraph` reach a page as bare paragraphs, and what marks them is `plugins/part-wrapper.mjs` with `theme.css`, described under The parts the site has no slot for. A site built without that plugin shows all three as body text.
 
-A part the template does not list stays in the text of the PDF as an unlabeled paragraph.
+A part the template does not list stays in the text of the PDF as an unlabeled paragraph when it is written as a block, and is dropped from the PDF when it is written in the frontmatter.
 
 The last part in a file needs a bare `+++` closing it. A part written at the end with nothing following costs the paper every footnote in the body: the marks and the notes both vanish from the PDF, the text around them closes up as though they were never written, and the only sign is one line, `Unknown footnote identifier`, in a build that still exits 0. `examples/paper.md` ends with that closing `+++` for this reason, and `check_myst_errors` in the check script fails the run on any such line.
 

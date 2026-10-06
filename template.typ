@@ -128,9 +128,12 @@
   kind: [-s(doc.subject)-],
   [# endif #]
   [# if parts.keypoints #]
-  keypoints: [
-    [-parts.keypoints-]
-  ],
+  // as_list hands over one entry per point, whether the paper wrote a bullet list or a YAML list
+  keypoints: list(
+  [# for point in parts.keypoints #]
+    [[-point-]],
+  [# endfor #]
+  ),
   [# endif #]
   [# if doc.doi #]
   doi: [-s(doc.doi)-],

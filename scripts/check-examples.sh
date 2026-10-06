@@ -1943,6 +1943,48 @@ label_option_pages() {
   fi
 }
 
+# The two ways a paper writes its key points, a YAML list in the frontmatter and a bullet list in a
+# keypoints block. The elsarticle template reads the same part, so a paper exported to both writes
+# it once; each form has to come out as one bullet per point.
+keypoints_form_pages() {
+  local name=$1 dir=$2 form
+  fixture_project "$dir" "Key points"
+  {
+    echo '---'
+    echo 'title: Key points from the frontmatter'
+    echo 'authors:'
+    echo '  - name: A Person'
+    echo 'keypoints:'
+    echo '  - Yamlpointone holds the first point.'
+    echo '  - Yamlpointtwo holds the second point.'
+    echo 'exports:'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: yaml.pdf'
+    echo '---'
+    echo
+    printf '# Body\n\nText.\n'
+  } >"$dir/yaml.md"
+  {
+    echo '---'
+    echo 'title: Key points from a block'
+    echo 'authors:'
+    echo '  - name: A Person'
+    echo 'exports:'
+    echo '  - format: typst'
+    echo "    template: $ROOT"
+    echo '    output: block.pdf'
+    echo '---'
+    echo
+    printf '+++ {"part": "keypoints"}\n\n- Blockpointone holds the first point.\n- Blockpointtwo holds the second point.\n\n+++\n\n'
+    printf '# Body\n\nText.\n'
+  } >"$dir/block.md"
+  (cd "$dir" && myst build yaml.md block.md --typst) >/dev/null 2>&1
+  for form in yaml block; do
+    require_file "$name" "$dir/$form.pdf" "the $form form of the key points" || return 1
+  done
+}
+
 # One case per line: run the check, require its output to match, and let the label say what that
 # proves. A miss now prints what the check said instead, which the four-line form it replaces
 # threw away. Cases needing several patterns at once stay written out below.
@@ -2993,6 +3035,16 @@ else
     check_same_render labelled "$labelled/labelled.pdf" "$labelled/written.pdf"
   fi
   rm -rf "$labelled"
+  # A bullet before each point, whichever form the paper wrote them in. Before keypoints took
+  # as_list, the YAML form came out as bare paragraphs with no bullet.
+  keypoints=$(mktemp -d)
+  if keypoints_form_pages keypoints "$keypoints"; then
+    check_pdf keypoints-yaml "$keypoints/yaml.pdf" 'Key Points' \
+      '• Yamlpointone holds the first point.' '• Yamlpointtwo holds the second point.'
+    check_pdf keypoints-block "$keypoints/block.pdf" 'Key Points' \
+      '• Blockpointone holds the first point.' '• Blockpointtwo holds the second point.'
+  fi
+  rm -rf "$keypoints"
   # The copies beside a .typ export, which a rebuild leaves as it found them. The README turns that
   # into an instruction, so a MyST release that starts refreshing them has to fail here.
   siblings=$(mktemp -d)
