@@ -30,14 +30,14 @@
 #let mathFont = ("Fira Math", "New Computer Modern Math");
 #let monoFont = ("Fira Mono", "DejaVu Sans Mono");
 
-// The sans at Econ-ARK blue every label takes: figure numbers, theorem heads, definition terms,
-// field and rail labels. One definition, so a change of weight or colour reaches them all.
-// With no size it takes the size around it.
-#let arkLabel(body, size: none) = text(
+// The sans every label takes, in Econ-ARK blue unless an admonition gives its own colour: figure
+// numbers, theorem and admonition heads, definition terms, field and rail labels. One definition,
+// so a change of weight reaches them all.
+#let arkLabel(body, size: 1em, fill: arkBlue) = text(
   font: sansFont,
   weight: 500,
-  fill: arkBlue,
-  ..(if size == none { (:) } else { (size: size) }),
+  fill: fill,
+  size: size,
   body,
 );
 

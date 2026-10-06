@@ -22,7 +22,7 @@
   {
     set par(first-line-indent: 0pt)
     if heading != none {
-      block(below: 0.5em, text(font: sansFont, size: 9pt, weight: 500, fill: color, heading))
+      block(below: 0.5em, arkLabel(heading, size: 9pt, fill: color))
     }
     body
   },

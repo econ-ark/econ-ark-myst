@@ -167,8 +167,7 @@ parts:
       One block for competing interests, generative AI use and anything else a working paper has
       to state; a journal submission uses that journal's own template.
   # The two parts below come from the Elsevier template (elsarticle-myst) and hold raw LaTeX. They
-  # are listed so a paper written for both exports neither into this PDF's body. Everything else
-  # that template reads is a MyST part or key: keypoints are its highlights, funding its title note.
+  # are listed so a paper written for both exports neither into this PDF's body. README, Parts.
   - id: graphical_abstract
     description: Elsevier's raw LaTeX graphical abstract, not shown.
   - id: biography

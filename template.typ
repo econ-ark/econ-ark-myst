@@ -1,24 +1,26 @@
 [#- macro s(value) -#]"[- value | replace("\\", "\\\\") | replace('"', '\\"') -]"[#- endmacro -#]
 #import "econ-ark.typ": *
 
-[-IMPORTS-]
-
-// MyST sets figure breakability from this binding; econ-ark.typ keeps a figure that fits a page whole
-#let breakableDefault = true
-// Theorem-like blocks in flow, replacing the floating boxes defined in the imports above
-#let proof = arkProof
 // mystmd, through 1.11.0, writes \partial as `diff`, a math name Typst has since dropped for
-// `partial`. Binding it here, ahead of the content and the parts, lets a derivative compile.
+// `partial`. Bound ahead of the imports, so a paper's own math macros, which MyST writes there,
+// still win over these, and ahead of the content and the parts, which use them.
 #let diff = sym.partial
 // A TeX macro the converter cannot map passes through by name, called with its argument, or bare
 // when the argument is one token: \texttt{ENGINE} arrives called, \mathord{\cdot} arrives bare.
-#let texttt(body) = math.mono(body)
+#let texttt = math.mono
 #let mathord = none
 // Commands that take no argument arrive bare, so a symbol or a box binds each safely
 #let coloneqq = sym.colon.eq
 #let llbracket = sym.bracket.l.stroked
 #let rrbracket = sym.bracket.r.stroked
 #let mathstrut = box(width: 0pt, hide(sym.paren.l))
+
+[-IMPORTS-]
+
+// MyST sets figure breakability from this binding; econ-ark.typ keeps a figure that fits a page whole
+#let breakableDefault = true
+// Theorem-like blocks in flow, replacing the floating boxes defined in the imports above
+#let proof = arkProof
 
 #let tableStyle = arkTableStyle
 // Admonitions, replacing the boxes defined in the imports above. The names are what MyST looks
@@ -215,13 +217,15 @@
   ],
   [# endif #]
   [# if parts.epigraph #]
-  // A last paragraph opening with `--` or `---` is the attribution, as the Elsevier template reads
-  // it. It becomes the attribution a blockquote's last line gives, which econ-ark.typ sets alike.
+  // A last paragraph opening `--`, `---` or an em dash (code point 8212) and a space is the
+  // attribution, by the pattern MyST's blockquote transform reads. Its name, after the space,
+  // becomes the attribution a blockquote's last line gives, which econ-ark.typ sets alike.
   [# set epiParas = parts.epigraph.trim().split("\n\n") #]
-  [# set epiLast = epiParas[epiParas.length - 1].trim() #]
+  [# set epiLast = epiParas | last | trim #]
+  [# set epiDash = r/^---? /.test(epiLast) or (epiLast.charCodeAt(0) == 8212 and epiLast.charAt(1) == " ") #]
   epigraph: [
-  [# if epiParas.length > 1 and r/^-{2,3}\s/.test(epiLast) #]
-    #quote(block: true, attribution: [[-epiLast.replace(r/^-{2,3}\s*/, "")-]])[
+  [# if epiParas.length > 1 and epiDash #]
+    #quote(block: true, attribution: [[-epiLast.slice(epiLast.indexOf(" ")).trim()-]])[
     [-epiParas.slice(0, -1).join("\n\n")-]
     ]
   [# else #]

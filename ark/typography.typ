@@ -29,7 +29,7 @@
   // A word joined by a hyphen breaks only at that hyphen, never as index-monot-, which reads as a
   // third word. The match runs space to space: it becomes a run of its own, and a run boundary
   // inside a word, as in econ-ark.org, costs the kerning there.
-  show regex("[^\s]*[\p{L}\d]-[\p{L}\d][^\s]*"): set text(hyphenate: false)
+  show regex("\S*[\p{L}\d]-[\p{L}\d]\S*"): set text(hyphenate: false)
 
   // Citations and URLs leave the document, so they are blue; internal references stay black.
   // MyST writes a cross-reference as a link carrying the target's title, never as a ref, so the
