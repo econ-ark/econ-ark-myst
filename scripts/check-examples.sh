@@ -819,6 +819,53 @@ check_plugin_pages() {
   fi
 }
 
+# A raw LaTeX table with every command plugins/latex-layout.mjs strips, under FENCE (`{latex}`,
+# or `{raw} latex` as the self-test's seed): no MyST error, the commands kept in the LaTeX export,
+# and each section row alone on its line in the Typst PDF (README, "Raw LaTeX tables").
+check_latex_layout() {
+  local name=$1 fence=$2 dir errors text
+  dir=$(mktemp -d)
+  printf 'version: 1\nproject:\n  title: Fixture\n  plugins:\n    - %s\n' \
+    "$ROOT/plugins/latex-layout.mjs" >"$dir/myst.yml"
+  {
+    printf -- '---\ntitle: Raw LaTeX table\nauthors:\n  - name: A Person\nexports:\n'
+    printf '  - format: tex\n    template: null\n    output: page.tex\n'
+    printf '  - format: typst\n    template: %s\n    output: page.pdf\n---\n\n' "$ROOT"
+    printf '```%s\n' "$fence"
+    printf '%s\n' '\begin{table}[htbp]' '\caption{Fixture.}' '\label{tbl-fixture}' \
+      '\setlength{\tabcolsep}{4pt}' '\begin{tabular}{@{}ll@{}}' '\toprule' 'Symbol & Meaning \\' \
+      '\midrule' '\multicolumn{2}{@{}l}{\itshape Firstgroup} \\' \
+      '{\raggedright a\par} & Firstmeaning \\' '\addlinespace' \
+      '\multicolumn{2}{@{}l}{\itshape Secondgroup} \\' 'b & Secondmeaning \\' '\bottomrule' \
+      '\end{tabular}' '\end{table}' '```'
+  } >"$dir/page.md"
+  (cd "$dir" && myst build page.md --tex --typst) >"$dir/build.log" 2>&1
+  if require_file "$name" "$dir/page.tex" "the LaTeX export of the raw table" &&
+    require_file "$name" "$dir/page.pdf" "the Typst export of the raw table"; then
+    errors=$(grep -acF '⛔' "$dir/build.log")
+    if [ "$errors" -eq 0 ]; then
+      ok "$name: MyST parses the raw table's layout commands without an error"
+    else
+      bad "$name: MyST raised $errors errors parsing the raw table:"
+      grep -aF '⛔' "$dir/build.log" | head -3
+    fi
+    if grep -qF '\setlength{\tabcolsep}{4pt}' "$dir/page.tex" &&
+      grep -qF '\addlinespace' "$dir/page.tex"; then
+      ok "$name: the LaTeX export keeps the raw table's layout commands as written"
+    else
+      bad "$name: the LaTeX export lost \\setlength or \\addlinespace from the raw table"
+    fi
+    text=$(pdftotext -layout "$dir/page.pdf" - 2>/dev/null)
+    if grep -qE '^\s*Firstgroup\s*$' <<<"$text" && grep -qE '^\s*Secondgroup\s*$' <<<"$text"; then
+      ok "$name: each section row of the raw table spans both columns in the Typst PDF"
+    else
+      bad "$name: a section row of the raw table shares its line in the Typst PDF:"
+      grep -E 'group' <<<"$text" | head -2
+    fi
+  fi
+  rm -rf "$dir"
+}
+
 # No build step runs scripts/gen-banner.py, so an edit to it or to scripts/curves-crop.svg leaves
 # banner.svg, favicon.svg and the favicon.png rasterised from it standing, with every other check
 # here still passing. The svgs compare as bytes; the png as pixels, which every rasteriser agrees on.
@@ -2345,6 +2392,11 @@ self_test() {
   expect 'FAIL.*could not run' 'a plugin that throws as it loads is caught' \
     check_plugin_pages seeded "$pp/broken.mjs"
   rm -rf "$pp"
+  # MyST's own raw block over the same table: the parse errors and the lost span are both caught
+  expect 'FAIL.*errors parsing' 'a raw LaTeX table MyST cannot parse is caught' \
+    check_latex_layout seeded '{raw} latex'
+  expect 'FAIL.*shares its line' 'a section row that lost its span is caught' \
+    check_latex_layout seeded '{raw} latex'
 
   # The converter check over a template binding two names, one of which the page writes only in
   # the template's own comment and binding, and a path with no generated page at it
@@ -3242,6 +3294,7 @@ else
   check_bundle plugin "$ROOT/plugins/fira-math.bundle.mjs"
   check_plugin_pages plugin "$ROOT/plugins/fira-math.mjs"
   check_plugin_pages plugin "$ROOT/plugins/fira-math.bundle.mjs"
+  check_latex_layout plugin '{latex}'
   check_brand brand "$ROOT/brand"
   check_mplstyle brand "$ROOT/brand/ark.mplstyle" 'fbaf3f ed2a7b 00adef 38b449 1f476b'
   check_mplstyle brand "$ROOT/brand/ark-paper.mplstyle" '82a3cd 52759c 1f476b 002040'

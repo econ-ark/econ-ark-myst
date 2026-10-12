@@ -45,7 +45,7 @@ grep '#let serifFont' _build/templates/typst/*/*/ark/palette.typ
   scripts/fonts.sh webfonts    # fonts/, the faces theme.css serves to a browser
   ```
 
-  `install` is all a paper needs. `webfonts` matters to anyone publishing a site with `theme.css`; it subsets with fontTools, which it takes from the environment or, failing that, fetches through `uv`. CI and the Pages deploy run the same script. A release change therefore moves every path at once.
+  To build a paper, an author needs only `install`. `webfonts` matters to anyone publishing a site with `theme.css`; it subsets with fontTools, which it takes from the environment or, failing that, fetches through `uv`. CI and the Pages deploy run the same script. A release change therefore moves every path at once.
 
   One family sets the whole paper: Fira Sans for text and apparatus, Fira Mono for code, and Fira Math, its OpenType math companion, for everything between dollars. Another release of either renders the same words to different line breaks, so a paper built against one stops matching its own tracked PDF. Without any of them the template still compiles with fonts bundled in the Typst binary, falling back to New Computer Modern for the text, DejaVu Sans Mono for code and New Computer Modern Math for equations. Typst's bundled faces are serif apart from the mono, so a paper built without Fira comes out in a serif.
 - Ask only for a weight that has a file. Fira Sans carries 400, 500, 600 and 700, and the template stays on those. Take one format and keep to it. The release carries the same faces as `ttf` and as `otf`, this repository builds from the `ttf`, and a machine holding both renders whichever it reaches first. A weight with no file of its own sits midway between two that have one. The order the machine happened to find those two in then decides which it uses.
@@ -56,7 +56,7 @@ Two sources set the palette. econ-ark.org uses `#1f476b` throughout its own styl
 
 Econ-ARK draws its logo in two lockups.
 
-The horizontal one sets the wordmark on a single line at 4:1, with the curves tucked between "Econ" and "ARK". It survives wherever height is short, which is why the site header and the landing header both take it, and why `brand/logo.png` is that lockup.
+The horizontal logo sets the wordmark on a single line at 4:1, with the curves tucked between "Econ" and "ARK". It survives wherever height is short, which is why the site header and the landing header both take it, and why `brand/logo.png` is that lockup.
 
 Its partially stacked companion runs 2:1, curves sweeping well above the wordmark, wanting vertical room to work: covers, posters, slides, heroes. Getting a stacked asset here means rendering one from the EPS.
 
@@ -358,6 +358,41 @@ The parsed copy stays in the document, hidden, so a cross-reference to its label
 Keep the label on the parsed copy, which the site renders and which `all` reads to tell a parsed copy from a twin.
 
 Each twin has to follow its parsed copy and carry the same caption, which a fragment written by a script already does. That caption is what pairs the two. A Typst table written for its own sake therefore keeps its own numbering. Where a named table's twin never arrived, the build stops, since that table would otherwise lend its number to whatever came next.
+
+### Raw LaTeX tables
+
+A ```` ```{raw} latex ```` block goes into a LaTeX export as written, and MyST also parses it into the table the site renders and the Typst export prints. Its parser knows no command that only sets spacing or alignment. Each `\setlength`, `\addlinespace` or `\raggedright` in the body stops it with an `Unhandled TEX conversion` error, one per use, on every build. An `\addlinespace` before a `\multicolumn` also costs that cell its span, so a section row of a two-column table arrives as one cell and the rows after it shift a column in the Typst PDF.
+
+`plugins/latex-layout.mjs` adds a `latex` directive that writes the body into the LaTeX export unchanged and hands the parser a copy without those commands:
+
+````text
+```{latex}
+\begin{table}[htbp]
+\caption{Notation.}
+\label{tab:notation}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Symbol & Meaning \\
+\midrule
+\multicolumn{2}{@{}l}{\itshape Section 2} \\
+$\beta$ & Discount factor \\
+\addlinespace
+\multicolumn{2}{@{}l}{\itshape Section 3} \\
+$\chi_1$ & Adjustment-cost scale \\
+\bottomrule
+\end{tabular}
+\end{table}
+```
+````
+
+The copy drops `\setlength`, `\addlinespace`, `\raggedright` and `\par`, and turns `{\itshape ...}` and `{\bfseries ...}` into `\textit` and `\textbf`, which the parser reads. Anything else passes through, so a command the list does not cover still raises its own error. Load it like the other plugins:
+
+```yaml
+project:
+  plugins:
+    - plugins/latex-layout.mjs
+```
 
 ## Appendices
 
